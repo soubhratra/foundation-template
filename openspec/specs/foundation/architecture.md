@@ -356,11 +356,12 @@ Phase 8: CLI Scaffolder
 ```yaml
 # pnpm-workspace.yaml
 packages:
-  - "apps/web"
-  - "apps/mobile"
+  - "apps/*"
   - "packages/*"
-  # NOTE: apps/api is NOT a pnpm workspace.
-  # Python dependencies managed by uv/pyproject.toml.
+  # NOTE: apps/api is a pnpm workspace for Turborepo task orchestration only.
+  # It has NO JS/TS dependencies. Python dependencies managed by uv/pyproject.toml.
+  # The package.json in apps/api/ exists solely to register scripts (dev, lint, test)
+  # so that `turbo dev` can start Django alongside Next.js and Expo.
 ```
 
 ### Docker Compose Service Architecture (Hybrid Dev)
@@ -441,7 +442,7 @@ Mobile: App -> expo-secure-store token -> Authorization: Bearer header -> Django
 ## Constraints
 
 1. **Backend owns all business logic.** Next.js API routes are BFF thin proxies only: auth cookie translation, webhook receivers, server-side data fetching. Never business logic.
-2. **Django is NOT a Turborepo workspace.** Python dependencies managed by uv. Turborepo participates via explicit inputs/outputs in turbo.json.
+2. **Django is a pnpm workspace for task orchestration only.** Python dependencies managed by uv. `apps/api/package.json` has no JS/TS dependencies — it exists solely to register scripts (`dev`, `lint`, `test`, `type-check`) so Turborepo can orchestrate them alongside JS/TS tasks.
 3. **Custom user model before first migration.** apps/api/apps/accounts/models.py must define a custom AbstractUser subclass. AUTH_USER_MODEL must be set before `python manage.py migrate` is ever run. Recovery cost for missing this is HIGH.
 4. **Package dependency depth limit: 1 hop.** No package depends on another package that depends on another package. Apps depend on packages directly. Prevents circular dependencies and build cascade.
 5. **Expo never in Docker.** Even in docker-compose.full.yml, Expo is excluded. Metro bundler runs on host.
