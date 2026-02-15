@@ -33,13 +33,13 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. `turbo dev` starts Django (with hot reload), Next.js (with hot reload), and Expo (with hot reload) simultaneously
   4. Shared config packages (tsconfig, eslint) are consumed by all JS/TS apps without errors
   5. `.env.example` files exist for all apps; missing required env vars produce clear error messages
-**Plans**: TBD
+**Plans**: 4 plans
 
 Plans:
-- [ ] 01-01: Turborepo + pnpm workspace scaffolding with shared config packages
-- [ ] 01-02: Docker Compose (Postgres + PGVector + Redis) and Django project with custom user model
-- [ ] 01-03: Next.js and Expo app scaffolds with Metro monorepo config
-- [ ] 01-04: Hybrid dev orchestration (turbo dev) and environment variable management
+- [ ] 01-01-PLAN.md -- Turborepo + pnpm workspace scaffolding with shared config packages (Wave 1)
+- [ ] 01-02-PLAN.md -- Docker Compose (Postgres + PGVector + Redis) and Django project with custom user model (Wave 2)
+- [ ] 01-03-PLAN.md -- Next.js and Expo app scaffolds with Metro monorepo config (Wave 2)
+- [ ] 01-04-PLAN.md -- Hybrid dev orchestration (turbo dev) and environment variable management (Wave 3)
 
 ### Phase 2: API Core + Auth Backend
 **Goal**: Django API serves authenticated endpoints with auto-generated OpenAPI spec; dual auth strategy (session cookies for web, JWT for mobile) is configured and testable via API client
@@ -175,7 +175,7 @@ Note: Phase 6 (AI) depends only on Phase 2; it could execute in parallel with Ph
 
 | Phase | Plans Complete | Status | Completed |
 |-------|---------------|--------|-----------|
-| 1. Monorepo Foundation | 0/4 | Not started | - |
+| 1. Monorepo Foundation | 0/4 | Planning complete | - |
 | 2. API Core + Auth Backend | 0/4 | Not started | - |
 | 3. Shared Packages + Type Generation | 0/5 | Not started | - |
 | 4. Web Application | 0/5 | Not started | - |
