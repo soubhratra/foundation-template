@@ -125,6 +125,37 @@ These rules are mandatory; linters enforce most of them.
 - After implementation, update specs to reflect shipped behavior.
 - When working in an app, read its `apps/<app>/CLAUDE.md` if present.
 
+## OpenSpec vs GSD Command Sequences
+- OpenSpec is the governance layer for requirements changes.
+- GSD is the implementation layer for plans and execution.
+
+### Flow A: No Requirement Change
+```
+/gsd-discuss-phase <phase-number>
+/gsd-plan-phase <phase-number>
+/gsd-execute-phase <phase-number>
+/gsd-verify-work <phase-number>
+```
+
+### Flow B: Requirement Change Discovered
+```
+/opsx:new <change-name>
+/opsx:explore <change-name>
+/opsx:continue <change-name>
+/opsx:sync <change-name>
+
+/gsd-discuss-phase <phase-number>
+/gsd-plan-phase <phase-number>
+/gsd-execute-phase <phase-number>
+/gsd-verify-work <phase-number>
+
+/opsx:archive <change-name>
+```
+
+Notes:
+- Use `/opsx:sync` before GSD planning so plans follow updated specs.
+- Archive only after implementation is verified.
+
 ## Spec Coordination
 - Before modifying specs, read `.planning/foundation/STACK.md` and peers.
 - Before planning phases, read relevant `openspec/specs/<domain>/` files.
