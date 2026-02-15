@@ -2,7 +2,7 @@ import os
 from contextlib import suppress
 from pathlib import Path
 
-import environ
+import environ  # type: ignore[import-untyped]
 from django.core.exceptions import ImproperlyConfigured
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent

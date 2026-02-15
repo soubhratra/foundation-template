@@ -3,7 +3,7 @@
   "private": true,
   "scripts": {
     "dev": "uv run python manage.py runserver 0.0.0.0:8000",
-    "lint": "ruff check .",
+    "lint": "uv run ruff check .",
     "test": "uv run pytest",
     "type-check": "uv run mypy .",
     "export-schema": "uv run python manage.py export_openapi_schema > ../../packages/api-client/openapi.json"
