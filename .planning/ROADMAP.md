@@ -36,7 +36,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans**: 4 plans
 
 Plans:
-- [ ] 01-01-PLAN.md -- Turborepo + pnpm workspace scaffolding with shared config packages (Wave 1)
+- [x] 01-01-PLAN.md -- Turborepo + pnpm workspace scaffolding with shared config packages (Wave 1)
 - [ ] 01-02-PLAN.md -- Docker Compose (Postgres + PGVector + Redis) and Django project with custom user model (Wave 2)
 - [ ] 01-03-PLAN.md -- Next.js and Expo app scaffolds with Metro monorepo config (Wave 2)
 - [ ] 01-04-PLAN.md -- Hybrid dev orchestration (turbo dev) and environment variable management (Wave 3)
@@ -175,7 +175,7 @@ Note: Phase 6 (AI) depends only on Phase 2; it could execute in parallel with Ph
 
 | Phase | Plans Complete | Status | Completed |
 |-------|---------------|--------|-----------|
-| 1. Monorepo Foundation | 0/4 | Planning complete | - |
+| 1. Monorepo Foundation | 1/4 | In progress | - |
 | 2. API Core + Auth Backend | 0/4 | Not started | - |
 | 3. Shared Packages + Type Generation | 0/5 | Not started | - |
 | 4. Web Application | 0/5 | Not started | - |
