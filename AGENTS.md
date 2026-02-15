@@ -119,10 +119,13 @@ These rules are mandatory; linters enforce most of them.
 - Mobile unit tests with Jest; E2E with Detox only for critical flows.
 
 ## OpenSpec + GSD Workflow
-- Specs in `openspec/specs/` are the source of truth.
-- For features: use GSD workflow (discuss -> plan -> execute -> verify).
+- Specs in `openspec/specs/` are the source of truth (see `CLAUDE.md`).
+- Default execution path for phases is GSD (discuss -> plan -> execute -> verify).
+- Use OpenSpec only when requirements change or specs are missing/incorrect.
 - Any change touching API contracts, auth, or data models requires `/opsx:new` first.
+- Always sync specs (`/opsx:sync`) before GSD planning when requirements change.
 - After implementation, update specs to reflect shipped behavior.
+- Before starting a phase, read `ACTIVITY_LOG.md` and relevant `openspec/specs/<domain>/`.
 - When working in an app, read its `apps/<app>/CLAUDE.md` if present.
 
 ## OpenSpec vs GSD Command Sequences
