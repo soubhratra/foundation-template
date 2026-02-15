@@ -10,7 +10,7 @@
 - **Current Phase:** Phase 1 of 8 (Monorepo Foundation) -- not yet started
 - **Overall Progress:** 0% (planning and spec authoring complete, no code written)
 - **Branch:** `main`
-- **Uncommitted work:** CLAUDE.md, openspec/ directory (all spec files)
+- **Uncommitted work:** None (clean working tree)
 
 ---
 
@@ -101,6 +101,18 @@ Second spec sync pass -- updated backend and AI specs with Django Ninja Extra pa
 - `openspec/specs/backend/orm.md` -- Database configuration (psycopg3, django-environ), split settings, query patterns (select_related, prefetch_related, Q objects, bulk ops, aggregation), migration workflow with CI validation, index strategies, transaction patterns, connection scaling (PgBouncer)
 - `openspec/specs/backend/ai.md` -- Conditional AI app loading (`ENABLE_AI_MODULE`), optional dependency groups in pyproject.toml, auto-embedding via signals, full AI controller/schemas/services, testing patterns (unit tests for graph nodes, integration tests for vector search, Celery task tests), HNSW index tuning reference
 
+### Session 5 -- 2026-02-14: Spec Finalization + Repo Hygiene
+
+**Commits:**
+- `c33a389` -- docs: add specs, planning logs, and agent config
+- `432a093` -- docs: add opsx/gsd command flow
+
+**What happened:**
+1. **Committed OpenSpec baseline specs** and planning logs; repo is now clean.
+2. **Added monorepo `.gitignore`** for JS/TS + Python + Expo artifacts and local tooling folders.
+3. **Created frontend OpenSpec specs** for web and mobile (`openspec/specs/frontend/web.md`, `openspec/specs/frontend/mobile.md`).
+4. **Updated `AGENTS.md`** with explicit OpenSpec vs GSD command sequences.
+
 ---
 
 ## Current State of Deliverables
@@ -114,7 +126,7 @@ Second spec sync pass -- updated backend and AI specs with Django Ninja Extra pa
 | Roadmap (8 phases, 33 plans) | Done | `.planning/ROADMAP.md` |
 | State tracking | Active | `.planning/STATE.md` |
 
-### OpenSpec Specifications (Uncommitted)
+### OpenSpec Specifications (Committed)
 | Spec | Status | Last Updated |
 |------|--------|-------------|
 | `foundation/stack.md` | Synced with research | 2026-02-09 |
@@ -138,9 +150,12 @@ No application code has been written yet. The project is in the planning/specifi
 
 ## What's Next
 
-1. **Commit uncommitted work** -- `CLAUDE.md` and `openspec/` directory need to be committed
-2. **Begin Phase 1 execution** -- Monorepo Foundation (Turborepo + pnpm + Docker Compose + Django project)
-3. **Phase 1 has 4 plans:**
+1. **Begin Phase 1 planning** using GSD Flow A (no requirement changes expected):
+   - `/gsd-discuss-phase 1`
+   - `/gsd-plan-phase 1`
+   - `/gsd-execute-phase 1`
+   - `/gsd-verify-work 1`
+2. **Phase 1 has 4 plans:**
    - 01-01: Turborepo + pnpm workspace scaffolding
    - 01-02: Docker Compose + Django project with custom user model
    - 01-03: Next.js and Expo app scaffolds

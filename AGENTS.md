@@ -161,6 +161,9 @@ Notes:
 - Before planning phases, read relevant `openspec/specs/<domain>/` files.
 - If a delta spec exists in `openspec/changes/`, use it as the active change set.
 
+## Project Status
+- For current state and next steps, read `ACTIVITY_LOG.md`.
+
 ## Cursor/Copilot Rules
 - No `.cursor/rules/`, `.cursorrules`, or `.github/copilot-instructions.md` found.
 
