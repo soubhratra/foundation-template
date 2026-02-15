@@ -51,13 +51,13 @@ Plans:
   3. OpenAPI JSON spec is exported to a file that downstream type generation can consume
   4. Django Allauth headless mode accepts signup, login, logout, and password reset requests via API (no server-rendered forms)
   5. Session cookie auth and JWT token auth both work against the same endpoints (dual strategy verified via manual API testing)
-**Plans**: TBD
+**Plans**: 4 plans
 
 Plans:
-- [ ] 02-01: Django Ninja Extra API scaffold with layered architecture and settings split
-- [ ] 02-02: Custom user model, migrations, health check, and admin configuration
-- [ ] 02-03: Django Allauth headless configuration with dual auth strategy
-- [ ] 02-04: OpenAPI spec export and CORS configuration
+- [ ] 02-01-PLAN.md -- Core Ninja Extra API wiring, error envelope, and health endpoint
+- [ ] 02-02-PLAN.md -- Allauth headless + session/JWT settings and auth URL mounting
+- [ ] 02-03-PLAN.md -- Accounts /users/me endpoints with dual auth + reset invalidation
+- [ ] 02-04-PLAN.md -- OpenAPI export command and committed openapi.json
 
 ### Phase 3: Shared Packages + Type Generation
 **Goal**: Shared monorepo packages provide type-safe API client, validation schemas, UI primitives, and business logic hooks that both web and mobile apps can import and use
