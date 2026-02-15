@@ -1,11 +1,11 @@
 {
   "name": "@repo/api",
-  "version": "0.0.0",
   "private": true,
   "scripts": {
-    "dev": "echo 'Django not yet scaffolded -- see Plan 02'",
-    "lint": "echo 'ruff not yet configured -- see Plan 02'",
-    "test": "echo 'pytest not yet configured -- see Plan 02'",
-    "type-check": "echo 'mypy not yet configured -- see Plan 02'"
+    "dev": "uv run python manage.py runserver 0.0.0.0:8000",
+    "lint": "ruff check .",
+    "test": "uv run pytest",
+    "type-check": "uv run mypy .",
+    "export-schema": "uv run python manage.py export_openapi_schema > ../../packages/api-client/openapi.json"
   }
 }

@@ -1,0 +1,11 @@
+[lint]
+select = ["E", "F", "I", "N", "W", "UP", "B", "A", "C4", "SIM", "TCH"]
+ignore = ["E501"]
+
+[lint.isort]
+known-first-party = ["apps", "config"]
+
+[format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "auto"

@@ -1,0 +1,38 @@
+[project]
+name = "foundation-api"
+version = "0.1.0"
+description = "Foundation Template Django API"
+requires-python = ">=3.12"
+dependencies = [
+    "django>=5.1,<6.0",
+    "django-ninja-extra>=0.21",
+    "django-environ>=0.11",
+    "django-cors-headers>=4.4",
+    "psycopg[binary]>=3.2",
+    "whitenoise>=6.7",
+    "gunicorn>=22.0",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.8",
+    "mypy>=1.11",
+    "django-stubs>=5.1",
+    "pytest>=8.0",
+    "pytest-django>=4.9",
+    "pytest-cov>=5.0",
+]
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings.development"
+python_files = ["test_*.py"]
+python_paths = ["."]
+
+[tool.mypy]
+plugins = ["mypy_django_plugin.main"]
+python_version = "3.12"
+warn_return_any = true
+warn_unused_configs = true
+
+[tool.django-stubs]
+django_settings_module = "config.settings.development"
