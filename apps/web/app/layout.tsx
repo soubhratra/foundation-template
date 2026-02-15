@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import "@/app/env";
 import "./globals.css";
 
 export const metadata: Metadata = {

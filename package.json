@@ -9,7 +9,13 @@
     "test": "turbo test",
     "type-check": "turbo type-check",
     "clean": "turbo clean",
-    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\""
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\"",
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down",
+    "db:migrate": "cd apps/api && uv run python manage.py migrate",
+    "db:makemigrations": "cd apps/api && uv run python manage.py makemigrations",
+    "db:reset": "docker compose down -v && docker compose up -d && sleep 5 && cd apps/api && uv run python manage.py migrate",
+    "setup": "pnpm install && cd apps/api && uv sync && cd ../.. && docker compose up -d && sleep 5 && cd apps/api && uv run python manage.py migrate"
   },
   "devDependencies": {
     "@repo/config-eslint": "workspace:*",

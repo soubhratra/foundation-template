@@ -1,7 +1,9 @@
+import os
 from contextlib import suppress
 from pathlib import Path
 
 import environ
+from django.core.exceptions import ImproperlyConfigured
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 env = environ.Env()
@@ -95,3 +97,47 @@ REDIS_URL = env("REDIS_URL", default="redis://localhost:6379/0")
 CORS_ALLOWED_ORIGINS = env.list(
     "CORS_ALLOWED_ORIGINS", default=["http://localhost:3000"]
 )
+
+# --------------------------------------------------------------------------
+# Environment Variable Validation
+# --------------------------------------------------------------------------
+# In production, certain env vars MUST be explicitly set (not using defaults).
+# In development, defaults are used for zero-config startup.
+#
+# This validation runs at import time (Django startup) and produces clear
+# error messages identifying exactly which env vars are missing.
+# --------------------------------------------------------------------------
+if os.environ.get("DJANGO_SETTINGS_MODULE", "").endswith("production") and not DEBUG:
+    _required_in_production = {
+        "SECRET_KEY": SECRET_KEY,
+        "DATABASE_URL": None,
+        "ALLOWED_HOSTS": ALLOWED_HOSTS,
+    }
+
+    _missing = []
+    if SECRET_KEY == "django-insecure-change-me-in-production":
+        _missing.append("SECRET_KEY (still using insecure default)")
+    if ALLOWED_HOSTS == ["localhost", "127.0.0.1"]:
+        _missing.append("ALLOWED_HOSTS (still using localhost defaults)")
+
+    if _missing:
+        import sys
+
+        print(
+            "\n"
+            + "=" * 60
+            + "\n"
+            "MISSING REQUIRED ENVIRONMENT VARIABLES\n"
+            + "=" * 60
+            + "\n"
+            + "\n".join(f"  - {var}" for var in _missing)
+            + "\n\n"
+            "Set these in your .env file or environment.\n"
+            "See apps/api/.env.example for reference.\n"
+            + "=" * 60
+            + "\n",
+            file=sys.stderr,
+        )
+        raise ImproperlyConfigured(
+            f"Missing required environment variables: {', '.join(_missing)}"
+        )
