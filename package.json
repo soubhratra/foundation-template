@@ -12,6 +12,8 @@
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\""
   },
   "devDependencies": {
+    "@repo/config-eslint": "workspace:*",
+    "@repo/config-ts": "workspace:*",
     "lint-staged": "^15.2.10",
     "prettier": "^3.5.2",
     "turbo": "^2.4.0"

@@ -8,6 +8,12 @@ importers:
 
   .:
     devDependencies:
+      '@repo/config-eslint':
+        specifier: workspace:*
+        version: link:packages/config-eslint
+      '@repo/config-ts':
+        specifier: workspace:*
+        version: link:packages/config-ts
       lint-staged:
         specifier: ^15.2.10
         version: 15.5.2

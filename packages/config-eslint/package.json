@@ -1,0 +1,23 @@
+{
+  "name": "@repo/config-eslint",
+  "version": "0.0.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./next": "./next.js",
+    "./react-native": "./react-native.js"
+  },
+  "dependencies": {
+    "typescript-eslint": "^8.0.0",
+    "eslint-plugin-react": "^7.37.0",
+    "eslint-plugin-react-hooks": "^5.0.0",
+    "@next/eslint-plugin-next": "^15.0.0"
+  },
+  "peerDependencies": {
+    "eslint": "^9.0.0",
+    "typescript": "^5.0.0"
+  }
+}
