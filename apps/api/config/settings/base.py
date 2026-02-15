@@ -1,15 +1,13 @@
+from contextlib import suppress
 from pathlib import Path
 
 import environ
 
-
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 env = environ.Env()
 
-try:
+with suppress(FileNotFoundError):
     environ.Env.read_env(BASE_DIR / ".env")
-except FileNotFoundError:
-    pass
 
 SECRET_KEY = env("SECRET_KEY", default="django-insecure-change-me-in-production")
 DEBUG = env.bool("DEBUG", default=False)
