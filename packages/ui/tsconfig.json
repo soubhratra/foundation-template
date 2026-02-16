@@ -1,0 +1,12 @@
+{
+  "extends": "@repo/config-ts/library.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist",
+    "jsx": "react-jsx",
+    "noEmit": false,
+    "baseUrl": "."
+  },
+  "include": ["src"],
+  "exclude": ["dist", "node_modules"]
+}
