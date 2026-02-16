@@ -13,6 +13,7 @@ import { env } from "@/lib/env";
 
 import { AuthGate } from "@/components/navigation/auth-gate";
 import { registerNativeQueryBridge } from "@/lib/query/native-bridge";
+import { PreferencesProvider } from "@/lib/preferences/store";
 
 const API_BASE_PATH = "/api/v1";
 
@@ -61,16 +62,18 @@ export default function RootLayout() {
       tokenStorage={tokenStorage}
       enableDevtools={false}
     >
-      <AuthGate>
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Protected guard={true}>
-            <Stack.Screen name="(tabs)" />
-          </Stack.Protected>
-          <Stack.Protected guard={true}>
-            <Stack.Screen name="(auth)" />
-          </Stack.Protected>
-        </Stack>
-      </AuthGate>
+      <PreferencesProvider>
+        <AuthGate>
+          <Stack screenOptions={{ headerShown: false }}>
+            <Stack.Protected guard={true}>
+              <Stack.Screen name="(tabs)" />
+            </Stack.Protected>
+            <Stack.Protected guard={true}>
+              <Stack.Screen name="(auth)" />
+            </Stack.Protected>
+          </Stack>
+        </AuthGate>
+      </PreferencesProvider>
     </AuthProvider>
   );
 }
