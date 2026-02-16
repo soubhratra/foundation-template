@@ -5,19 +5,19 @@
 See: .planning/PROJECT.md (updated 2026-02-08)
 
 **Core value:** A new SaaS product goes from zero to running full-stack app (web + mobile + API + auth) in under 5 minutes with one command.
-**Current focus:** Phase 2 - API Core + Auth Backend
+**Current focus:** Phase 5 - Mobile Application
 
 ## Current Position
 
-**Current Phase:** 02
-**Current Phase Name:** API Core + Auth Backend
-**Current Plan:** 4
-**Total Plans in Phase:** 4
-**Status:** Phase complete — ready for verification
+**Current Phase:** 05
+**Current Phase Name:** Mobile Application
+**Current Plan:** 3
+**Total Plans in Phase:** 5
+**Status:** Phase in progress
 **Last Activity:** 2026-02-16
-**Last Activity Description:** Completed 02-01-PLAN.md
+**Last Activity Description:** Completed 05-03-PLAN.md
 
-**Progress:** [█████████░] 92%
+**Progress:** [██████░░░] 60%
 
 ## Performance Metrics
 
@@ -58,6 +58,7 @@ See: .planning/PROJECT.md (updated 2026-02-08)
 | Phase 04-web-application P05 | 13 min | 3 tasks | 10 files |
 | Phase 05-mobile-application P01 | 12 min | 3 tasks | 14 files |
 | Phase 05-mobile-application P05-02 | 8 min | 3 tasks | 9 files |
+| Phase 05-mobile-application P05-03 | 8 min | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -97,6 +98,8 @@ Recent decisions affecting current work:
 - [Phase 05-mobile-application]: Redirected root index route to /(auth)/sign-in — Keeps deep links aligned with the guarded auth stack until actual forms land
 - [Phase 05-mobile-application]: Standardized lucide tabs + Detox testIDs — Shared helper keeps tab icon styling and accessibility consistent for future features and Detox flows
 - [Phase 05-mobile-application]: Reuse business-logic client for Allauth auth endpoints until OpenAPI spec includes them
+- [Phase 05-mobile-application]: Used manual fetch for JWT refresh — OpenAPI spec lacks /jwt/refresh endpoint
+- [Phase 05-mobile-application]: Bootstrap-first auth flow — tokens restore before any UI renders to prevent auth flicker
 
 ### Pending Todos
 
@@ -109,6 +112,6 @@ None yet.
 
 ## Session Continuity
 
-**Last Session:** 2026-02-16T21:29:54.157Z
-**Stopped At:** Completed 05-mobile-application-05-02-PLAN.md
+**Last Session:** 2026-02-16T21:52:47Z
+**Stopped At:** Completed 05-03-PLAN.md
 **Resume File:** None
