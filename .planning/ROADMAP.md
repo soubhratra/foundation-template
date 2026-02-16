@@ -70,14 +70,14 @@ Plans:
   3. `packages/validation` exports Zod schemas for auth forms (signup, login, profile) usable in both web and mobile
   4. `packages/ui` exports React Native Web primitives (Button, Text, Input, Card) that render on both web and mobile without platform conditionals
   5. `packages/business-logic` exports shared auth hooks (useAuth, useUser) and utility functions importable by both apps
-**Plans**: TBD
+**Plans**: 5 plans
 
 Plans:
-- [ ] 03-01: Type generation pipeline (OpenAPI spec to TypeScript types via openapi-typescript)
-- [ ] 03-02: API client package with openapi-fetch typed wrapper
-- [ ] 03-03: Validation package with Zod schemas for auth and profile forms
-- [ ] 03-04: UI primitives package with React Native Web components
-- [ ] 03-05: Business logic package with auth hooks and shared utilities
+- [ ] 03-01-PLAN.md — Automate OpenAPI → TypeScript pipeline (`pnpm generate:types`)
+- [ ] 03-02-PLAN.md — Typed API client package with openapi-fetch + React Query wrapper
+- [ ] 03-03-PLAN.md — Shared Zod validation schemas + React Hook Form helpers
+- [ ] 03-04-PLAN.md — React Native Web UI primitives and bundler wiring
+- [ ] 03-05-PLAN.md — Business-logic hooks and cross-app package integration
 
 ### Phase 4: Web Application
 **Goal**: Users can sign up, log in, manage their account, and navigate an authenticated dashboard in the Next.js web app -- the complete auth flow works end-to-end from browser to Django API
@@ -89,14 +89,14 @@ Plans:
   3. Unauthenticated users are redirected to login; authenticated users see the dashboard shell with navigation
   4. User can view and update their profile/account settings from the settings page
   5. Dark mode toggle works with system preference detection; all pages render correctly in both themes
-**Plans**: TBD
+**Plans**: 5 plans
 
 Plans:
-- [ ] 04-01: Next.js 15 App Router setup with Shadcn/ui, Tailwind CSS, and layouts (auth + unauth)
-- [ ] 04-02: Auth pages (login, signup, password reset, email verification) with form validation
-- [ ] 04-03: Auth middleware, session management, and protected route guards
-- [ ] 04-04: Dashboard shell, user profile/settings page, and dark mode
-- [ ] 04-05: Server Components with typed API calls via shared api-client
+- [ ] 04-01-PLAN.md — Next.js App Router scaffolding, shared layouts, and base design system (Wave 1)
+- [ ] 04-02-PLAN.md — Auth forms (login/signup/reset/verification) with validation and RHF wiring (Wave 2)
+- [ ] 04-03-PLAN.md — Auth middleware, route guards, and session management (Wave 3)
+- [ ] 04-04-PLAN.md — Dashboard shell, profile/settings pages, and dark mode (Wave 4)
+- [ ] 04-05-PLAN.md — Server Components consuming shared api-client + business-logic (Wave 5)
 
 ### Phase 5: Mobile Application
 **Goal**: Users can sign up, log in, and navigate an authenticated tab-based mobile app in Expo -- consuming the same shared packages as web, with JWT token persistence across app restarts
