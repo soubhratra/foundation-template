@@ -17,7 +17,7 @@ See: .planning/PROJECT.md (updated 2026-02-08)
 **Last Activity:** 2026-02-16
 **Last Activity Description:** Completed 02-01-PLAN.md
 
-**Progress:** [████████░░] 80%
+**Progress:** [█████████░] 87%
 
 ## Performance Metrics
 
@@ -49,6 +49,7 @@ See: .planning/PROJECT.md (updated 2026-02-08)
 | Phase 03-shared-packages-type-generation P03 | 7 min | 2 tasks | 7 files |
 | Phase 03 P04 | 14 min | 2 tasks | 13 files |
 | Phase 03 P01 | 15 min | 2 tasks | 7 files |
+| Phase 03-shared-packages-type-generation P03-02 | 7 min | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -73,6 +74,7 @@ Recent decisions affecting current work:
 - [Phase 03-shared-packages-type-generation]: Deferred pnpm-lock.yaml update until packages/ui staged work is ready
 - [Phase 03]: Align Expo type environment with React 19 definitions — TS ReactNode mismatch blocked metro type-check; matching @types/react versions keeps shared primitives compiling
 - [Phase 03]: Scope turbo generate:api-types to @repo/api — Root workspace is not part of the Turbo graph, so filtering to the backend package keeps the generator focused and prevents failures.
+- [Phase 03-shared-packages-type-generation]: Expose @repo/api-client/gen/v1 from the tracked OpenAPI snapshot instead of copying it into dist — Keeps generated artifacts diffable and avoids redundant build steps while remaining within the workspace package
 
 ### Pending Todos
 
@@ -85,6 +87,6 @@ None yet.
 
 ## Session Continuity
 
-**Last Session:** 2026-02-16T04:00:11.200Z
-**Stopped At:** Completed 03-01-PLAN.md
+**Last Session:** 2026-02-16T04:11:00.426Z
+**Stopped At:** Completed 03-02-PLAN.md
 **Resume File:** None
