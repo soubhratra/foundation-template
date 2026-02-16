@@ -6,8 +6,12 @@
  * producing cryptic runtime failures.
  */
 
-function validateEnv() {
-  const required: Record<string, string | undefined> = {
+interface MobileEnv {
+  readonly EXPO_PUBLIC_API_URL: string;
+}
+
+function validateEnv(): MobileEnv {
+  const required: Partial<MobileEnv> = {
     EXPO_PUBLIC_API_URL: process.env.EXPO_PUBLIC_API_URL,
   };
 
@@ -31,7 +35,7 @@ function validateEnv() {
     );
   }
 
-  return required as Record<string, string>;
+  return required as MobileEnv;
 }
 
 export const env = validateEnv();

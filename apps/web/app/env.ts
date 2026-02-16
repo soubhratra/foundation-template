@@ -6,8 +6,12 @@
  * producing cryptic runtime failures.
  */
 
-function validateEnv() {
-  const required: Record<string, string | undefined> = {
+interface WebEnv {
+  readonly NEXT_PUBLIC_API_URL: string;
+}
+
+function validateEnv(): WebEnv {
+  const required: Partial<WebEnv> = {
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
   };
 
@@ -31,7 +35,7 @@ function validateEnv() {
     );
   }
 
-  return required as Record<string, string>;
+  return required as WebEnv;
 }
 
 export const env = validateEnv();
