@@ -22,8 +22,11 @@
     },
     "generate:api-types": {
       "cache": false,
-      "inputs": ["../../apps/api/**/*.py"],
-      "outputs": ["src/types.d.ts"]
+      "inputs": ["apps/api/**/*.py", "apps/api/**/*.json"],
+      "outputs": [
+        "packages/api-client/openapi.json",
+        "packages/api-client/src/gen/v1.d.ts"
+      ]
     },
     "clean": {
       "cache": false

@@ -6,6 +6,7 @@
     "lint": "uv run ruff check .",
     "test": "uv run pytest",
     "type-check": "uv run mypy .",
-    "export-schema": "uv run python manage.py export_openapi_schema > ../../packages/api-client/openapi.json"
+    "export-schema": "uv run python manage.py export_openapi_schema > ../../packages/api-client/openapi.json",
+    "generate:api-types": "node ../../scripts/generate-api-types.mjs"
   }
 }

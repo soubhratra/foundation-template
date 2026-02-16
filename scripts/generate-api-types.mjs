@@ -15,6 +15,9 @@ const TYPES_FILE = path.join(TYPES_DIR, "v1.d.ts");
 const JS_YAML_SHIM = path.join(REPO_ROOT, "scripts", "js-yaml-types-shim.cjs");
 const OPENAPI_OUTPUT_ARG = "../../packages/api-client/openapi.json";
 
+// NOTE: Run `pnpm generate:types` whenever API controllers or schemas change to
+// keep shared clients in sync with the backend contract.
+
 function log(message) {
   console.log(`[generate-api-types] ${message}`);
 }
