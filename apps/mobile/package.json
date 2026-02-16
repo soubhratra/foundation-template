@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
+    "@react-native-community/netinfo": "^12.0.1",
     "@repo/business-logic": "workspace:*",
     "@repo/ui": "workspace:*",
     "@repo/validation": "workspace:*",

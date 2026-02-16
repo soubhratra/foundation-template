@@ -1,4 +1,4 @@
-import { type ReactNode, useMemo } from "react";
+import { type ReactNode, useEffect, useMemo } from "react";
 
 import { SplashScreen, Stack as ExpoStack } from "expo-router";
 import * as SecureStore from "expo-secure-store";
@@ -12,6 +12,7 @@ import {
 import { env } from "@/lib/env";
 
 import { AuthGate } from "@/components/navigation/auth-gate";
+import { registerNativeQueryBridge } from "@/lib/query/native-bridge";
 
 const API_BASE_PATH = "/api/v1";
 
@@ -47,6 +48,12 @@ Stack.Protected = function ProtectedRoute({ guard, children }: ProtectedScreenPr
 
 export default function RootLayout() {
   const tokenStorage = useMemo(() => createSecureStoreTokenStorage(secureStoreAdapter), []);
+
+  // Register TanStack Query native bridge on mount
+  useEffect(() => {
+    const bridge = registerNativeQueryBridge({ debug: __DEV__ });
+    return () => bridge.unregister();
+  }, []);
 
   return (
     <AuthProvider
