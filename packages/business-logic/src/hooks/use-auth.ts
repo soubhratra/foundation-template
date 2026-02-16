@@ -37,6 +37,14 @@ export interface JwtLoginResponse {
   readonly expires_in?: number | null;
 }
 
+export type SessionLoginVariables = LoginInput & {
+  readonly tokenStorage?: TokenStorage;
+};
+
+export type JwtLoginVariables = LoginInput & {
+  readonly tokenStorage?: TokenStorage;
+};
+
 interface ErrorEnvelope {
   readonly error?: {
     readonly message?: string;
@@ -51,8 +59,8 @@ export interface UseAuthOptions {
 }
 
 interface MutationHooks {
-  readonly login: UseMutationResult<SessionLoginResponse, Error, LoginInput>;
-  readonly loginWithJwt: UseMutationResult<JwtLoginResponse, Error, LoginInput>;
+  readonly login: UseMutationResult<SessionLoginResponse, Error, SessionLoginVariables>;
+  readonly loginWithJwt: UseMutationResult<JwtLoginResponse, Error, JwtLoginVariables>;
   readonly logout: UseMutationResult<void, Error, void>;
 }
 
@@ -75,28 +83,30 @@ export function useAuth(options?: UseAuthOptions): UseAuthResult {
     return context.queryClient.invalidateQueries({ queryKey: USER_QUERY_KEY });
   }, [context.queryClient]);
 
-  const login = useMutation<SessionLoginResponse, Error, LoginInput>({
-    mutationFn: async (payload) => {
+  const login = useMutation<SessionLoginResponse, Error, SessionLoginVariables>({
+    mutationFn: async ({ tokenStorage: overrideStorage, ...credentials }) => {
+      const adapter = overrideStorage ?? storage;
       const result = await requestJson<SessionLoginResponse>(context.baseUrl, SESSION_LOGIN_PATH, {
         method: "POST",
-        body: JSON.stringify(payload),
+        body: JSON.stringify(credentials),
         credentials: "include",
       });
       if (result?.session_token !== undefined) {
-        await storage.setTokens({ sessionToken: result.session_token ?? null });
+        await adapter.setTokens({ sessionToken: result.session_token ?? null });
       }
       return result;
     },
     onSuccess: () => invalidateUser(),
   });
 
-  const loginWithJwt = useMutation<JwtLoginResponse, Error, LoginInput>({
-    mutationFn: async (payload) => {
+  const loginWithJwt = useMutation<JwtLoginResponse, Error, JwtLoginVariables>({
+    mutationFn: async ({ tokenStorage: overrideStorage, ...credentials }) => {
+      const adapter = overrideStorage ?? storage;
       const result = await requestJson<JwtLoginResponse>(context.baseUrl, JWT_LOGIN_PATH, {
         method: "POST",
-        body: JSON.stringify(payload),
+        body: JSON.stringify(credentials),
       });
-      await storage.setTokens({
+      await adapter.setTokens({
         accessToken: result?.access_token ?? null,
         refreshToken: result?.refresh_token ?? null,
       });

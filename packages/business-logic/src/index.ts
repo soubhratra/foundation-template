@@ -5,6 +5,8 @@ export type {
   UseAuthOptions,
   SessionLoginResponse,
   JwtLoginResponse,
+  SessionLoginVariables,
+  JwtLoginVariables,
   UseAuthResult,
 } from "./hooks/use-auth";
 export { useAuth, USER_QUERY_KEY, USER_QUERY_PATH } from "./hooks/use-auth";
