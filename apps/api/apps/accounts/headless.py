@@ -5,11 +5,17 @@ from typing import Any, Optional
 from django import forms
 from django.contrib.auth import get_user_model
 from django.db import models
+from django.http import HttpRequest
 
 from allauth.account import app_settings as account_settings
 from allauth.account.models import EmailAddress
 from allauth.account.utils import user_display, user_username
+from allauth.core.internal.httpkit import get_authorization_credential
+from allauth.headless import app_settings as headless_settings
 from allauth.headless.adapter import DefaultHeadlessAdapter
+from allauth.headless.base.response import AuthenticationResponse
+from allauth.headless.constants import Client
+from allauth.headless.internal.restkit.response import APIResponse
 
 
 def _resolve_user_name(user) -> str:
@@ -44,6 +50,47 @@ class HeadlessSignupForm(forms.Form):
             fields_to_update.append("first_name")
         if fields_to_update:
             user.save(update_fields=fields_to_update)
+
+
+class SessionAwareJWTTokenStrategy:
+    """
+    A JWT token strategy wrapper that omits JWT tokens for session-based logins.
+    
+    JWT access/refresh tokens should only be issued by JWT-specific endpoints
+    (like token refresh), not by session-based login/signup endpoints.
+    
+    This wrapper delegates to the underlying JWTTokenStrategy but only
+    creates access token payloads when the request includes an Authorization
+    header (indicating it's already using JWT authentication).
+    """
+    
+    def __init__(self):
+        from allauth.headless.tokens.strategies.jwt import JWTTokenStrategy
+        self._strategy = JWTTokenStrategy()
+    
+    def __getattr__(self, name):
+        """Delegate all attribute access to the underlying strategy."""
+        return getattr(self._strategy, name)
+    
+    def create_access_token_payload(self, request: HttpRequest) -> Optional[dict]:
+        """
+        Only create access token payload if request already has JWT auth.
+        
+        This prevents session-based logins from receiving JWT tokens in
+        the response, while still allowing JWT token refresh flows.
+        """
+        # Check if the request came with an Authorization header
+        # If not, this is a session-based login - don't issue JWTs
+        auth_header = get_authorization_credential(
+            request, headless_settings.JWT_AUTHORIZATION_HEADER_SCHEME
+        )
+        if auth_header is None:
+            # No Authorization header = session-based login
+            # Don't issue JWT tokens for session logins
+            return None
+        
+        # Request has Authorization header - delegate to underlying strategy
+        return self._strategy.create_access_token_payload(request)
 
 
 class HeadlessAdapter(DefaultHeadlessAdapter):

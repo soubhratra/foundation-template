@@ -153,9 +153,7 @@ HEADLESS_FRONTEND_URLS = {
     "account_reset_password_from_key": f"{FRONTEND_URL}/auth/reset-password/{{key}}",
 }
 HEADLESS_ADAPTER = "apps.accounts.headless.HeadlessAdapter"
-HEADLESS_TOKEN_STRATEGY = (
-    "allauth.headless.tokens.strategies.jwt.JWTTokenStrategy"
-)
+HEADLESS_TOKEN_STRATEGY = "apps.accounts.headless.SessionAwareJWTTokenStrategy"
 HEADLESS_JWT_ALGORITHM = "HS256"
 HEADLESS_JWT_ACCESS_TOKEN_EXPIRES_IN = 900
 HEADLESS_JWT_ROTATE_REFRESH_TOKEN = True
