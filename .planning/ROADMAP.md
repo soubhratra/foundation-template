@@ -54,7 +54,7 @@ Plans:
 **Plans**: 4 plans
 
 Plans:
-- [ ] 02-01-PLAN.md -- Core Ninja Extra API wiring, error envelope, and health endpoint
+- [x] 02-01-PLAN.md -- Core Ninja Extra API wiring, error envelope, and health endpoint
 - [ ] 02-02-PLAN.md -- Allauth headless + session/JWT settings and auth URL mounting
 - [ ] 02-03-PLAN.md -- Accounts /users/me endpoints with dual auth + reset invalidation
 - [ ] 02-04-PLAN.md -- OpenAPI export command and committed openapi.json
@@ -176,7 +176,7 @@ Note: Phase 6 (AI) depends only on Phase 2; it could execute in parallel with Ph
 | Phase | Plans Complete | Status | Completed |
 |-------|---------------|--------|-----------|
 | 1. Monorepo Foundation | 2/4 | In progress | - |
-| 2. API Core + Auth Backend | 0/4 | Not started | - |
+| 2. API Core + Auth Backend | 1/4 | In progress | - |
 | 3. Shared Packages + Type Generation | 0/5 | Not started | - |
 | 4. Web Application | 0/5 | Not started | - |
 | 5. Mobile Application | 0/4 | Not started | - |
