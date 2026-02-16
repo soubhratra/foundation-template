@@ -70,7 +70,7 @@ export function AuthMessage({ variant, title, description }: AuthMessageProps) {
       </View>
       <View style={styles.bannerContent}>
         {title ? (
-          <Text variant="body" weight="semibold" style={styles.bannerTitle}>
+          <Text variant="body" weight="bold" style={styles.bannerTitle}>
             {title}
           </Text>
         ) : null}

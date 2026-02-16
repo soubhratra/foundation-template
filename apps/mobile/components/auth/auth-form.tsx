@@ -90,7 +90,7 @@ export function AuthFormField<
       name={name}
       render={({ field, fieldState }) => {
         if (children) {
-          return children({ field, error: fieldState.error?.message });
+          return <>{children({ field, error: fieldState.error?.message })}</>;
         }
 
         return (
@@ -118,7 +118,7 @@ export function AuthFormHint({ title, description }: AuthFormHintProps) {
   return (
     <View style={styles.hint}>
       {title ? (
-        <Text variant="body" weight="semibold">
+        <Text variant="body" weight="bold">
           {title}
         </Text>
       ) : null}

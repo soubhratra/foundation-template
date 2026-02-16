@@ -6,7 +6,7 @@ import { Text, theme } from "@repo/ui";
 
 export interface AuthFooterLink {
   readonly label: string;
-  readonly href: Href<string>;
+  readonly href: Href;
   readonly prefix?: string;
   readonly replace?: boolean;
   readonly testID?: string;
@@ -31,12 +31,7 @@ export function AuthFooter({ links }: AuthFooterProps) {
             </Text>
           ) : null}
           <Link href={link.href} replace={link.replace} asChild>
-            <Text
-              variant="caption"
-              weight="semibold"
-              style={styles.link}
-              testID={link.testID}
-            >
+            <Text variant="caption" weight="bold" style={styles.link} testID={link.testID}>
               {link.label}
             </Text>
           </Link>
