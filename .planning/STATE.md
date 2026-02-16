@@ -45,6 +45,7 @@ See: .planning/PROJECT.md (updated 2026-02-08)
 | Phase 02 P02 | 0 min | 2 tasks | 7 files |
 | Phase 02 P03 | 26 min | 3 tasks | 11 files |
 | Phase 02 P04 | 1 min | 2 tasks | 4 files |
+| Phase 02-api-core-auth-backend P05 | 6min | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -64,6 +65,8 @@ Recent decisions affecting current work:
 - [Phase 02]: Use HS256 for headless JWTs backed by SECRET_KEY to avoid RSA key provisioning in the template.
 - [Phase 02]: Expose headless browser/app endpoints under /api/v1/auth/ with explicit session logout overrides returning 204.
 - [Phase 02]: Apply dual auth at the controller level using SessionAuth + jwt_token_auth — Keeps public routes unauthenticated while enabling cookies and bearer tokens on /users/me.
+- [Phase 02-api-core-auth-backend]: Session-aware JWT strategy: Only issue JWT tokens when request has Authorization header — Prevents session-based logins from receiving JWT tokens while still allowing JWT token refresh flows
+- [Phase 02-api-core-auth-backend]: Token revocation: Clear refresh tokens from all user sessions on password reset — Since refresh tokens are stored in Django sessions, clearing them invalidates JWT authentication
 
 ### Pending Todos
 
@@ -76,6 +79,6 @@ None yet.
 
 ## Session Continuity
 
-**Last Session:** 2026-02-16T00:46:14.405Z
-**Stopped At:** Completed 02-04-PLAN.md
+**Last Session:** 2026-02-16T01:15:12.662Z
+**Stopped At:** Completed 02-05-PLAN.md
 **Resume File:** None
