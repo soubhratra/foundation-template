@@ -107,13 +107,13 @@ Plans:
   2. Authenticated users see tab-based navigation; unauthenticated users see auth screens
   3. Mobile app uses the same shared API client, validation schemas, and UI primitives as web (packages/api-client, packages/validation, packages/ui)
   4. User can view and update profile/account settings on mobile
-**Plans**: TBD
+**Plans**: 4 plans
 
 Plans:
-- [ ] 05-01: Expo Router navigation setup with auth and tab-based layouts
-- [ ] 05-02: Auth screens (login, signup) with shared validation and API client
-- [ ] 05-03: JWT token management with expo-secure-store
-- [ ] 05-04: Profile/settings screen and shared UI primitives integration
+- [ ] 05-01-PLAN.md — Expo Router navigation + auth/tab layouts (Wave 1)
+- [ ] 05-02-PLAN.md — Auth screens with shared validation + API client (Wave 2)
+- [ ] 05-03-PLAN.md — JWT token management with expo-secure-store (Wave 3)
+- [ ] 05-04-PLAN.md — Profile/settings screen with shared UI primitives (Wave 4)
 
 ### Phase 6: AI Module
 **Goal**: An optional, fully isolated AI module provides vector search and LangGraph agent scaffolding that can be cleanly removed from the template
