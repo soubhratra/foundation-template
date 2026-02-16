@@ -15,7 +15,7 @@ export interface paths {
          * Get Current User
          * @description Get the authenticated user's profile.
          */
-        get: operations["user_get_current_user_6ccec984"];
+        get: operations["user_get_current_user_fe1fdd44"];
         put?: never;
         post?: never;
         delete?: never;
@@ -25,7 +25,7 @@ export interface paths {
          * Update Current User
          * @description Update the authenticated user's profile.
          */
-        patch: operations["user_update_current_user_7f5f1470"];
+        patch: operations["user_update_current_user_2d4c7e43"];
         trace?: never;
     };
     "/api/v1/health": {
@@ -39,7 +39,7 @@ export interface paths {
          * Health Check
          * @description Check API health and database connectivity.
          */
-        get: operations["health_health_check_109cea73"];
+        get: operations["health_health_check_8ad8307d"];
         put?: never;
         post?: never;
         delete?: never;
@@ -82,7 +82,7 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    user_get_current_user_6ccec984: {
+    user_get_current_user_fe1fdd44: {
         parameters: {
             query?: never;
             header?: never;
@@ -102,7 +102,7 @@ export interface operations {
             };
         };
     };
-    user_update_current_user_7f5f1470: {
+    user_update_current_user_2d4c7e43: {
         parameters: {
             query?: never;
             header?: never;
@@ -126,7 +126,7 @@ export interface operations {
             };
         };
     };
-    health_health_check_109cea73: {
+    health_health_check_8ad8307d: {
         parameters: {
             query?: never;
             header?: never;
