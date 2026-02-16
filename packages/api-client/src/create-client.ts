@@ -24,6 +24,10 @@ export interface CreateApiClientOptions {
   fetch?: ClientOptions["fetch"];
 }
 
+/**
+ * Default API host that prioritizes NEXT_PUBLIC_API_URL/EXPO_PUBLIC_API_URL
+ * (web + Expo) and falls back to API_URL for Node/RN before localhost.
+ */
 const DEFAULT_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL ??
   process.env.EXPO_PUBLIC_API_URL ??
