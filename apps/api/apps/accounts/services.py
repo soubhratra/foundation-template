@@ -33,8 +33,6 @@ def invalidate_user_tokens(user_id: int) -> int:
     Returns:
         Number of sessions that had tokens invalidated.
     """
-    from allauth.headless.tokens.strategies.jwt import internal as jwt_internal
-
     sessions = Session.objects.filter(expire_date__gte=timezone.now())
     invalidated = 0
 

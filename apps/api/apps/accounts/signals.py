@@ -8,7 +8,7 @@ from .services import invalidate_user_sessions, invalidate_user_tokens
 def invalidate_auth_on_password_reset(sender, request, user, **kwargs):
     """
     Invalidate all authentication for a user after password reset.
-    
+
     This clears both Django sessions and JWT tokens to ensure that
     any existing authentication (from any device) is invalidated.
     """
