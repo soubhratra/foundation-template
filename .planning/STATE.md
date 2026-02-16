@@ -17,7 +17,7 @@ See: .planning/PROJECT.md (updated 2026-02-08)
 **Last Activity:** 2026-02-16
 **Last Activity Description:** Completed 02-01-PLAN.md
 
-**Progress:** [█████████░] 85%
+**Progress:** [█████████░] 90%
 
 ## Performance Metrics
 
@@ -53,6 +53,7 @@ See: .planning/PROJECT.md (updated 2026-02-08)
 | Phase 03-shared-packages-type-generation P05 | 1h 2m | 3 tasks | 10 files |
 | Phase 04-web-application P01 | 23 min | 3 tasks | 37 files |
 | Phase 04-web-application P02 | 9 min | 3 tasks | 12 files |
+| Phase 04-web-application P04-03 | 12 min | 3 tasks | 16 files |
 
 ## Accumulated Context
 
@@ -83,6 +84,8 @@ Recent decisions affecting current work:
 - [Phase 04-web-application]: Centralize API base URL helper — Moved buildApiBaseUrl into app/base-url.ts so layouts and future routes can reuse it without duplicating logic.
 - [Phase 04-web-application]: Centralized a CSRF-aware postJson helper so every auth mutation shares the same Django headless request wiring.
 - [Phase 04-web-application]: Extended @repo/validation with emailVerificationSchema so verify-email flows follow the shared schema package.
+- [Phase 04-web-application]: Proxy guard enforces redirects centrally — Keeps layouts/pages session-agnostic and ensures consistent redirect behavior.
+- [Phase 04-web-application]: sessionExpired query flag powers toast messaging — Shared search param keeps login/signup UX consistent while preserving safe redirect targets.
 
 ### Pending Todos
 
@@ -95,6 +98,6 @@ None yet.
 
 ## Session Continuity
 
-**Last Session:** 2026-02-16T12:36:18.883Z
-**Stopped At:** Completed 04-web-application-04-02-PLAN.md
+**Last Session:** 2026-02-16T12:52:06.136Z
+**Stopped At:** Completed 04-web-application-04-03-PLAN.md
 **Resume File:** None
