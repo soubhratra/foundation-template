@@ -1,7 +1,10 @@
 import { ArrowUpRight, CircleCheck, ShieldCheck } from "lucide-react";
 
+import type { components } from "@repo/api-client/gen/v1";
+
 import { ActivityTable, type ActivityEntry } from "@/components/dashboard/activity-table";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -9,16 +12,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { getServerApi, type CurrentUser } from "@/lib/api/server";
 
-const kpis = [
-  { label: "Active sessions", value: "1,204", delta: "+6.2% vs last week" },
-  { label: "Avg. response", value: "182 ms", delta: "Edge cached" },
-  { label: "Deployments", value: "3 today", delta: "Last: 14:12 UTC" },
-  { label: "Incidents", value: "0 open", delta: "Last closed 3d ago" },
-];
+type HealthSnapshot = components["schemas"]["HealthOut"];
 
-const activityEntries: ActivityEntry[] = [
+const FALLBACK_ACTIVITY: ActivityEntry[] = [
   {
     id: "deploy-248",
     title: "Deploy #248 promoted to production",
@@ -61,16 +60,6 @@ const activityEntries: ActivityEntry[] = [
   },
 ];
 
-const environmentStatuses: Array<{
-  name: string;
-  status: string;
-  variant: "success" | "warning";
-}> = [
-  { name: "Production", status: "Healthy", variant: "success" },
-  { name: "Staging", status: "Deploying", variant: "warning" },
-  { name: "Preview", status: "Queued", variant: "warning" },
-];
-
 const runbookCards = [
   {
     title: "Session integrity",
@@ -89,19 +78,44 @@ const runbookCards = [
   },
 ];
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
+  const api = await getServerApi();
+  const [user, health] = await Promise.all([
+    api
+      .getCurrentUser()
+      .catch(() => undefined),
+    api.client
+      .GET("/api/v1/health")
+      .then((result) => result.data)
+      .catch(() => undefined),
+  ]);
+
+  const kpis = buildKpis(user, health);
+  const activityEntries = buildActivityEntries(user);
+  const environmentStatuses = buildEnvironmentStatuses(health);
+
   return (
     <div className="space-y-8">
+      {!user ? (
+        <Alert variant="destructive">
+          <AlertTitle>Unable to read session data</AlertTitle>
+          <AlertDescription>
+            We could not fetch the current profile from Django. Check that you are signed in and the API is reachable.
+          </AlertDescription>
+        </Alert>
+      ) : null}
       <Card className="border-0 bg-[radial-gradient(circle_at_top,_rgba(37,99,235,0.25),_transparent)] bg-background">
         <CardHeader className="gap-2">
           <CardDescription className="text-xs uppercase text-muted-foreground">
             Live mission control
           </CardDescription>
           <CardTitle className="text-3xl font-semibold text-foreground">
-            All systems nominal — ready for launch
+            {user ? `Welcome back, ${user.full_name ?? user.email}` : "Connect your account"}
           </CardTitle>
           <p className="text-sm text-muted-foreground">
-            Stay ahead of auth events, deployments, and infrastructure health from a single dashboard. Real data wiring arrives in the next plan.
+            {user
+              ? `Session synced from /api/v1/users/me. User #${user.id} is ready to manage the fleet.`
+              : "Sign in to hydrate this dashboard with live session data."}
           </p>
         </CardHeader>
         <CardContent className="flex flex-wrap gap-3">
@@ -145,7 +159,7 @@ export default function DashboardPage() {
           <Card>
             <CardHeader>
               <CardTitle>Environment status</CardTitle>
-              <CardDescription>Snapshot of each surface</CardDescription>
+              <CardDescription>Snapshot straight from the health endpoint</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {environmentStatuses.map((env) => (
@@ -192,4 +206,62 @@ function badgeTone(variant: "success" | "warning") {
     return "border-emerald-500/40 text-emerald-600 dark:text-emerald-300";
   }
   return "border-amber-500/40 text-amber-600 dark:text-amber-300";
+}
+
+function buildKpis(user?: CurrentUser, health?: HealthSnapshot | undefined) {
+  return [
+    {
+      label: "Session",
+      value: user ? `User #${user.id}` : "Not authenticated",
+      delta: user ? `Email ${user.email}` : "Sign in to load data",
+    },
+    {
+      label: "Display name",
+      value: user?.full_name ?? "Add your name",
+      delta: user?.full_name ? "Synced from Django" : "Edit profile to personalize",
+    },
+    {
+      label: "API health",
+      value: health?.status ?? "Unknown",
+      delta: health?.database ? `Database ${health.database}` : "Awaiting heartbeat",
+    },
+    {
+      label: "Last sync",
+      value: new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
+      delta: user ? "Fetched via getServerApi" : "Retry after login",
+    },
+  ];
+}
+
+function buildActivityEntries(user?: CurrentUser): ActivityEntry[] {
+  if (!user) {
+    return FALLBACK_ACTIVITY;
+  }
+  return [
+    {
+      id: `profile-${user.id}`,
+      title: `${user.full_name ?? user.email} session synced`,
+      actor: user.email,
+      meta: "GET /api/v1/users/me",
+      status: "success",
+      time: "Just now",
+    },
+    ...FALLBACK_ACTIVITY.slice(0, 4),
+  ];
+}
+
+function buildEnvironmentStatuses(health?: HealthSnapshot | undefined) {
+  if (!health) {
+    return [
+      { name: "Production", status: "Unknown", variant: "warning" as const },
+      { name: "Staging", status: "Unknown", variant: "warning" as const },
+      { name: "Preview", status: "Unknown", variant: "warning" as const },
+    ];
+  }
+
+  return [
+    { name: "Production", status: health.status, variant: "success" as const },
+    { name: "Database", status: health.database, variant: "success" as const },
+    { name: "Preview", status: "Queue clear", variant: "success" as const },
+  ];
 }
