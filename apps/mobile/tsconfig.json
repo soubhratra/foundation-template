@@ -3,13 +3,20 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./*"]
+      "@/*": [
+        "./*"
+      ]
     },
     "typeRoots": [
       "./node_modules/@types",
       "../../node_modules/@types"
     ]
   },
-  "include": ["**/*.ts", "**/*.tsx", ".expo/types/**/*.ts"],
-  "exclude": ["node_modules"]
+  "include": [
+    "**/*.ts",
+    "**/*.tsx"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
 }

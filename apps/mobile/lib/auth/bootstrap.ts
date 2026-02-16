@@ -5,7 +5,7 @@
  * Provides a promise-returning API for the root layout to await before rendering.
  */
 
-import { useAuth, createSecureStoreTokenStorage, type TokenStorage } from "@repo/business-logic";
+import { createSecureStoreTokenStorage, type TokenStorage } from "@repo/business-logic";
 
 import { createSecureStoreAdapter } from "./token-refresh";
 

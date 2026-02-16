@@ -10,6 +10,9 @@ This repo is a specs-first foundation template. The source of truth is
 - Mobile: Expo (managed workflow), Expo Router.
 - Do not propose alternative stacks.
 
+## Communication Expectations
+- When executing multi-step workflows (planning, execution, verification), surface a brief status ping at least every 10 minutes so the user knows work is still progressing (e.g., "Wave 2 agent still running – lint + tests in progress").
+
 ## Commands (Build / Lint / Test)
 Canonical commands live in `openspec/specs/foundation/deployment.md`.
 The commands below match the template expectations.

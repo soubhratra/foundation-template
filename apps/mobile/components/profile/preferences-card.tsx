@@ -3,7 +3,7 @@ import { StyleSheet, View } from "react-native";
 
 import { Card, Text, theme } from "@repo/ui";
 
-import { ToggleRow, type ToggleRowProps } from "./switch-toggle";
+import { ToggleRow } from "./switch-toggle";
 
 export interface PreferenceToggle {
   key: string;

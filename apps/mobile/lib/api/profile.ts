@@ -1,6 +1,5 @@
 "use client";
 
-import { useCallback } from "react";
 import {
   useMutation,
   type UseMutationOptions,
@@ -77,19 +76,4 @@ export function useUpdateProfileMutation(
     },
     ...options,
   });
-}
-
-/**
- * Helper function to check if an error is a field error from the API.
- */
-export function getFieldError(
-  error: unknown,
-  field: string,
-): string | undefined {
-  if (error instanceof Error) {
-    // Field errors are typically nested in the error payload
-    // This is a simplified check - the actual implementation depends on API response format
-    return undefined;
-  }
-  return undefined;
 }
