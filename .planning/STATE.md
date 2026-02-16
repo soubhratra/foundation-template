@@ -11,13 +11,13 @@ See: .planning/PROJECT.md (updated 2026-02-08)
 
 **Current Phase:** 02
 **Current Phase Name:** API Core + Auth Backend
-**Current Plan:** 2
+**Current Plan:** 3
 **Total Plans in Phase:** 4
 **Status:** Ready to execute
 **Last Activity:** 2026-02-16
 **Last Activity Description:** Completed 02-01-PLAN.md
 
-**Progress:** [██████░░░░] 63%
+**Progress:** [████████░░] 75%
 
 ## Performance Metrics
 
@@ -42,6 +42,7 @@ See: .planning/PROJECT.md (updated 2026-02-08)
 | Phase 01 P02 | 6 min | 2 tasks | 27 files |
 | Phase 01 P04 | 1h 22m | 2 tasks | 11 files |
 | Phase 02 P01 | 1 min | 3 tasks | 5 files |
+| Phase 02 P02 | 0 min | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -58,6 +59,8 @@ Recent decisions affecting current work:
 - [Phase 01]: Aligned Expo SDK dependencies to expo-doctor expected versions (react 18.3.1, safe-area-context 4.12.0) to ensure validation passes.
 - [Phase 02]: Expose API docs at /api/docs while keeping /api/v1/ base path — Allows stable v1 routing without changing endpoint prefix
 - [Phase 02]: Require authentication for docs in dev and staff-only in production — Prevents public exposure of API docs
+- [Phase 02]: Use HS256 for headless JWTs backed by SECRET_KEY to avoid RSA key provisioning in the template.
+- [Phase 02]: Expose headless browser/app endpoints under /api/v1/auth/ with explicit session logout overrides returning 204.
 
 ### Pending Todos
 
@@ -70,6 +73,6 @@ None yet.
 
 ## Session Continuity
 
-**Last Session:** 2026-02-16T00:03:16.243Z
-**Stopped At:** Completed 02-01-PLAN.md
+**Last Session:** 2026-02-16T00:14:26.187Z
+**Stopped At:** Completed 02-02-PLAN.md
 **Resume File:** None
