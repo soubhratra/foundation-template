@@ -11,6 +11,8 @@ from ninja.openapi.urls import get_openapi_urls
 from ninja_extra import NinjaExtraAPI
 from pydantic import ValidationError as PydanticValidationError
 
+from allauth.headless.constants import Client
+from apps.accounts.headless import HeadlessSessionView
 from apps.core.exceptions import ServiceError
 
 
@@ -164,6 +166,17 @@ api.auto_discover_controllers()
 
 urlpatterns = [
     path("admin/", admin.site.urls),
+    path(
+        "api/v1/auth/browser/v1/auth/session",
+        HeadlessSessionView.as_api_view(client=Client.BROWSER),
+        name="headless_session_browser",
+    ),
+    path(
+        "api/v1/auth/app/v1/auth/session",
+        HeadlessSessionView.as_api_view(client=Client.APP),
+        name="headless_session_app",
+    ),
+    path("api/v1/auth/", include("allauth.headless.urls")),
     path("api/", include((get_openapi_urls(api), "api-docs"))),
     path("api/v1/", api.urls),
 ]
