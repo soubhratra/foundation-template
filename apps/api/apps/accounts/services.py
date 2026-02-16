@@ -1,9 +1,22 @@
 from django.contrib.auth import get_user_model
+from django.contrib.sessions.models import Session
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 
 from .schemas import UserUpdateIn
 
 User = get_user_model()
+
+
+def invalidate_user_sessions(user_id: int) -> int:
+    sessions = Session.objects.filter(expire_date__gte=timezone.now())
+    deleted = 0
+    for session in sessions:
+        data = session.get_decoded()
+        if str(user_id) == data.get("_auth_user_id"):
+            session.delete()
+            deleted += 1
+    return deleted
 
 
 class UserService:
