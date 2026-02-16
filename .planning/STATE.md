@@ -17,7 +17,7 @@ See: .planning/PROJECT.md (updated 2026-02-08)
 **Last Activity:** 2026-02-16
 **Last Activity Description:** Completed 02-01-PLAN.md
 
-**Progress:** [██████████] 95%
+**Progress:** [██████████] 100%
 
 ## Performance Metrics
 
@@ -55,6 +55,7 @@ See: .planning/PROJECT.md (updated 2026-02-08)
 | Phase 04-web-application P02 | 9 min | 3 tasks | 12 files |
 | Phase 04-web-application P04-03 | 12 min | 3 tasks | 16 files |
 | Phase 04-web-application P04 | 10 min | 3 tasks | 18 files |
+| Phase 04-web-application P05 | 13 min | 3 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -88,6 +89,8 @@ Recent decisions affecting current work:
 - [Phase 04-web-application]: Proxy guard enforces redirects centrally — Keeps layouts/pages session-agnostic and ensures consistent redirect behavior.
 - [Phase 04-web-application]: sessionExpired query flag powers toast messaging — Shared search param keeps login/signup UX consistent while preserving safe redirect targets.
 - [Phase 04-web-application]: Adopted Radix avatar/accordion primitives for dashboard shell — Keeps shadcn patterns intact and unblocked avatar, settings, and accordion UI requirements.
+- [Phase 04-web-application]: Persisted notification preferences in cookies — Backend lacks preference endpoints; cookies keep toggles sticky until API ships
+- [Phase 04-web-application]: Server actions proxy Allauth password change — Avoid duplicating CSRF+session logic in client components
 
 ### Pending Todos
 
@@ -100,6 +103,6 @@ None yet.
 
 ## Session Continuity
 
-**Last Session:** 2026-02-16T13:05:13.536Z
-**Stopped At:** Completed 04-web-application-04-PLAN.md
+**Last Session:** 2026-02-16T13:20:56.491Z
+**Stopped At:** Completed 04-web-application-05-PLAN.md
 **Resume File:** None
