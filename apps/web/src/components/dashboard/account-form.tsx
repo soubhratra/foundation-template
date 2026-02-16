@@ -3,7 +3,6 @@
 import { useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { z } from "zod";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -17,24 +16,22 @@ import {
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 
-const schema = z.object({
-  fullName: z.string().min(2, "Name is required"),
-  email: z.string().email(),
-  jobTitle: z.string().optional(),
-  timezone: z.string().min(1, "Timezone is required"),
-  productUpdates: z.boolean(),
-});
+import { accountFormSchema, type AccountFormValues } from "@/validation/account-form";
 
-export type AccountFormValues = z.infer<typeof schema>;
+export interface AccountFormResult {
+  status: "success" | "error";
+  fieldErrors?: Partial<Record<keyof AccountFormValues, string>>;
+  resetValues?: AccountFormValues;
+}
 
 interface AccountFormProps {
   readonly defaultValues: AccountFormValues;
-  readonly onSubmit?: (values: AccountFormValues) => Promise<void> | void;
+  readonly onSubmit?: (values: AccountFormValues) => Promise<AccountFormResult | void>;
 }
 
 export function AccountForm({ defaultValues, onSubmit }: AccountFormProps) {
   const form = useForm<AccountFormValues>({
-    resolver: zodResolver(schema),
+    resolver: zodResolver(accountFormSchema),
     defaultValues,
   });
 
@@ -43,7 +40,25 @@ export function AccountForm({ defaultValues, onSubmit }: AccountFormProps) {
   }, [defaultValues, form]);
 
   const handleSubmit = form.handleSubmit(async (values) => {
-    await onSubmit?.(values);
+    if (!onSubmit) {
+      return;
+    }
+    const result = await onSubmit(values);
+    if (!result) {
+      return;
+    }
+    if (result.status === "success") {
+      form.reset(result.resetValues ?? values);
+      return;
+    }
+    for (const [field, message] of Object.entries(result.fieldErrors ?? {})) {
+      if (message) {
+        form.setError(field as keyof AccountFormValues, {
+          type: "server",
+          message,
+        });
+      }
+    }
   });
 
   return (
