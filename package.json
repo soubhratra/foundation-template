@@ -21,6 +21,7 @@
     "@repo/config-eslint": "workspace:*",
     "@repo/config-ts": "workspace:*",
     "lint-staged": "^15.2.10",
+    "openapi-typescript": "^7.13.0",
     "prettier": "^3.5.2",
     "turbo": "^2.4.0"
   },

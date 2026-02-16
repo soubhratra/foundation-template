@@ -8,7 +8,7 @@
   "paths": {
     "/api/v1/users/me": {
       "get": {
-        "operationId": "user_get_current_user_bda8f4ac",
+        "operationId": "user_get_current_user_6ccec984",
         "summary": "Get Current User",
         "parameters": [],
         "responses": {
@@ -37,7 +37,7 @@
         ]
       },
       "patch": {
-        "operationId": "user_update_current_user_cbd81aa0",
+        "operationId": "user_update_current_user_7f5f1470",
         "summary": "Update Current User",
         "parameters": [],
         "responses": {
@@ -78,7 +78,7 @@
     },
     "/api/v1/health": {
       "get": {
-        "operationId": "health_health_check_ce0951bc",
+        "operationId": "health_health_check_109cea73",
         "summary": "Health Check",
         "parameters": [],
         "responses": {
