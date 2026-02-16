@@ -6,7 +6,7 @@ const workspaceRoot = path.resolve(__dirname, "..", "..");
 
 const config = getDefaultConfig(projectRoot);
 
-const sharedPackages = ["ui", "business-logic", "validation"];
+const sharedPackages = ["ui", "business-logic", "validation", "api-client"];
 
 // Watch individual shared package directories so Metro reloads when UI/business logic changes.
 config.watchFolders = Array.from(
@@ -27,6 +27,7 @@ config.resolver.extraNodeModules = {
   "@repo/ui": path.resolve(workspaceRoot, "packages", "ui"),
   "@repo/business-logic": path.resolve(workspaceRoot, "packages", "business-logic"),
   "@repo/validation": path.resolve(workspaceRoot, "packages", "validation"),
+  "@repo/api-client": path.resolve(workspaceRoot, "packages", "api-client"),
 };
 config.resolver.disableHierarchicalLookup = true;
 config.resolver.unstable_enablePackageExports = true;

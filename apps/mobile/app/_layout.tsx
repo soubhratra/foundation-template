@@ -1,7 +1,7 @@
 import { type ReactNode, useEffect, useMemo } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 
-import { Redirect, SplashScreen, Stack as ExpoStack } from "expo-router";
+import { SplashScreen, Stack as ExpoStack, useRouter, useSegments } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 
 import {
@@ -30,7 +30,6 @@ void SplashScreen.preventAutoHideAsync();
 
 type ProtectedScreenProps = {
   readonly guard: boolean;
-  readonly redirect: string;
   readonly children: ReactNode;
 };
 
@@ -40,9 +39,9 @@ type StackComponent = typeof ExpoStack & {
 
 const Stack = ExpoStack as StackComponent;
 
-Stack.Protected = function ProtectedRoute({ guard, redirect, children }: ProtectedScreenProps) {
+Stack.Protected = function ProtectedRoute({ guard, children }: ProtectedScreenProps) {
   if (!guard) {
-    return <Redirect href={redirect} />;
+    return null;
   }
   return <>{children}</>;
 };
@@ -63,12 +62,26 @@ export default function RootLayout() {
 
 function AuthGate() {
   const { isAuthenticated, isLoading } = useAuth();
+  const router = useRouter();
+  const segments = useSegments();
 
   useEffect(() => {
     if (!isLoading) {
       SplashScreen.hideAsync().catch(() => undefined);
     }
   }, [isLoading]);
+
+  useEffect(() => {
+    if (isLoading) {
+      return;
+    }
+    const inAuthGroup = segments[0] === "(auth)";
+    if (isAuthenticated && inAuthGroup) {
+      router.replace("/(tabs)/home");
+    } else if (!isAuthenticated && !inAuthGroup) {
+      router.replace("/(auth)/sign-in");
+    }
+  }, [isAuthenticated, isLoading, router, segments]);
 
   if (isLoading) {
     return (
@@ -83,10 +96,10 @@ function AuthGate() {
 
   return (
     <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Protected guard={isAuthenticated} redirect="/(auth)/sign-in">
+      <Stack.Protected guard={isAuthenticated}>
         <Stack.Screen name="(tabs)" />
       </Stack.Protected>
-      <Stack.Protected guard={!isAuthenticated} redirect="/(tabs)/home">
+      <Stack.Protected guard={!isAuthenticated}>
         <Stack.Screen name="(auth)" />
       </Stack.Protected>
     </Stack>

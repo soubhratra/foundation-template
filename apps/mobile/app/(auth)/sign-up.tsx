@@ -21,7 +21,7 @@ export default function SignUpScreen() {
         Finish setup
       </Button>
       <Link href="/(auth)/sign-in" asChild>
-        <Text variant="label" style={styles.link}>
+        <Text variant="caption" style={styles.link}>
           Already a member? Sign in
         </Text>
       </Link>

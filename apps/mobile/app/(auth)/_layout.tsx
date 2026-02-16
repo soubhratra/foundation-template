@@ -10,7 +10,7 @@ export default function AuthLayout() {
       <StatusBar style="dark" />
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
         <View style={styles.header}>
-          <Text variant="label" weight="medium">
+          <Text variant="caption" weight="medium">
             Secure access
           </Text>
           <Text variant="title" weight="bold">
