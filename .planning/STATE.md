@@ -17,7 +17,7 @@ See: .planning/PROJECT.md (updated 2026-02-08)
 **Last Activity:** 2026-02-16
 **Last Activity Description:** Completed 02-01-PLAN.md
 
-**Progress:** [█████████░] 88%
+**Progress:** [█████████░] 92%
 
 ## Performance Metrics
 
@@ -57,6 +57,7 @@ See: .planning/PROJECT.md (updated 2026-02-08)
 | Phase 04-web-application P04 | 10 min | 3 tasks | 18 files |
 | Phase 04-web-application P05 | 13 min | 3 tasks | 10 files |
 | Phase 05-mobile-application P01 | 12 min | 3 tasks | 14 files |
+| Phase 05-mobile-application P05-02 | 8 min | 3 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -95,6 +96,7 @@ Recent decisions affecting current work:
 - [Phase 05-mobile-application]: Added Metro alias for @repo/api-client — Expo bundler needed workspace alias to resolve shared API hooks during smoke tests
 - [Phase 05-mobile-application]: Redirected root index route to /(auth)/sign-in — Keeps deep links aligned with the guarded auth stack until actual forms land
 - [Phase 05-mobile-application]: Standardized lucide tabs + Detox testIDs — Shared helper keeps tab icon styling and accessibility consistent for future features and Detox flows
+- [Phase 05-mobile-application]: Reuse business-logic client for Allauth auth endpoints until OpenAPI spec includes them
 
 ### Pending Todos
 
@@ -107,6 +109,6 @@ None yet.
 
 ## Session Continuity
 
-**Last Session:** 2026-02-16T16:39:23.066Z
-**Stopped At:** Completed 05-mobile-application-05-01-PLAN.md
+**Last Session:** 2026-02-16T21:29:54.157Z
+**Stopped At:** Completed 05-mobile-application-05-02-PLAN.md
 **Resume File:** None
