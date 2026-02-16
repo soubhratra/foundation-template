@@ -22,8 +22,13 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "django.contrib.sites",
     "ninja_extra",
     "corsheaders",
+    "allauth",
+    "allauth.account",
+    "allauth.headless",
+    "allauth.socialaccount",
     "apps.accounts",
     "apps.core",
 ]
@@ -36,6 +41,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "allauth.account.middleware.AccountMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
@@ -61,6 +67,13 @@ WSGI_APPLICATION = "config.wsgi.application"
 ASGI_APPLICATION = "config.asgi.application"
 
 AUTH_USER_MODEL = "accounts.User"
+
+SITE_ID = 1
+
+AUTHENTICATION_BACKENDS = [
+    "django.contrib.auth.backends.ModelBackend",
+    "allauth.account.auth_backends.AuthenticationBackend",
+]
 
 DATABASES = {
     "default": env.db(
@@ -95,9 +108,58 @@ STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 REDIS_URL = env("REDIS_URL", default="redis://localhost:6379/0")
+
+FRONTEND_URL = env("FRONTEND_URL", default="http://localhost:3000")
+
 CORS_ALLOWED_ORIGINS = env.list(
-    "CORS_ALLOWED_ORIGINS", default=["http://localhost:3000"]
+    "CORS_ALLOWED_ORIGINS",
+    default=[
+        "http://localhost:3000",
+        "http://localhost:19006",
+    ],
 )
+CORS_ALLOW_CREDENTIALS = True
+
+CSRF_TRUSTED_ORIGINS = env.list(
+    "CSRF_TRUSTED_ORIGINS",
+    default=[
+        "http://localhost:3000",
+        "http://localhost:19006",
+    ],
+)
+CSRF_COOKIE_HTTPONLY = False
+CSRF_COOKIE_SAMESITE = "Lax"
+
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = "Lax"
+
+PASSWORD_RESET_TIMEOUT = 60 * 60 * 24
+
+ACCOUNT_AUTHENTICATION_METHOD = "email"
+ACCOUNT_LOGIN_METHODS = ["email"]
+ACCOUNT_EMAIL_REQUIRED = True
+ACCOUNT_USERNAME_REQUIRED = False
+ACCOUNT_EMAIL_VERIFICATION = "mandatory"
+ACCOUNT_LOGIN_ON_EMAIL_CONFIRMATION = True
+ACCOUNT_SIGNUP_FORM_CLASS = "apps.accounts.headless.HeadlessSignupForm"
+ACCOUNT_SIGNUP_FIELDS = ["email*", "password1*", "name*"]
+ACCOUNT_RATE_LIMITS = {
+    "confirm_email": "1/m",
+}
+
+HEADLESS_ONLY = True
+HEADLESS_FRONTEND_URLS = {
+    "account_confirm_email": f"{FRONTEND_URL}/auth/verify-email/{{key}}",
+    "account_reset_password_from_key": f"{FRONTEND_URL}/auth/reset-password/{{key}}",
+}
+HEADLESS_ADAPTER = "apps.accounts.headless.HeadlessAdapter"
+HEADLESS_TOKEN_STRATEGY = (
+    "allauth.headless.tokens.strategies.jwt.JWTTokenStrategy"
+)
+HEADLESS_JWT_ALGORITHM = "HS256"
+HEADLESS_JWT_ACCESS_TOKEN_EXPIRES_IN = 900
+HEADLESS_JWT_ROTATE_REFRESH_TOKEN = True
+HEADLESS_JWT_STATEFUL_VALIDATION_ENABLED = True
 
 # --------------------------------------------------------------------------
 # Environment Variable Validation

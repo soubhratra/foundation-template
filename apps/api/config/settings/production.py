@@ -1,4 +1,9 @@
 from .base import *  # noqa: F401, F403
 
 DEBUG = False
-# Production-specific overrides go here
+
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = True
+
+CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS")
+CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS")
