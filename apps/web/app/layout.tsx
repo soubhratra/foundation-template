@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { env } from "@/app/env";
+import { env } from "@/config/env";
 import "./globals.css";
 
 import { AppProviders } from "./providers";

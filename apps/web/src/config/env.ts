@@ -1,9 +1,9 @@
 /**
- * Environment variable validation for Next.js web app.
+ * Environment variable validation for the Next.js web app.
  *
- * Import this module in app/layout.tsx to validate env vars at startup.
- * Missing required vars will throw a clear error message instead of
- * producing cryptic runtime failures.
+ * Import this module wherever runtime configuration is needed. Missing
+ * variables fail fast with a descriptive error instead of creating subtle
+ * runtime bugs.
  */
 
 interface WebEnv {

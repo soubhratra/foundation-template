@@ -100,7 +100,7 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     width: "100%",
-    minHeight: "100vh",
+    minHeight: "100%",
     alignItems: "center",
     justifyContent: "center",
     padding: 32,
