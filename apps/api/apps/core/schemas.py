@@ -12,3 +12,7 @@ class ErrorDetail(Schema):
 class ErrorOut(Schema):
     error: ErrorDetail
 
+
+class HealthOut(Schema):
+    status: str
+    database: str
