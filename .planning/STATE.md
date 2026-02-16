@@ -17,7 +17,7 @@ See: .planning/PROJECT.md (updated 2026-02-08)
 **Last Activity:** 2026-02-16
 **Last Activity Description:** Completed 02-01-PLAN.md
 
-**Progress:** [█████████░] 93%
+**Progress:** [████████░░] 80%
 
 ## Performance Metrics
 
@@ -51,6 +51,7 @@ See: .planning/PROJECT.md (updated 2026-02-08)
 | Phase 03 P01 | 15 min | 2 tasks | 7 files |
 | Phase 03-shared-packages-type-generation P03-02 | 7 min | 2 tasks | 9 files |
 | Phase 03-shared-packages-type-generation P05 | 1h 2m | 3 tasks | 10 files |
+| Phase 04-web-application P01 | 23 min | 3 tasks | 37 files |
 
 ## Accumulated Context
 
@@ -77,6 +78,8 @@ Recent decisions affecting current work:
 - [Phase 03]: Scope turbo generate:api-types to @repo/api — Root workspace is not part of the Turbo graph, so filtering to the backend package keeps the generator focused and prevents failures.
 - [Phase 03-shared-packages-type-generation]: Expose @repo/api-client/gen/v1 from the tracked OpenAPI snapshot instead of copying it into dist — Keeps generated artifacts diffable and avoids redundant build steps while remaining within the workspace package
 - [Phase 03-shared-packages-type-generation]: Manual fetch for Allauth auth endpoints — OpenAPI snapshot lacks login/logout routes, so hooks call fetch until spec adds them
+- [Phase 04-web-application]: Use Tailwind CSS 3.4 toolchain — Tailwind 4 preview plugin crashes Next.js PostCSS, so reverting to v3 keeps builds and lint/type-check commands green.
+- [Phase 04-web-application]: Centralize API base URL helper — Moved buildApiBaseUrl into app/base-url.ts so layouts and future routes can reuse it without duplicating logic.
 
 ### Pending Todos
 
@@ -89,6 +92,6 @@ None yet.
 
 ## Session Continuity
 
-**Last Session:** 2026-02-16T05:16:46.936Z
-**Stopped At:** Completed 03-05-PLAN.md
+**Last Session:** 2026-02-16T12:24:52.225Z
+**Stopped At:** Completed 04-web-application-04-01-PLAN.md
 **Resume File:** None
