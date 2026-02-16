@@ -78,7 +78,16 @@ export const passwordChangeSchema = confirmPasswordRefinement(
   "confirmPassword",
 );
 
+export const emailVerificationSchema = z.object({
+  key: z
+    .string({ required_error: "Verification key is required." })
+    .trim()
+    .min(1, "Verification key is required.")
+    .max(128, "Verification key must be 128 characters or fewer."),
+});
+
 export type LoginInput = z.infer<typeof loginSchema>;
 export type SignupInput = z.infer<typeof signupSchema>;
 export type PasswordResetInput = z.infer<typeof passwordResetSchema>;
 export type PasswordChangeInput = z.infer<typeof passwordChangeSchema>;
+export type EmailVerificationInput = z.infer<typeof emailVerificationSchema>;
