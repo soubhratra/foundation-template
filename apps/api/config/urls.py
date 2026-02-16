@@ -12,7 +12,7 @@ from ninja_extra import NinjaExtraAPI
 from pydantic import ValidationError as PydanticValidationError
 
 from allauth.headless.constants import Client
-from apps.accounts.headless import HeadlessSessionView
+from apps.accounts.sessions import HeadlessSessionView
 from apps.core.exceptions import ServiceError
 
 

@@ -5,14 +5,10 @@ from typing import Any, Optional
 from django import forms
 from django.contrib.auth import get_user_model
 from django.db import models
-from django.http import HttpResponse
 
 from allauth.account import app_settings as account_settings
-from allauth.account.adapter import get_adapter as get_account_adapter
-from allauth.account.forms import SignupForm
 from allauth.account.models import EmailAddress
 from allauth.account.utils import user_display, user_username
-from allauth.headless.account.views import SessionView
 from allauth.headless.adapter import DefaultHeadlessAdapter
 
 
@@ -32,7 +28,7 @@ def _resolve_user_name(user) -> str:
     return ""
 
 
-class HeadlessSignupForm(SignupForm):
+class HeadlessSignupForm(forms.Form):
     name = forms.CharField(max_length=255)
 
     def signup(self, request, user):
@@ -132,9 +128,3 @@ class HeadlessAdapter(DefaultHeadlessAdapter):
             fields.append(dc_field("username", str, "The username.", "wizard"))
         return dataclasses.make_dataclass("User", fields)
 
-
-class HeadlessSessionView(SessionView):
-    def delete(self, request, *args, **kwargs):
-        adapter = get_account_adapter()
-        adapter.logout(request)
-        return HttpResponse(status=204)
