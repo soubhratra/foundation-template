@@ -20,6 +20,7 @@
     "@radix-ui/react-switch": "^1.2.6",
     "@radix-ui/react-tooltip": "^1.2.8",
     "@repo/business-logic": "workspace:*",
+    "@repo/api-client": "workspace:*",
     "@repo/ui": "workspace:*",
     "@repo/validation": "workspace:*",
     "@tanstack/react-query": "^5.90.21",
