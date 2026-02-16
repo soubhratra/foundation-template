@@ -51,13 +51,14 @@ Plans:
   3. OpenAPI JSON spec is exported to a file that downstream type generation can consume
   4. Django Allauth headless mode accepts signup, login, logout, and password reset requests via API (no server-rendered forms)
   5. Session cookie auth and JWT token auth both work against the same endpoints (dual strategy verified via manual API testing)
-**Plans**: 4 plans
+**Plans**: 5 plans
 
 Plans:
 - [x] 02-01-PLAN.md -- Core Ninja Extra API wiring, error envelope, and health endpoint
 - [x] 02-02-PLAN.md -- Allauth headless + session/JWT settings and auth URL mounting
 - [x] 02-03-PLAN.md -- Accounts /users/me endpoints with dual auth + reset invalidation
 - [x] 02-04-PLAN.md -- OpenAPI export command and committed openapi.json
+- [ ] 02-05-PLAN.md -- Gap closure: auth response customization and JWT revocation
 
 ### Phase 3: Shared Packages + Type Generation
 **Goal**: Shared monorepo packages provide type-safe API client, validation schemas, UI primitives, and business logic hooks that both web and mobile apps can import and use
@@ -176,7 +177,7 @@ Note: Phase 6 (AI) depends only on Phase 2; it could execute in parallel with Ph
 | Phase | Plans Complete | Status | Completed |
 |-------|---------------|--------|-----------|
 | 1. Monorepo Foundation | 2/4 | In progress | - |
-| 2. API Core + Auth Backend | 4/4 | Complete | 2026-02-16 |
+| 2. API Core + Auth Backend | 4/5 | Gap closure | - |
 | 3. Shared Packages + Type Generation | 0/5 | Not started | - |
 | 4. Web Application | 0/5 | Not started | - |
 | 5. Mobile Application | 0/4 | Not started | - |
