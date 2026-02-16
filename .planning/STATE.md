@@ -17,7 +17,7 @@ See: .planning/PROJECT.md (updated 2026-02-08)
 **Last Activity:** 2026-02-16
 **Last Activity Description:** Completed 02-01-PLAN.md
 
-**Progress:** [████████░░] 80%
+**Progress:** [█████████░] 85%
 
 ## Performance Metrics
 
@@ -52,6 +52,7 @@ See: .planning/PROJECT.md (updated 2026-02-08)
 | Phase 03-shared-packages-type-generation P03-02 | 7 min | 2 tasks | 9 files |
 | Phase 03-shared-packages-type-generation P05 | 1h 2m | 3 tasks | 10 files |
 | Phase 04-web-application P01 | 23 min | 3 tasks | 37 files |
+| Phase 04-web-application P02 | 9 min | 3 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -80,6 +81,8 @@ Recent decisions affecting current work:
 - [Phase 03-shared-packages-type-generation]: Manual fetch for Allauth auth endpoints — OpenAPI snapshot lacks login/logout routes, so hooks call fetch until spec adds them
 - [Phase 04-web-application]: Use Tailwind CSS 3.4 toolchain — Tailwind 4 preview plugin crashes Next.js PostCSS, so reverting to v3 keeps builds and lint/type-check commands green.
 - [Phase 04-web-application]: Centralize API base URL helper — Moved buildApiBaseUrl into app/base-url.ts so layouts and future routes can reuse it without duplicating logic.
+- [Phase 04-web-application]: Centralized a CSRF-aware postJson helper so every auth mutation shares the same Django headless request wiring.
+- [Phase 04-web-application]: Extended @repo/validation with emailVerificationSchema so verify-email flows follow the shared schema package.
 
 ### Pending Todos
 
@@ -92,6 +95,6 @@ None yet.
 
 ## Session Continuity
 
-**Last Session:** 2026-02-16T12:24:52.225Z
-**Stopped At:** Completed 04-web-application-04-01-PLAN.md
+**Last Session:** 2026-02-16T12:36:18.883Z
+**Stopped At:** Completed 04-web-application-04-02-PLAN.md
 **Resume File:** None
