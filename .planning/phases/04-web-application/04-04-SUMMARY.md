@@ -69,7 +69,7 @@ Each task was committed atomically:
 2. **Task 2: Build dashboard and activity pages** - `462e6c9` (feat)
 3. **Task 3: Implement profile and settings surfaces** - `a432ba8` (feat)
 
-**Plan metadata:** (docs commit pending)
+**Plan metadata:** `034b2af` (docs: complete dashboard shell plan)
 
 ## Files Created/Modified
 - `apps/web/src/components/dashboard/header.tsx` - Dashboard header with mobile nav sheet, notifications, avatar menu, and theme toggle
