@@ -1,19 +1,17 @@
 import type { Metadata } from "next";
+
+import { ThemeProvider, Toaster } from "@/components/theme-provider";
 import { env } from "@/config/env";
+import { cn } from "@/lib/utils";
 import "./globals.css";
 
+import { buildApiBaseUrl } from "./base-url";
 import { AppProviders } from "./providers";
 
 export const metadata: Metadata = {
   title: "Foundation Template",
   description: "Full-stack SaaS starter kit",
 };
-
-const API_BASE_PATH = "/api/v1";
-
-function buildApiBaseUrl(value: string): string {
-  return `${value.replace(/\/$/, "")}${API_BASE_PATH}`;
-}
 
 export default function RootLayout({
   children,
@@ -23,9 +21,12 @@ export default function RootLayout({
   const apiBaseUrl = buildApiBaseUrl(env.NEXT_PUBLIC_API_URL);
 
   return (
-    <html lang="en">
-      <body>
-        <AppProviders baseUrl={apiBaseUrl}>{children}</AppProviders>
+    <html lang="en" suppressHydrationWarning>
+      <body className={cn("min-h-screen bg-background font-sans antialiased")}>
+        <ThemeProvider>
+          <AppProviders baseUrl={apiBaseUrl}>{children}</AppProviders>
+          <Toaster />
+        </ThemeProvider>
       </body>
     </html>
   );
