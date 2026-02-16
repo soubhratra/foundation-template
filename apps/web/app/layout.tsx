@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { ThemeProvider, Toaster } from "@/components/theme-provider";
+import { ThemeProvider } from "@/components/theme-provider";
 import { env } from "@/config/env";
 import { cn } from "@/lib/utils";
 import "./globals.css";
@@ -25,7 +25,6 @@ export default function RootLayout({
       <body className={cn("min-h-screen bg-background font-sans antialiased")}>
         <ThemeProvider>
           <AppProviders baseUrl={apiBaseUrl}>{children}</AppProviders>
-          <Toaster />
         </ThemeProvider>
       </body>
     </html>
