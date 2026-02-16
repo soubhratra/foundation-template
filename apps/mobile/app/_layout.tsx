@@ -1,18 +1,17 @@
-import { type ReactNode, useEffect, useMemo } from "react";
-import { ActivityIndicator, StyleSheet, View } from "react-native";
+import { type ReactNode, useMemo } from "react";
 
-import { SplashScreen, Stack as ExpoStack, useRouter, useSegments } from "expo-router";
+import { SplashScreen, Stack as ExpoStack } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 
 import {
   AuthProvider,
   createSecureStoreTokenStorage,
   type SecureStoreAdapter,
-  useAuth,
 } from "@repo/business-logic";
-import { Text } from "@repo/ui";
 
 import { env } from "@/lib/env";
+
+import { AuthGate } from "@/components/navigation/auth-gate";
 
 const API_BASE_PATH = "/api/v1";
 
@@ -55,63 +54,16 @@ export default function RootLayout() {
       tokenStorage={tokenStorage}
       enableDevtools={false}
     >
-      <AuthGate />
+      <AuthGate>
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Protected guard={true}>
+            <Stack.Screen name="(tabs)" />
+          </Stack.Protected>
+          <Stack.Protected guard={true}>
+            <Stack.Screen name="(auth)" />
+          </Stack.Protected>
+        </Stack>
+      </AuthGate>
     </AuthProvider>
   );
 }
-
-function AuthGate() {
-  const { isAuthenticated, isLoading } = useAuth();
-  const router = useRouter();
-  const segments = useSegments();
-
-  useEffect(() => {
-    if (!isLoading) {
-      SplashScreen.hideAsync().catch(() => undefined);
-    }
-  }, [isLoading]);
-
-  useEffect(() => {
-    if (isLoading) {
-      return;
-    }
-    const inAuthGroup = segments[0] === "(auth)";
-    if (isAuthenticated && inAuthGroup) {
-      router.replace("/(tabs)/home");
-    } else if (!isAuthenticated && !inAuthGroup) {
-      router.replace("/(auth)/sign-in");
-    }
-  }, [isAuthenticated, isLoading, router, segments]);
-
-  if (isLoading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" />
-        <Text variant="subtle" weight="medium">
-          Checking your session...
-        </Text>
-      </View>
-    );
-  }
-
-  return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Protected guard={isAuthenticated}>
-        <Stack.Screen name="(tabs)" />
-      </Stack.Protected>
-      <Stack.Protected guard={!isAuthenticated}>
-        <Stack.Screen name="(auth)" />
-      </Stack.Protected>
-    </Stack>
-  );
-}
-
-const styles = StyleSheet.create({
-  loadingContainer: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 12,
-    padding: 24,
-  },
-});
