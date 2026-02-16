@@ -1,0 +1,52 @@
+{
+  "name": "@repo/api-client",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": ["dist", "src/gen"],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json",
+    "./gen/v1": {
+      "types": "./src/gen/v1.d.ts",
+      "default": "./src/gen/v1.d.ts"
+    }
+  },
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsup --config tsup.config.ts",
+    "dev": "tsup --watch --config tsup.config.ts",
+    "type-check": "tsc --noEmit",
+    "lint": "eslint \"src/**/*.{ts,tsx}\" --max-warnings=0",
+    "test": "echo 'No tests yet'"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.90.21",
+    "openapi-fetch": "^0.17.0",
+    "openapi-react-query": "^0.5.4"
+  },
+  "peerDependencies": {
+    "@tanstack/react-query": ">=5.0.0",
+    "react": ">=18.2.0",
+    "react-native": ">=0.76.0"
+  },
+  "devDependencies": {
+    "@repo/config-eslint": "workspace:*",
+    "@repo/config-ts": "workspace:*",
+    "@types/react": "^19.0.0",
+    "eslint": "^9.16.0",
+    "react": "^19.0.0",
+    "react-native": "^0.76.0",
+    "tslib": "^2.8.1",
+    "tsup": "^8.2.4",
+    "typescript": "^5.7.3"
+  }
+}

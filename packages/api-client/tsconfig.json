@@ -1,0 +1,13 @@
+{
+  "extends": "@repo/config-ts/library.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "src",
+    "baseUrl": "./src",
+    "lib": ["ES2022", "DOM"],
+    "paths": {
+      "@repo/api-client": ["./index"]
+    }
+  },
+  "include": ["src"]
+}
