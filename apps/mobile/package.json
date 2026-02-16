@@ -11,15 +11,23 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
+    "@hookform/resolvers": "^3.10.0",
+    "@repo/business-logic": "workspace:*",
+    "@repo/ui": "workspace:*",
+    "@repo/validation": "workspace:*",
+    "@tanstack/react-query": "^5.90.21",
+    "@tanstack/react-query-devtools": "^5.91.3",
     "expo": "~52.0.0",
-    "expo-router": "~4.0.0",
-    "expo-status-bar": "~2.0.0",
-    "expo-linking": "~7.0.0",
     "expo-constants": "~17.0.0",
+    "expo-linking": "~7.0.0",
+    "expo-router": "~4.0.0",
+    "expo-secure-store": "~13.0.0",
+    "expo-status-bar": "~2.0.0",
     "react": "18.3.1",
+    "react-hook-form": "^7.71.1",
     "react-native": "~0.76.0",
-    "react-native-screens": "~4.4.0",
     "react-native-safe-area-context": "4.12.0",
+    "react-native-screens": "~4.4.0",
     "react-native-web": "~0.19.0"
   },
   "devDependencies": {
