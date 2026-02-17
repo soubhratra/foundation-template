@@ -144,13 +144,13 @@ Plans:
   3. CI fails if generated TypeScript types are stale relative to the current OpenAPI spec
   4. pytest, vitest, and detox test suites each contain example tests that pass; `turbo test` runs all three
   5. Production Dockerfiles for Django API and Next.js app build successfully and produce runnable images
-**Plans**: TBD
+**Plans**: 4 plans
 
 Plans:
-- [ ] 07-01: Pre-commit hooks (ruff, eslint, prettier) and type checking enforcement (mypy, tsc)
-- [ ] 07-02: pytest, vitest, and detox test suites with example tests
-- [ ] 07-03: GitHub Actions workflow with parallel jobs and type staleness gate
-- [ ] 07-04: Production Dockerfiles for Django API and Next.js app
+- [ ] 07-01-PLAN.md — Pre-commit hooks + type checking (DX-01, DX-08) (Wave 1)
+- [ ] 07-02-PLAN.md — Test infrastructure for all platforms (DX-04, DX-05, DX-06) (Wave 1)
+- [ ] 07-03-PLAN.md — GitHub Actions CI/CD with type staleness gate (DX-02, DX-03) (Wave 2)
+- [ ] 07-04-PLAN.md — Production Dockerfiles for API and web (DX-07) (Wave 1)
 
 ### Phase 8: CLI Scaffolder
 **Goal**: A developer can run a single CLI command that asks for project name and feature selections, then generates a fully configured new project that passes all linting and type checks out of the box
