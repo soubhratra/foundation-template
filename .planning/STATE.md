@@ -11,13 +11,13 @@ See: .planning/PROJECT.md (updated 2026-02-08)
 
 **Current Phase:** 07
 **Current Phase Name:** DevEx + CI/CD
-**Current Plan:** 2
+**Current Plan:** 3
 **Total Plans in Phase:** 4
 **Status:** Ready to execute
 **Last Activity:** 2026-02-17
 **Last Activity Description:** Completed Phase 6 (AI Module) — 5/5 plans verified
 
-**Progress:** [█████████░] 91%
+**Progress:** [█████████░] 94%
 
 ## Performance Metrics
 
@@ -68,6 +68,7 @@ _Updated after each plan completion_
 | Phase 06 P04 | 5 | 3 tasks | 5 files |
 | Phase 06 P05 | 1 | 1 tasks | 2 files |
 | Phase 07-devex-ci-cd P01 | 4 | 2 tasks | 6 files |
+| Phase 07 P02 | 16 | 3 tasks | 14 files |
 
 ## Accumulated Context
 
@@ -126,6 +127,10 @@ Recent decisions affecting current work:
 - [Phase 07-devex-ci-cd]: Ruff replaces black + flake8 + isort as single unified Python tool — 10-100x faster and now standard for Python projects
 - [Phase 07-devex-ci-cd]: Pre-commit hooks auto-fix format and lint issues, block on violations — Balances speed and control per research recommendations
 - [Phase 07-devex-ci-cd]: Pre-commit runs only on staged files for speed (<5s typical), CI runs full checks — Keeps local feedback fast
+- [Phase ?]: Django test client for Ninja Extra controllers - avoids registry conflicts
+- [Phase ?]: PGVector extension must be created before vector field tables in migrations
+- [Phase ?]: Vitest for Next.js 15 component testing (ESM-native, faster than Jest)
+- [Phase ?]: Detox iOS-only configuration for template (Android can be added by users)
 
 ### Pending Todos
 
@@ -138,6 +143,6 @@ None yet.
 
 ## Session Continuity
 
-**Last Session:** 2026-02-17T02:58:45.387Z
-**Stopped At:** Completed 07-devex-ci-cd/07-01-PLAN.md
+**Last Session:** 2026-02-17T03:11:18.817Z
+**Stopped At:** Completed 07-02-PLAN.md (Test Infrastructure)
 **Resume File:** None
