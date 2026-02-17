@@ -8,6 +8,9 @@
     "start": "next start",
     "lint": "eslint .",
     "type-check": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:ui": "vitest --ui",
     "components:add": "pnpm dlx shadcn@latest add"
   },
   "dependencies": {
@@ -21,8 +24,8 @@
     "@radix-ui/react-slot": "^1.2.4",
     "@radix-ui/react-switch": "^1.2.6",
     "@radix-ui/react-tooltip": "^1.2.8",
-    "@repo/business-logic": "workspace:*",
     "@repo/api-client": "workspace:*",
+    "@repo/business-logic": "workspace:*",
     "@repo/ui": "workspace:*",
     "@repo/validation": "workspace:*",
     "@tanstack/react-query": "^5.90.21",
@@ -43,13 +46,20 @@
   "devDependencies": {
     "@repo/config-eslint": "workspace:*",
     "@repo/config-ts": "workspace:*",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
     "@types/node": "25.2.3",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^5.1.4",
+    "@vitest/ui": "^4.0.18",
     "autoprefixer": "^10.4.20",
     "eslint": "^9.0.0",
+    "jsdom": "^28.1.0",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.13",
-    "typescript": "^5.7.0"
+    "typescript": "^5.7.0",
+    "vitest": "^4.0.18"
   }
 }
