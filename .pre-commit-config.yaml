@@ -1,0 +1,28 @@
+repos:
+  # Python quality (ruff replaces black + flake8 + isort)
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.1
+    hooks:
+      - id: ruff
+        args: [--fix] # Auto-fix linting issues
+      - id: ruff-format # Format Python code
+
+  # JS/TS quality (via lint-staged to scope to changed files only)
+  - repo: local
+    hooks:
+      - id: lint-staged
+        name: lint-staged
+        entry: pnpm lint-staged
+        language: system
+        pass_filenames: false
+
+  # General hygiene
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+        args: ["--maxkb=500"]
+      - id: check-merge-conflict

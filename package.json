@@ -10,6 +10,7 @@
     "type-check": "turbo type-check",
     "clean": "turbo clean",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\"",
+    "pre-commit": "pre-commit run --all-files",
     "db:up": "docker compose up -d",
     "db:down": "docker compose down",
     "db:migrate": "cd apps/api && uv run python manage.py migrate",
