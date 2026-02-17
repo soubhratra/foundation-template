@@ -1,0 +1,147 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  api:
+    name: API (Python)
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: foundation_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+          cache-dependency-path: "apps/api/pyproject.toml"
+
+      - name: Install uv
+        run: pip install uv
+
+      - name: Install dependencies
+        run: cd apps/api && uv sync
+
+      - name: Run ruff lint
+        run: cd apps/api && uv run ruff check .
+
+      - name: Run ruff format check
+        run: cd apps/api && uv run ruff format --check .
+
+      - name: Run mypy type check
+        run: cd apps/api && uv run mypy apps/
+
+      - name: Run migrations
+        run: cd apps/api && uv run python manage.py migrate
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/foundation_test
+          SECRET_KEY: test-secret-key-for-ci
+          DEBUG: "True"
+
+      - name: Run pytest
+        run: cd apps/api && uv run pytest --cov --cov-report=xml
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/foundation_test
+          SECRET_KEY: test-secret-key-for-ci
+          DEBUG: "True"
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./apps/api/coverage.xml
+          flags: api
+        continue-on-error: true
+
+  web:
+    name: Web (Next.js)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build dependencies
+        run: pnpm turbo build --filter=@repo/web^...
+
+      - name: Run eslint
+        run: pnpm turbo lint --filter=@repo/web
+
+      - name: Run type check
+        run: pnpm turbo type-check --filter=@repo/web
+
+      - name: Run tests
+        run: pnpm turbo test --filter=@repo/web
+
+      - name: Build app
+        run: pnpm turbo build --filter=@repo/web
+
+  mobile:
+    name: Mobile (Expo)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build dependencies
+        run: pnpm turbo build --filter=foundation-mobile^...
+
+      - name: Run eslint
+        run: pnpm turbo lint --filter=foundation-mobile
+
+      - name: Run type check
+        run: pnpm turbo type-check --filter=foundation-mobile
+
+      - name: Run Expo type check
+        run: cd apps/mobile && pnpm expo export --platform ios --dev --output-dir .expo-export-check
+        continue-on-error: true
+
+      # Note: Detox E2E tests require macOS runners with iOS simulator
+      # Skipping for Ubuntu runner - see separate workflow if needed
