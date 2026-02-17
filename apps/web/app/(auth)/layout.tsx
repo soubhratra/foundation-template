@@ -11,6 +11,9 @@ export const metadata = {
   description: "Authenticate to unlock the dashboard experience.",
 };
 
+// Disable static optimization for auth pages (check session state dynamically)
+export const dynamic = "force-dynamic";
+
 export default function AuthLayout({ children }: AuthLayoutProps) {
   return (
     <AuthShellClient>

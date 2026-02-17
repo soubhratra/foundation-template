@@ -3,6 +3,9 @@ import path from "node:path";
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Enable standalone output for Docker deployments
+  output: "standalone",
+
   // React Native-flavored packages ship untranspiled code, so let Next.js compile them.
   transpilePackages: ["@repo/ui", "@repo/business-logic", "@repo/validation"],
   webpack: (config) => {

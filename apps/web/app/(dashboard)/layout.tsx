@@ -18,6 +18,9 @@ export const metadata: Metadata = {
   description: "Unified control center for your SaaS foundation.",
 };
 
+// Disable static optimization for dashboard (uses client-side auth state)
+export const dynamic = "force-dynamic";
+
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   return (
     <DashboardShellClient>

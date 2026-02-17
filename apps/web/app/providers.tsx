@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, type ReactNode } from "react";
+import { Suspense, useMemo, type ReactNode } from "react";
 
 import { AuthProvider, createWebTokenStorage } from "@repo/business-logic";
 
@@ -22,7 +22,9 @@ export function AppProviders({ children, baseUrl, redirectBase = "/login" }: App
       tokenStorage={tokenStorage}
       enableDevtools={process.env.NODE_ENV !== "production"}
     >
-      <SessionBoundary redirectBase={redirectBase}>{children}</SessionBoundary>
+      <Suspense fallback={<>{children}</>}>
+        <SessionBoundary redirectBase={redirectBase}>{children}</SessionBoundary>
+      </Suspense>
     </AuthProvider>
   );
 }
