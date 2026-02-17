@@ -24,7 +24,7 @@ class Migration(migrations.Migration):
         migrations.AddIndex(
             model_name="documentchunk",
             index=pgvector.django.HnswIndex(
-                name="ai_documentchunk_embedding_hnsw_idx",
+                name="ai_chunk_embedding_hnsw_idx",
                 fields=["embedding"],
                 m=16,
                 ef_construction=64,

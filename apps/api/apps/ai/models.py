@@ -53,15 +53,6 @@ class VectorEmbeddingMixin(models.Model):
 
     class Meta:
         abstract = True
-        indexes = [
-            HnswIndex(
-                name="%(class)s_embedding_hnsw_idx",
-                fields=["embedding"],
-                m=16,  # Connections per node (tradeoff: recall vs build time)
-                ef_construction=64,  # Build quality (higher = better recall, slower build)
-                opclasses=["vector_cosine_ops"],  # Use cosine distance
-            )
-        ]
 
 
 class Document(models.Model):
@@ -159,8 +150,14 @@ class DocumentChunk(VectorEmbeddingMixin):
         ordering = ["document", "chunk_index"]
         indexes = [
             models.Index(fields=["document", "chunk_index"]),
+            HnswIndex(
+                name="ai_chunk_embedding_hnsw_idx",
+                fields=["embedding"],
+                m=16,  # Connections per node (tradeoff: recall vs build time)
+                ef_construction=64,  # Build quality (higher = better recall, slower build)
+                opclasses=["vector_cosine_ops"],  # Use cosine distance
+            ),
         ]
-        # HNSW index on embedding field is inherited from VectorEmbeddingMixin
 
     def __str__(self):
         return f"{self.document.title} - Chunk {self.chunk_index}"
