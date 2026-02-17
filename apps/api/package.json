@@ -4,7 +4,7 @@
   "scripts": {
     "dev": "uv run python manage.py runserver 0.0.0.0:8000",
     "lint": "uv run ruff check .",
-    "test": "uv run pytest",
+    "test": "uv run pytest --cov --cov-report=term-missing",
     "type-check": "uv run mypy .",
     "export-schema": "uv run python manage.py export_openapi_schema > ../../packages/api-client/openapi.json",
     "generate:api-types": "node ../../scripts/generate-api-types.mjs"
