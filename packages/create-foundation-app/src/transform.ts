@@ -66,18 +66,24 @@ export async function replaceInFiles(
   const files = await globby(
     [
       "**/package.json",
+      "**/tsconfig.json",
       "**/pyproject.toml",
+      "**/*.json", // Expo app.json, etc.
       "**/*.md",
       "**/*.ts",
       "**/*.tsx",
       "**/*.py",
       "**/*.yml",
       "**/*.yaml",
+      "**/*.js",
+      "**/Dockerfile",
+      "**/Dockerfile.*",
       "**/.env.example",
     ],
     {
       cwd: outputDir,
       absolute: true,
+      dot: true, // Include dotfiles and dot-directories (e.g., .github/)
       ignore: ["**/node_modules/**", "**/dist/**", "**/.venv/**"],
     },
   );

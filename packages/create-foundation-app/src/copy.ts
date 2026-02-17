@@ -32,6 +32,9 @@ export async function copyTemplate(templateDir: string, outputDir: string): Prom
   ig.add(".pytest_cache");
   ig.add(".mypy_cache");
   ig.add(".ruff_cache");
+  ig.add(".npm-cache"); // npm cache directory
+  ig.add(".coverage"); // Python coverage data
+  ig.add(".aider.tags.cache.v4"); // Aider cache directory
 
   // Environment and secrets (template uses .env.example)
   ig.add(".env");

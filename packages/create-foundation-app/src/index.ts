@@ -7,6 +7,9 @@ import {
   promptOutputDir,
   type SelectedFeatures,
 } from "./prompts.js";
+import { copyTemplate, getTemplateDir } from "./copy.js";
+import { replaceInFiles, getReplacementMap } from "./transform.js";
+import { writeEnvFile } from "./secrets.js";
 
 /**
  * Project configuration collected from user prompts
@@ -46,8 +49,42 @@ export async function main() {
     p.log.info(`Features: ${config.features.join(", ")}`);
     p.log.info(`Output: ${config.outputDir}`);
 
-    // Next steps
-    p.outro(pc.green("Configuration collected! Next: implement template generation (Wave 2)"));
+    // Generate project
+    const templateDir = getTemplateDir();
+
+    // Step 1: Copy template files
+    const s1 = p.spinner();
+    s1.start("Copying template files...");
+    await copyTemplate(templateDir, config.outputDir);
+    s1.stop(pc.green("✓ Template files copied"));
+
+    // Step 2: Replace placeholders
+    const s2 = p.spinner();
+    s2.start("Transforming project files...");
+    const replacements = getReplacementMap(config.projectName);
+    await replaceInFiles(config.outputDir, replacements);
+    s2.stop(pc.green("✓ Project files transformed"));
+
+    // Step 3: Generate secrets
+    const s3 = p.spinner();
+    s3.start("Generating secrets...");
+    await writeEnvFile(config.outputDir, config.projectName);
+    s3.stop(pc.green("✓ Secrets generated"));
+
+    // Success
+    p.outro(
+      pc.green("✓ Project created successfully!") +
+        "\n\n" +
+        pc.dim("Next steps:") +
+        "\n" +
+        pc.dim(`  cd ${config.outputDir}`) +
+        "\n" +
+        pc.dim("  pnpm install") +
+        "\n" +
+        pc.dim("  docker compose up -d") +
+        "\n" +
+        pc.dim("  pnpm dev"),
+    );
   } catch (error) {
     handleError(error);
   }
