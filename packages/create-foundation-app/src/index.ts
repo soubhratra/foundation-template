@@ -11,6 +11,7 @@ import { copyTemplate, getTemplateDir } from "./copy.js";
 import { replaceInFiles, getReplacementMap } from "./transform.js";
 import { writeEnvFile } from "./secrets.js";
 import { removeAIModule, removeMobileApp, removeLandingApp, removeWebApp } from "./remove.js";
+import { runValidation } from "./validation-runner.js";
 
 /**
  * Project configuration collected from user prompts
@@ -26,6 +27,9 @@ export interface ProjectConfig {
  * Orchestrates the interactive project scaffolding flow
  */
 export async function main() {
+  // Parse CLI flags
+  const skipValidation = process.argv.includes("--skip-validation");
+
   try {
     // Welcome message
     p.intro(pc.bgCyan(pc.black(" create-foundation-app ")));
@@ -88,6 +92,13 @@ export async function main() {
       await removeWebApp(config.outputDir);
     }
     s4.stop(pc.green("✓ Features configured"));
+
+    // Step 5: Run validation (unless skipped)
+    if (!skipValidation) {
+      await runValidation(config.outputDir);
+    } else {
+      p.log.info(pc.yellow("⚠ Skipping validation (--skip-validation flag)"));
+    }
 
     // Success
     p.outro(
