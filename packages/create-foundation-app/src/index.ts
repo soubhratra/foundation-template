@@ -1,6 +1,6 @@
 import * as p from "@clack/prompts";
 import pc from "picocolors";
-import { handleError, logger } from "./utils.js";
+import { logger } from "./utils.js";
 import {
   promptProjectName,
   promptFeatures,
@@ -12,6 +12,7 @@ import { replaceInFiles, getReplacementMap } from "./transform.js";
 import { writeEnvFile } from "./secrets.js";
 import { removeAIModule, removeMobileApp, removeLandingApp, removeWebApp } from "./remove.js";
 import { runValidation } from "./validation-runner.js";
+import { rollbackGeneration } from "./rollback.js";
 
 /**
  * Project configuration collected from user prompts
@@ -30,6 +31,9 @@ export async function main() {
   // Parse CLI flags
   const skipValidation = process.argv.includes("--skip-validation");
 
+  // Track output directory for rollback
+  let outputDir = "";
+
   try {
     // Welcome message
     p.intro(pc.bgCyan(pc.black(" create-foundation-app ")));
@@ -40,7 +44,7 @@ export async function main() {
     // Collect configuration via interactive prompts
     const projectName = await promptProjectName();
     const features = await promptFeatures();
-    const outputDir = await promptOutputDir();
+    outputDir = await promptOutputDir();
 
     // Build configuration object
     const config: ProjectConfig = {
@@ -102,19 +106,32 @@ export async function main() {
 
     // Success
     p.outro(
-      pc.green("✓ Project created successfully!") +
+      pc.green(`✓ Project "${config.projectName}" created successfully!`) +
         "\n\n" +
         pc.dim("Next steps:") +
         "\n" +
         pc.dim(`  cd ${config.outputDir}`) +
         "\n" +
-        pc.dim("  pnpm install") +
+        pc.dim(`  ${skipValidation ? "pnpm install" : "# Dependencies already installed"}`) +
         "\n" +
         pc.dim("  docker compose up -d") +
         "\n" +
-        pc.dim("  pnpm dev"),
+        pc.dim(`  ${skipValidation ? "pnpm db:migrate" : "pnpm turbo db:migrate"}`) +
+        "\n" +
+        pc.dim("  pnpm dev") +
+        "\n\n" +
+        pc.dim("Visit:") +
+        "\n" +
+        pc.dim("  http://localhost:3000 (web)") +
+        "\n" +
+        pc.dim("  http://localhost:8000/api/docs (API)"),
     );
-  } catch (error) {
-    handleError(error);
+  } catch {
+    p.log.error(pc.red("Generation failed"));
+    if (outputDir) {
+      await rollbackGeneration(outputDir);
+    }
+    p.cancel(pc.red("Project generation failed"));
+    process.exit(1);
   }
 }
