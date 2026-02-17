@@ -1,0 +1,219 @@
+import { readFile, writeFile, remove } from "fs-extra";
+import { join } from "node:path";
+import { logger } from "./utils.js";
+
+/**
+ * Remove AI module from generated project
+ *
+ * Steps:
+ * 1. Delete apps/api/apps/ai/ directory
+ * 2. Remove AI dependencies from pyproject.toml
+ * 3. Remove apps.ai from INSTALLED_APPS
+ * 4. Remove AI env vars from .env file
+ */
+export async function removeAIModule(outputDir: string): Promise<void> {
+  logger.info("Removing AI module...");
+
+  // 1. Delete AI directory
+  const aiDir = join(outputDir, "apps/api/apps/ai");
+  try {
+    await remove(aiDir);
+    logger.info(`  ✓ Deleted ${aiDir}`);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+      throw new Error(`Failed to delete AI directory: ${error}`);
+    }
+    logger.warning(`  ⚠ AI directory not found (already removed)`);
+  }
+
+  // 2. Remove AI dependencies from pyproject.toml
+  const pyprojectPath = join(outputDir, "apps/api/pyproject.toml");
+  try {
+    let pyprojectContent = await readFile(pyprojectPath, "utf-8");
+
+    // Remove AI-related dependencies (each on its own line)
+    const aiDeps = [
+      "pgvector",
+      "tiktoken",
+      "celery",
+      "django-celery-results",
+      "openai",
+      "langgraph",
+      "langchain-core",
+      "langchain-openai",
+    ];
+
+    for (const dep of aiDeps) {
+      // Match lines like: "pgvector>=0.2.0",
+      // Handles both with and without trailing comma
+      const depRegex = new RegExp(`^\\s*"${dep}[^"]*",?\\s*$`, "gm");
+      pyprojectContent = pyprojectContent.replace(depRegex, "");
+    }
+
+    await writeFile(pyprojectPath, pyprojectContent, "utf-8");
+    logger.info(`  ✓ Removed AI dependencies from pyproject.toml`);
+  } catch (error) {
+    throw new Error(`Failed to modify pyproject.toml: ${error}`);
+  }
+
+  // 3. Remove apps.ai from INSTALLED_APPS
+  const settingsPath = join(outputDir, "apps/api/config/settings/base.py");
+  try {
+    let settingsContent = await readFile(settingsPath, "utf-8");
+
+    // Match lines like: "apps.ai",
+    const appsAiRegex = /\s*"apps\.ai",?\n/g;
+    settingsContent = settingsContent.replace(appsAiRegex, "");
+
+    await writeFile(settingsPath, settingsContent, "utf-8");
+    logger.info(`  ✓ Removed apps.ai from INSTALLED_APPS`);
+  } catch (error) {
+    throw new Error(`Failed to modify settings/base.py: ${error}`);
+  }
+
+  // 4. Remove AI env vars from .env
+  const envPath = join(outputDir, ".env");
+  try {
+    let envContent = await readFile(envPath, "utf-8");
+
+    // Remove Celery and OpenAI lines
+    const celeryBrokerRegex = /^CELERY_BROKER_URL=.*$\n?/gm;
+    const celeryResultRegex = /^CELERY_RESULT_BACKEND=.*$\n?/gm;
+    const openaiKeyRegex = /^#?\s*OPENAI_API_KEY=.*$\n?/gm;
+
+    envContent = envContent.replace(celeryBrokerRegex, "");
+    envContent = envContent.replace(celeryResultRegex, "");
+    envContent = envContent.replace(openaiKeyRegex, "");
+
+    await writeFile(envPath, envContent, "utf-8");
+    logger.info(`  ✓ Removed AI env vars from .env`);
+  } catch (error) {
+    throw new Error(`Failed to modify .env: ${error}`);
+  }
+
+  logger.info("✓ AI module removed successfully");
+}
+
+/**
+ * Remove mobile app from generated project
+ *
+ * Steps:
+ * 1. Delete apps/mobile/ directory
+ * 2. Remove from pnpm-workspace.yaml
+ */
+export async function removeMobileApp(outputDir: string): Promise<void> {
+  logger.info("Removing mobile app...");
+
+  // 1. Delete mobile directory
+  const mobileDir = join(outputDir, "apps/mobile");
+  try {
+    await remove(mobileDir);
+    logger.info(`  ✓ Deleted ${mobileDir}`);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+      throw new Error(`Failed to delete mobile directory: ${error}`);
+    }
+    logger.warning(`  ⚠ Mobile directory not found (already removed)`);
+  }
+
+  // 2. Update pnpm-workspace.yaml
+  const workspacePath = join(outputDir, "pnpm-workspace.yaml");
+  try {
+    let workspaceContent = await readFile(workspacePath, "utf-8");
+
+    // Replace wildcard with explicit list (without mobile)
+    // Original: packages: ["apps/*", "packages/*"]
+    // New: packages: ["apps/web", "apps/landing", "apps/api", "packages/*"]
+    if (workspaceContent.includes('"apps/*"')) {
+      workspaceContent = workspaceContent.replace(
+        /packages:\s*\[\s*"apps\/\*"/,
+        'packages: [\n  "apps/web",\n  "apps/landing",\n  "apps/api"',
+      );
+
+      await writeFile(workspacePath, workspaceContent, "utf-8");
+      logger.info(`  ✓ Removed mobile from pnpm-workspace.yaml`);
+    }
+  } catch (error) {
+    throw new Error(`Failed to modify pnpm-workspace.yaml: ${error}`);
+  }
+
+  logger.info("✓ Mobile app removed successfully");
+}
+
+/**
+ * Remove landing app from generated project
+ *
+ * Steps:
+ * 1. Delete apps/landing/ directory
+ * 2. Remove from pnpm-workspace.yaml
+ */
+export async function removeLandingApp(outputDir: string): Promise<void> {
+  logger.info("Removing landing app...");
+
+  // 1. Delete landing directory
+  const landingDir = join(outputDir, "apps/landing");
+  try {
+    await remove(landingDir);
+    logger.info(`  ✓ Deleted ${landingDir}`);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+      throw new Error(`Failed to delete landing directory: ${error}`);
+    }
+    logger.warning(`  ⚠ Landing directory not found (already removed)`);
+  }
+
+  // 2. Update pnpm-workspace.yaml
+  const workspacePath = join(outputDir, "pnpm-workspace.yaml");
+  try {
+    let workspaceContent = await readFile(workspacePath, "utf-8");
+
+    // Remove landing from explicit list
+    workspaceContent = workspaceContent.replace(/\s*"apps\/landing",?\n?/g, "");
+
+    await writeFile(workspacePath, workspaceContent, "utf-8");
+    logger.info(`  ✓ Removed landing from pnpm-workspace.yaml`);
+  } catch (error) {
+    throw new Error(`Failed to modify pnpm-workspace.yaml: ${error}`);
+  }
+
+  logger.info("✓ Landing app removed successfully");
+}
+
+/**
+ * Remove web app from generated project
+ *
+ * Steps:
+ * 1. Delete apps/web/ directory
+ * 2. Remove from pnpm-workspace.yaml
+ */
+export async function removeWebApp(outputDir: string): Promise<void> {
+  logger.info("Removing web app...");
+
+  // 1. Delete web directory
+  const webDir = join(outputDir, "apps/web");
+  try {
+    await remove(webDir);
+    logger.info(`  ✓ Deleted ${webDir}`);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+      throw new Error(`Failed to delete web directory: ${error}`);
+    }
+    logger.warning(`  ⚠ Web directory not found (already removed)`);
+  }
+
+  // 2. Update pnpm-workspace.yaml
+  const workspacePath = join(outputDir, "pnpm-workspace.yaml");
+  try {
+    let workspaceContent = await readFile(workspacePath, "utf-8");
+
+    // Remove web from explicit list
+    workspaceContent = workspaceContent.replace(/\s*"apps\/web",?\n?/g, "");
+
+    await writeFile(workspacePath, workspaceContent, "utf-8");
+    logger.info(`  ✓ Removed web from pnpm-workspace.yaml`);
+  } catch (error) {
+    throw new Error(`Failed to modify pnpm-workspace.yaml: ${error}`);
+  }
+
+  logger.info("✓ Web app removed successfully");
+}

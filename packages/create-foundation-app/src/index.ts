@@ -10,6 +10,7 @@ import {
 import { copyTemplate, getTemplateDir } from "./copy.js";
 import { replaceInFiles, getReplacementMap } from "./transform.js";
 import { writeEnvFile } from "./secrets.js";
+import { removeAIModule, removeMobileApp, removeLandingApp, removeWebApp } from "./remove.js";
 
 /**
  * Project configuration collected from user prompts
@@ -70,6 +71,23 @@ export async function main() {
     s3.start("Generating secrets...");
     await writeEnvFile(config.outputDir, config.projectName);
     s3.stop(pc.green("✓ Secrets generated"));
+
+    // Step 4: Remove excluded features
+    const s4 = p.spinner();
+    s4.start("Removing excluded features...");
+    if (!config.features.includes("ai")) {
+      await removeAIModule(config.outputDir);
+    }
+    if (!config.features.includes("mobile")) {
+      await removeMobileApp(config.outputDir);
+    }
+    if (!config.features.includes("landing")) {
+      await removeLandingApp(config.outputDir);
+    }
+    if (!config.features.includes("web")) {
+      await removeWebApp(config.outputDir);
+    }
+    s4.stop(pc.green("✓ Features configured"));
 
     // Success
     p.outro(
