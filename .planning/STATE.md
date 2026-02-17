@@ -11,13 +11,13 @@ See: .planning/PROJECT.md (updated 2026-02-08)
 
 **Current Phase:** 08
 **Current Phase Name:** CLI Scaffolder
-**Current Plan:** 1
+**Current Plan:** 2
 **Total Plans in Phase:** 3
 **Status:** Ready to execute
 **Last Activity:** 2026-02-17
 **Last Activity Description:** Completed Phase 7 (DevEx + CI/CD) — 4/4 plans verified
 
-**Progress:** [█████████░] 94%
+**Progress:** [██████████] 97%
 
 ## Performance Metrics
 
@@ -72,6 +72,7 @@ _Updated after each plan completion_
 | Phase 07 P04 | 25 | 3 tasks | 11 files |
 | Phase 07 P03 | 2 | 2 tasks | 3 files |
 | Phase 08-cli-scaffolder P01 | 5 | 2 tasks | 10 files |
+| Phase 08 P02 | 8 | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -144,6 +145,10 @@ Recent decisions affecting current work:
 - [Phase 08-cli-scaffolder]: Re-prompt on validation errors instead of exiting CLI — Better UX allows users to correct mistakes without restarting
 - [Phase 08-cli-scaffolder]: All platforms checked by default in feature selection — Most users want full stack, per CONTEXT.md decision
 - [Phase 08-cli-scaffolder]: Root ESLint config added to monorepo — lint-staged runs from root and needs config for package-level discovery
+- [Phase 08-02]: Use ignore package for file exclusion patterns — Standard for .gitignore-style patterns
+- [Phase 08-02]: Transform all text files including tsconfig.json, Dockerfiles, \*.json — Template references appear in many file types
+- [Phase 08-02]: Include dot-directories (.github/) in transformation using dot:true — CI workflows need placeholder replacement
+- [Phase 08-02]: Generate 50-char Django SECRET_KEY using crypto.randomBytes — Follows Django docs and provides cryptographic security
 
 ### Pending Todos
 
@@ -156,6 +161,6 @@ None yet.
 
 ## Session Continuity
 
-**Last Session:** 2026-02-17T04:26:01.900Z
-**Stopped At:** Completed 08-cli-scaffolder 08-01-PLAN.md
+**Last Session:** 2026-02-17T04:37:26.886Z
+**Stopped At:** Completed 08-cli-scaffolder 08-02-PLAN.md
 **Resume File:** None
