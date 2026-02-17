@@ -125,13 +125,13 @@ Plans:
   3. Embedding pipeline runs as a Celery background task that generates and stores vector embeddings
   4. Vector search API endpoint accepts a query and returns results ranked by similarity
   5. Entire AI module lives in apps/api/apps/ai/ and can be deleted without breaking any other part of the template
-**Plans**: TBD
+**Plans**: 4 plans
 
 Plans:
-- [ ] 06-01: PGVector model mixin, embedding fields, and HNSW index migration
-- [ ] 06-02: LangGraph agent scaffold with example graph
-- [ ] 06-03: Celery embedding pipeline and vector search API endpoint
-- [ ] 06-04: Module isolation verification (clean removal test)
+- [ ] 06-01-PLAN.md — PGVector setup + Django models (Vector mixin, Document/Chunk models, HNSW migration)
+- [ ] 06-02-PLAN.md — Celery setup + embedding pipeline (Tasks, chunking, OpenAI integration)
+- [ ] 06-03-PLAN.md — LangGraph agent scaffold (Q&A graph with routing, tools, vector search integration)
+- [ ] 06-04-PLAN.md — API endpoints + isolation verification (Controllers, removal script, documentation)
 
 ### Phase 7: DevEx + CI/CD
 **Goal**: Every push triggers automated linting, type checking, and testing across all three platforms; production Dockerfiles are ready for deployment; developer workflow is enforced by pre-commit hooks
