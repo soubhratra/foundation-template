@@ -17,7 +17,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 3: Shared Packages + Type Generation** - Type-safe integration layer: API client, validation schemas, UI primitives, business logic
 - [ ] **Phase 4: Web Application** - Next.js 15 App Router with complete auth flow, dashboard shell, and user management
 - [ ] **Phase 5: Mobile Application** - Expo app with auth screens, JWT token management, and shared package consumption
-- [ ] **Phase 6: AI Module** - Optional PGVector + LangGraph module with embedding pipeline and vector search
+- [x] **Phase 6: AI Module** - Optional PGVector + LangGraph module with embedding pipeline and vector search
 - [ ] **Phase 7: DevEx + CI/CD** - GitHub Actions, pre-commit hooks, test suites, production Dockerfiles, type checking
 - [ ] **Phase 8: CLI Scaffolder** - Interactive CLI that generates new projects from the finished template
 
@@ -128,11 +128,11 @@ Plans:
 **Plans**: 5 plans
 
 Plans:
-- [ ] 06-01-PLAN.md — PGVector setup + Django models (Vector mixin, Document/Chunk models, HNSW migration)
-- [ ] 06-02-PLAN.md — Celery setup + embedding pipeline (Tasks, chunking, OpenAI integration)
-- [ ] 06-03-PLAN.md — LangGraph agent scaffold (Q&A graph with routing, tools, vector search integration)
-- [ ] 06-04-PLAN.md — API endpoints + isolation verification (Controllers, removal script, documentation)
-- [ ] 06-05-PLAN.md — Gap closure: Install missing LangGraph dependencies
+- [x] 06-01-PLAN.md — PGVector setup + Django models (Vector mixin, Document/Chunk models, HNSW migration)
+- [x] 06-02-PLAN.md — Celery setup + embedding pipeline (Tasks, chunking, OpenAI integration)
+- [x] 06-03-PLAN.md — LangGraph agent scaffold (Q&A graph with routing, tools, vector search integration)
+- [x] 06-04-PLAN.md — API endpoints + isolation verification (Controllers, removal script, documentation)
+- [x] 06-05-PLAN.md — Gap closure: Install missing LangGraph dependencies
 
 ### Phase 7: DevEx + CI/CD
 **Goal**: Every push triggers automated linting, type checking, and testing across all three platforms; production Dockerfiles are ready for deployment; developer workflow is enforced by pre-commit hooks
@@ -182,7 +182,7 @@ Note: Phase 6 (AI) depends only on Phase 2; it could execute in parallel with Ph
 | 3. Shared Packages + Type Generation | 0/5 | Not started | - |
 | 4. Web Application | 0/5 | Not started | - |
 | 5. Mobile Application | 0/4 | Not started | - |
-| 6. AI Module | 0/5 | Gap closure | - |
+| 6. AI Module | 5/5 | Complete | 2026-02-17 |
 | 7. DevEx + CI/CD | 0/4 | Not started | - |
 | 8. CLI Scaffolder | 0/3 | Not started | - |
 
