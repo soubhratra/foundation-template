@@ -1,0 +1,33 @@
+{
+  "name": "@repo/create-foundation-app",
+  "version": "0.1.0",
+  "description": "CLI scaffolder for Foundation Template projects",
+  "type": "module",
+  "bin": {
+    "create-foundation-app": "./bin/cli.js"
+  },
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@clack/prompts": "^0.9.0",
+    "fs-extra": "^11.0.0",
+    "execa": "^9.0.0",
+    "validate-npm-package-name": "^6.0.0",
+    "picocolors": "^1.0.0",
+    "ignore": "^6.0.0",
+    "globby": "^14.0.0"
+  },
+  "devDependencies": {
+    "@types/fs-extra": "^11.0.4",
+    "@types/validate-npm-package-name": "^4.0.2",
+    "@repo/config-eslint": "workspace:*",
+    "@repo/config-ts": "workspace:*",
+    "typescript": "^5.6.3"
+  }
+}
