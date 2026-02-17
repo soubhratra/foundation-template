@@ -25,6 +25,7 @@ INSTALLED_APPS = [
     "django.contrib.sites",
     "ninja_extra",
     "corsheaders",
+    "django_celery_results",
     "allauth",
     "allauth.account",
     "allauth.headless",
@@ -111,6 +112,19 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 REDIS_URL = env("REDIS_URL", default="redis://localhost:6379/0")
 
 FRONTEND_URL = env("FRONTEND_URL", default="http://localhost:3000")
+
+# --------------------------------------------------------------------------
+# Celery Configuration
+# --------------------------------------------------------------------------
+CELERY_BROKER_URL = env("CELERY_BROKER_URL", default="redis://localhost:6379/0")
+CELERY_RESULT_BACKEND = "django-db"
+CELERY_TASK_TRACK_STARTED = True
+CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 minutes
+
+# --------------------------------------------------------------------------
+# OpenAI Configuration
+# --------------------------------------------------------------------------
+OPENAI_API_KEY = env("OPENAI_API_KEY", default="")
 
 CORS_ALLOWED_ORIGINS = env.list(
     "CORS_ALLOWED_ORIGINS",
