@@ -5,19 +5,19 @@
 See: .planning/PROJECT.md (updated 2026-02-08)
 
 **Core value:** A new SaaS product goes from zero to running full-stack app (web + mobile + API + auth) in under 5 minutes with one command.
-**Current focus:** Phase 5 - Mobile Application
+**Current focus:** Phase 6 - AI Module
 
 ## Current Position
 
-**Current Phase:** 05
-**Current Phase Name:** Mobile Application
-**Current Plan:** 5
-**Total Plans in Phase:** 5
+**Current Phase:** 06
+**Current Phase Name:** AI Module
+**Current Plan:** 3
+**Total Plans in Phase:** 4
 **Status:** Ready to execute
 **Last Activity:** 2026-02-17
-**Last Activity Description:** Completed 05-03-PLAN.md
+**Last Activity Description:** Completed 06-02-PLAN.md
 
-**Progress:** [█████████░] 89%
+**Progress:** [█████████░] 93%
 
 ## Performance Metrics
 
@@ -61,6 +61,7 @@ See: .planning/PROJECT.md (updated 2026-02-08)
 | Phase 05-mobile-application P05-03 | 8 min | 3 tasks | 7 files |
 | Phase 05-mobile-application P04 | 10 | 3 tasks | 10 files |
 | Phase 06-ai-module P01 | 5 | 3 tasks | 10 files |
+| Phase 06-ai-module P02 | 3 | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -105,6 +106,9 @@ Recent decisions affecting current work:
 - [Phase 05-mobile-application]: SecureStore for local preference persistence — Backend lacks /users/preferences endpoint; local persistence via SecureStore keeps toggles working until API ships
 - [Phase 06-ai-module]: HNSW index placement: concrete model vs abstract mixin — Django migration system requires explicit index declarations in concrete models
 - [Phase 06-ai-module]: PGVector IF NOT EXISTS pattern: avoids permission errors in production where extension may be pre-installed
+- [Phase 06-ai-module]: Celery task queue: CELERY_RESULT_BACKEND = django-db stores results in PostgreSQL — Keeps all data centralized without separate result store
+- [Phase 06-ai-module]: Embedding pipeline: 512-token chunks with 200-token overlap using tiktoken cl100k_base — Balances granularity with semantic context for better search results
+- [Phase 06-ai-module]: Idempotent task design: delete existing chunks before processing — Allows safe task retries and re-embedding after model upgrades
 
 ### Pending Todos
 
@@ -117,6 +121,6 @@ None yet.
 
 ## Session Continuity
 
-**Last Session:** 2026-02-17T01:28:49.794Z
-**Stopped At:** Completed 06-01-PLAN.md
+**Last Session:** 2026-02-17T01:35:52.731Z
+**Stopped At:** Completed 06-02-PLAN.md
 **Resume File:** None
