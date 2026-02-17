@@ -11,13 +11,13 @@ See: .planning/PROJECT.md (updated 2026-02-08)
 
 **Current Phase:** 08
 **Current Phase Name:** CLI Scaffolder
-**Current Plan:** 2
+**Current Plan:** 3
 **Total Plans in Phase:** 3
 **Status:** Ready to execute
 **Last Activity:** 2026-02-17
 **Last Activity Description:** Completed Phase 7 (DevEx + CI/CD) — 4/4 plans verified
 
-**Progress:** [██████████] 97%
+**Progress:** [██████████] 100%
 
 ## Performance Metrics
 
@@ -73,6 +73,7 @@ _Updated after each plan completion_
 | Phase 07 P03 | 2 | 2 tasks | 3 files |
 | Phase 08-cli-scaffolder P01 | 5 | 2 tasks | 10 files |
 | Phase 08 P02 | 8 | 3 tasks | 4 files |
+| Phase 08 P03 | 4 | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -149,6 +150,9 @@ Recent decisions affecting current work:
 - [Phase 08-02]: Transform all text files including tsconfig.json, Dockerfiles, \*.json — Template references appear in many file types
 - [Phase 08-02]: Include dot-directories (.github/) in transformation using dot:true — CI workflows need placeholder replacement
 - [Phase 08-02]: Generate 50-char Django SECRET_KEY using crypto.randomBytes — Follows Django docs and provides cryptographic security
+- [Phase 08-03]: Feature removal is complete (deletes directories, removes deps, updates workspace)
+- [Phase 08-03]: Validation runs post-generation with 10min timeout for installs, optional via --skip-validation flag
+- [Phase 08-03]: Automatic rollback on any error (deletes entire output directory) per user decision
 
 ### Pending Todos
 
@@ -161,6 +165,6 @@ None yet.
 
 ## Session Continuity
 
-**Last Session:** 2026-02-17T04:37:26.886Z
-**Stopped At:** Completed 08-cli-scaffolder 08-02-PLAN.md
+**Last Session:** 2026-02-17T04:44:26.282Z
+**Stopped At:** Completed 08-cli-scaffolder 08-03-PLAN.md
 **Resume File:** None
