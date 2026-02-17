@@ -8,7 +8,10 @@
     "build:android": "eas build --platform android",
     "build:ios": "eas build --platform ios",
     "lint": "eslint .",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "test": "echo 'Detox E2E tests require iOS simulator - run: pnpm test:e2e:build && pnpm test:e2e:run'",
+    "test:e2e:build": "detox build -c ios.sim.debug",
+    "test:e2e:run": "detox test -c ios.sim.debug"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -38,6 +41,7 @@
     "@repo/config-eslint": "workspace:*",
     "@repo/config-ts": "workspace:*",
     "@types/react": "^19.0.0",
+    "detox": "^20.47.0",
     "eslint": "^9.0.0",
     "typescript": "^5.7.0"
   }
