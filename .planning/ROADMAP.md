@@ -20,7 +20,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 5: Mobile Application** - Expo app with auth screens, JWT token management, and shared package consumption
 - [x] **Phase 6: AI Module** - Optional PGVector + LangGraph module with embedding pipeline and vector search
 - [x] **Phase 7: DevEx + CI/CD** - GitHub Actions, pre-commit hooks, test suites, production Dockerfiles, type checking
-- [ ] **Phase 8: CLI Scaffolder** - Interactive CLI that generates new projects from the finished template
+- [x] **Phase 8: CLI Scaffolder** - Interactive CLI that generates new projects from the finished template (completed 2026-02-17)
 
 ## Phase Details
 
@@ -209,7 +209,7 @@ Note: Phase 6 (AI) depends only on Phase 2; it could execute in parallel with Ph
 | 5. Mobile Application                | 0/4            | Not started | -          |
 | 6. AI Module                         | 5/5            | Complete    | 2026-02-17 |
 | 7. DevEx + CI/CD                     | 4/4            | Complete    | 2026-02-17 |
-| 8. CLI Scaffolder                    | 0/3            | Not started | -          |
+| 8. CLI Scaffolder                    | 0/3            | Complete    | 2026-02-17 |
 
 ---
 
