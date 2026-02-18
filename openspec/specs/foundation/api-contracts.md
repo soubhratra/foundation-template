@@ -95,6 +95,7 @@ The `openapi.json` file is committed to version control. This allows frontend de
 ```
 
 Run via Turborepo:
+
 ```bash
 turbo generate:api-types
 ```
@@ -128,13 +129,123 @@ async function DashboardPage() {
 }
 ```
 
+### Implementation Patterns
+
+#### OpenAPI Snapshot Pattern
+
+**Location:** `apps/api/openapi.json`
+**Pattern:** Export OpenAPI spec to tracked file in version control.
+
+**Benefits:**
+
+- **Diffable:** Changes to API surface visible in git diff
+- **Staleness Detection:** CI can hash the file to detect drift
+- **Offline Development:** Frontend can develop without running Django server
+
+**Export Command:**
+
+```bash
+# apps/api/package.json (pnpm workspace)
+"scripts": {
+  "export:openapi": "uv run python manage.py export_openapi_schema"
+}
+```
+
+**Decision:** Phase 02-04
+
+#### Type Generation Scope
+
+**Turbo Filter:** `--filter=@repo/api`
+**Command:** `pnpm turbo generate:api-types --filter=@repo/api`
+
+**Rationale:**
+
+- Root workspace is not part of the Turbo graph
+- Scoping to `@repo/api` package prevents failures
+- Keeps generator focused on backend package
+
+**Configuration:**
+
+```json
+// turbo.json
+{
+  "tasks": {
+    "generate:api-types": {
+      "cache": false,
+      "inputs": ["apps/api/openapi.json"]
+    }
+  }
+}
+```
+
+**Decision:** Phase 03
+
+#### Generated Artifacts Exposure
+
+**Pattern:** Expose `@repo/api-client/gen/v1` from tracked OpenAPI snapshot.
+**Avoid:** Copying generated files into `dist/` directory.
+
+**Benefits:**
+
+- Keeps generated artifacts diffable in git
+- Avoids redundant build steps
+- Remains within workspace package boundaries
+
+**Package Structure:**
+
+```
+packages/api-client/
+├── gen/
+│   └── v1/              # Exposed, not copied
+│       └── types.d.ts   # Generated from openapi.json
+├── src/
+│   ├── client.ts        # Imports from ../gen/v1/types.d.ts
+│   └── hooks.ts
+└── openapi.json         # Tracked snapshot
+```
+
+**Decision:** Phase 03-shared-packages-type-generation
+
+#### API Documentation Routing
+
+**Documentation URL:** `/api/docs`
+**API Base Path:** `/api/v1/`
+
+**Rationale:**
+
+- Stable v1 routing without changing endpoint prefix
+- Documentation at logical path separate from API routes
+
+**Authentication:**
+
+- **Development:** Authenticated users only
+- **Production:** Staff users only (prevents public exposure)
+
+**Configuration:**
+
+```python
+# apps/api/config/urls.py
+api = NinjaExtraAPI(
+    title="Foundation API",
+    version="1.0.0",
+    docs_url="/api/docs",  # Documentation
+    urls_namespace="api_v1",
+)
+
+# Endpoints under /api/v1/
+api.add_router("/auth/", auth_router)
+api.add_router("/users/", users_router)
+```
+
+**Decision:** Phase 02
+
 ### Pipeline Execution
 
-| Trigger | Command | What Happens |
-|---------|---------|-------------|
-| Developer changes API | `turbo generate:api-types` | Exports spec, regenerates types, developer commits both |
-| CI pipeline | `turbo generate:api-types && git diff --exit-code` | Regenerates and fails if output differs from committed files |
-| Development server | Manual trigger only | Types are NOT regenerated on dev server start |
+| Trigger               | Command                                            | What Happens                                                 |
+| --------------------- | -------------------------------------------------- | ------------------------------------------------------------ |
+| Developer changes API | `turbo generate:api-types`                         | Exports spec, regenerates types, developer commits both      |
+| CI pipeline           | `turbo generate:api-types && git diff --exit-code` | Regenerates and fails if output differs from committed files |
+| Development server    | Manual trigger only                                | Types are NOT regenerated on dev server start                |
 
 **GIVEN** a developer modifies a Pydantic schema in apps/api/
 **WHEN** they run `turbo generate:api-types`
@@ -216,22 +327,23 @@ class FieldError(BaseModel):
 
 **HTTP Status Code Mapping:**
 
-| Status | Usage | Example code |
-|--------|-------|-------------|
-| 200 | Success (GET, PATCH) | -- |
-| 201 | Resource created (POST) | -- |
-| 204 | No content (DELETE) | -- |
-| 400 | Validation error | `validation_error` |
-| 401 | Not authenticated | `not_authenticated` |
-| 403 | Permission denied | `permission_denied` |
-| 404 | Resource not found | `not_found` |
-| 409 | Conflict (duplicate) | `already_exists` |
-| 422 | Unprocessable entity | `unprocessable` |
-| 500 | Server error | `internal_error` |
+| Status | Usage                   | Example code        |
+| ------ | ----------------------- | ------------------- |
+| 200    | Success (GET, PATCH)    | --                  |
+| 201    | Resource created (POST) | --                  |
+| 204    | No content (DELETE)     | --                  |
+| 400    | Validation error        | `validation_error`  |
+| 401    | Not authenticated       | `not_authenticated` |
+| 403    | Permission denied       | `permission_denied` |
+| 404    | Resource not found      | `not_found`         |
+| 409    | Conflict (duplicate)    | `already_exists`    |
+| 422    | Unprocessable entity    | `unprocessable`     |
+| 500    | Server error            | `internal_error`    |
 
 **GIVEN** a client sends invalid data to a POST endpoint
 **WHEN** Pydantic validation fails
 **THEN** the API returns 400 with body:
+
 ```json
 {
   "detail": "Validation failed",
@@ -246,6 +358,7 @@ class FieldError(BaseModel):
 **GIVEN** a client requests a resource that does not exist
 **WHEN** the service raises a NotFound exception
 **THEN** the API returns 404 with body:
+
 ```json
 {
   "detail": "User not found",
@@ -255,12 +368,12 @@ class FieldError(BaseModel):
 
 ### API Versioning Strategy
 
-| Aspect | Decision |
-|--------|----------|
-| Versioning scheme | URL prefix: `/api/v1/` |
-| When to increment | Breaking changes only (removed fields, changed types, removed endpoints) |
-| Backward compatibility | Non-breaking changes (new fields, new endpoints) do NOT require a version bump |
-| Multiple versions | Support at most 2 concurrent versions. Deprecate old version with sunset header. |
+| Aspect                 | Decision                                                                         |
+| ---------------------- | -------------------------------------------------------------------------------- |
+| Versioning scheme      | URL prefix: `/api/v1/`                                                           |
+| When to increment      | Breaking changes only (removed fields, changed types, removed endpoints)         |
+| Backward compatibility | Non-breaking changes (new fields, new endpoints) do NOT require a version bump   |
+| Multiple versions      | Support at most 2 concurrent versions. Deprecate old version with sunset header. |
 
 ```python
 # config/urls.py
@@ -311,16 +424,17 @@ CORS_ALLOW_CREDENTIALS = True
 **AND** the actual request proceeds
 
 **Rules:**
+
 - Never set `CORS_ALLOW_ALL_ORIGINS = True` in any environment.
 - Always use explicit origin list.
 - `CORS_ALLOW_CREDENTIALS = True` is required for session cookie auth.
 
 ### Nullable/Optional Field Convention
 
-| Python Type | OpenAPI | TypeScript | Usage |
-|-------------|---------|------------|-------|
-| `str` | `string` (required) | `string` | Always present, never null |
-| `str \| None` | `string` (nullable) | `string \| null` | May be null |
+| Python Type          | OpenAPI                       | TypeScript                    | Usage                       |
+| -------------------- | ----------------------------- | ----------------------------- | --------------------------- |
+| `str`                | `string` (required)           | `string`                      | Always present, never null  |
+| `str \| None`        | `string` (nullable)           | `string \| null`              | May be null                 |
 | `str \| None = None` | `string` (nullable, optional) | `string \| null \| undefined` | May be null, may be omitted |
 
 **Rule:** Use `str | None` (not `Optional[str]`) for clarity. The `|` syntax makes nullable explicit.

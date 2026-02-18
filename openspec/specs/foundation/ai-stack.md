@@ -36,6 +36,7 @@ apps/api/apps/ai/
 ```
 
 **Isolation rules:**
+
 - No other Django app imports from `apps.ai`.
 - No AI-specific Python dependencies (langchain, langgraph, openai) in the base requirements. They are in an optional dependency group.
 - The `apps.ai` app is conditionally added to `INSTALLED_APPS` via an environment variable or feature flag.
@@ -43,6 +44,7 @@ apps/api/apps/ai/
 - The PGVector extension migration (`CREATE EXTENSION vector`) lives in `apps.core` (since PGVector is a database-level extension), but the HNSW indexes live in `apps.ai` migrations.
 
 **Removal checklist (for CLI scaffolder):**
+
 1. Delete `apps/api/apps/ai/` directory.
 2. Remove `"apps.ai"` from `INSTALLED_APPS`.
 3. Remove AI-specific dependencies from `pyproject.toml` (langgraph, openai, tiktoken, etc.).
@@ -174,20 +176,109 @@ result = rag_graph.invoke({"messages": [HumanMessage(content=query)]}, config=co
 ```
 
 **Checkpoint rules:**
+
 - **Development:** In-memory checkpointer is acceptable for testing.
 - **Production:** MUST use `langgraph-checkpoint-postgres`. Never use in-memory in production.
 - **Thread IDs:** Use deterministic IDs based on user + session to enable conversation continuity.
 
 #### Graph Design Rules
 
-| Rule | Rationale |
-|------|-----------|
-| Each graph is a single file in `graphs/` | Easy to understand, test, and replace |
-| State is a TypedDict | Type safety, IDE support, clear contract |
-| Nodes are plain functions | Testable without the graph framework |
-| LLM calls are in nodes, not edges | Separation of logic and control flow |
-| External service calls use dependency injection | Testable with mocks |
-| Graph is compiled once at module level | Avoids recompilation overhead per request |
+| Rule                                            | Rationale                                 |
+| ----------------------------------------------- | ----------------------------------------- |
+| Each graph is a single file in `graphs/`        | Easy to understand, test, and replace     |
+| State is a TypedDict                            | Type safety, IDE support, clear contract  |
+| Nodes are plain functions                       | Testable without the graph framework      |
+| LLM calls are in nodes, not edges               | Separation of logic and control flow      |
+| External service calls use dependency injection | Testable with mocks                       |
+| Graph is compiled once at module level          | Avoids recompilation overhead per request |
+
+#### LangGraph Implementation Patterns
+
+##### Intent Detection Strategy
+
+**Pattern:** Use keyword matching instead of LLM-based intent detection.
+
+**Rationale:** Avoids API dependency, faster, lower cost, sufficient for basic routing.
+
+**Implementation:**
+
+```python
+def detect_intent(query: str) -> str:
+    """Simple keyword-based intent detection."""
+    query_lower = query.lower()
+    if any(word in query_lower for word in ["calculate", "compute", "math"]):
+        return "calculator"
+    elif any(word in query_lower for word in ["search", "find", "lookup"]):
+        return "search"
+    else:
+        return "qa"
+```
+
+**Decision:** Phase 06-ai-module
+
+##### Tool Security: Safe Calculator
+
+**Pattern:** Use AST parsing to prevent code injection attacks.
+**Anti-Pattern:** Never use Python's built-in string evaluation functions that execute arbitrary code.
+
+**Safe Implementation:**
+
+```python
+import ast
+import operator
+
+def safe_calculate(expression: str) -> float:
+    """Safely evaluate math expressions using AST."""
+    operators = {
+        ast.Add: operator.add,
+        ast.Sub: operator.sub,
+        ast.Mult: operator.mul,
+        ast.Div: operator.truediv,
+    }
+    def eval_node(node):
+        if isinstance(node, ast.Num):
+            return node.n
+        elif isinstance(node, ast.BinOp):
+            return operators[type(node.op)](eval_node(node.left), eval_node(node.right))
+        else:
+            raise ValueError("Unsupported operation")
+    tree = ast.parse(expression, mode='eval')
+    return eval_node(tree.body)
+```
+
+**Decision:** Phase 06-ai-module
+
+##### Authentication Requirements
+
+**Pattern:** Require `OPENAI_API_KEY` at runtime for LLM tools.
+
+```python
+def generate_response(state: AgentState) -> AgentState:
+    if not settings.OPENAI_API_KEY:
+        raise ValueError("OPENAI_API_KEY not configured")
+    # Proceed with LLM call
+```
+
+**Benefit:** Fails fast if API key missing.
+**Decision:** Phase 06-ai-module
+
+##### Graceful Error Handling
+
+**Pattern:** Return degraded responses instead of crashing.
+
+```python
+def generate_response(state: AgentState) -> AgentState:
+    try:
+        llm = ChatOpenAI(model="gpt-4o-mini")
+        response = llm.invoke(state["messages"])
+        return {"messages": [response]}
+    except Exception as e:
+        logger.error(f"LLM failed: {e}")
+        fallback = AIMessage(content="I'm having trouble. Please try again.")
+        return {"messages": [fallback]}
+```
+
+**Decision:** Phase 06-ai-module
 
 ### PGVector Setup
 
@@ -206,6 +297,8 @@ class Migration(migrations.Migration):
         ),
     ]
 ```
+
+**Implementation Note:** The `IF NOT EXISTS` clause is critical for production deployments where the PGVector extension may be pre-installed at the database level. Without it, the migration would fail with a permission error if the extension already exists. _(Decision: Phase 06-ai-module)_
 
 #### Embedding Model
 
@@ -256,14 +349,16 @@ class Document(BaseModel):
         return self.title
 ```
 
+**Implementation Note:** The HNSW index must be declared in the concrete model's `Meta.indexes`, not in an abstract base model mixin. Django's migration system requires explicit index declarations in concrete models to generate the proper SQL. _(Decision: Phase 06-ai-module)_
+
 #### HNSW Index Configuration
 
-| Parameter | Value | Rationale |
-|-----------|-------|-----------|
-| Index type | HNSW | No training needed, works with incremental inserts. Strictly better than IVFFlat for this use case. |
-| m | 16 | Controls graph connectivity. Default is fine for < 1M vectors. Higher = better recall, more memory. |
-| ef_construction | 64 | Controls index build quality. Default is fine for < 1M vectors. Higher = better recall, slower build. |
-| Operator class | vector_cosine_ops | Cosine similarity is standard for OpenAI/Anthropic embeddings. Must match the distance function used in queries. |
+| Parameter       | Value             | Rationale                                                                                                        |
+| --------------- | ----------------- | ---------------------------------------------------------------------------------------------------------------- |
+| Index type      | HNSW              | No training needed, works with incremental inserts. Strictly better than IVFFlat for this use case.              |
+| m               | 16                | Controls graph connectivity. Default is fine for < 1M vectors. Higher = better recall, more memory.              |
+| ef_construction | 64                | Controls index build quality. Default is fine for < 1M vectors. Higher = better recall, slower build.            |
+| Operator class  | vector_cosine_ops | Cosine similarity is standard for OpenAI/Anthropic embeddings. Must match the distance function used in queries. |
 
 **GIVEN** the Document model has an HNSW index on the embedding field with vector_cosine_ops
 **WHEN** a cosine similarity search is performed with a query vector
@@ -400,6 +495,85 @@ def bulk_generate_embeddings(document_ids: list[int]):
 **AND** if all retries fail, the task is marked as failed
 **AND** the document's embedding remains null (or stale)
 
+#### Document Chunking Strategy
+
+For large documents that exceed embedding model token limits, implement chunking:
+
+**Strategy:**
+
+- **Chunk Size:** 512 tokens
+- **Overlap:** 200 tokens
+- **Tokenizer:** tiktoken `cl100k_base` (OpenAI's tokenizer)
+
+**Rationale:** Balances granularity with semantic context. Overlap ensures no information is lost at chunk boundaries, improving search quality for queries that span chunk edges.
+
+**Implementation:**
+
+```python
+# apps/api/apps/ai/services.py
+import tiktoken
+
+def chunk_text(text: str, chunk_size: int = 512, overlap: int = 200) -> list[str]:
+    """
+    Split text into overlapping chunks using tiktoken.
+    """
+    encoding = tiktoken.get_encoding("cl100k_base")
+    tokens = encoding.encode(text)
+
+    chunks = []
+    start = 0
+    while start < len(tokens):
+        end = start + chunk_size
+        chunk_tokens = tokens[start:end]
+        chunk_text = encoding.decode(chunk_tokens)
+        chunks.append(chunk_text)
+        start += (chunk_size - overlap)  # Move forward with overlap
+
+    return chunks
+```
+
+**Decision:** Phase 06-ai-module
+
+#### Idempotent Task Design
+
+**Pattern:** Delete existing chunks before processing a document.
+
+**Benefits:**
+
+- Safe task retries (can re-run without creating duplicates)
+- Re-embedding after model upgrades
+- Content updates don't leave stale chunks
+
+**Implementation:**
+
+```python
+@shared_task
+def process_document_chunks(document_id: int):
+    """
+    Process document into chunks and generate embeddings.
+    Idempotent: clears existing chunks first.
+    """
+    from .models import Document, DocumentChunk
+
+    document = Document.objects.get(id=document_id)
+
+    # Delete existing chunks (idempotent)
+    DocumentChunk.objects.filter(document=document).delete()
+
+    # Generate new chunks
+    chunks = chunk_text(document.content)
+    for i, chunk_text in enumerate(chunks):
+        chunk = DocumentChunk.objects.create(
+            document=document,
+            content=chunk_text,
+            sequence=i,
+        )
+        # Generate embedding for chunk
+        generate_chunk_embedding.delay(chunk.id)
+```
+
+**Decision:** Phase 06-ai-module
+
 ### Vector Search API Patterns
 
 ```python
@@ -497,6 +671,7 @@ class AIController:
 ```
 
 **Streaming rules:**
+
 - Use `stream_mode="messages"` for token-level streaming.
 - Client receives `text/event-stream` content type.
 - Stream ends with `data: [DONE]\n\n` sentinel.
@@ -555,7 +730,7 @@ AI_EMBEDDING_DIMENSIONS = env.int("AI_EMBEDDING_DIMENSIONS", default=1536)
 ```python
 # config/settings/base.py
 CELERY_BROKER_URL = env("REDIS_URL", default="redis://localhost:6379/0")
-CELERY_RESULT_BACKEND = env("REDIS_URL", default="redis://localhost:6379/0")
+CELERY_RESULT_BACKEND = "django-db"  # Store results in PostgreSQL
 CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
@@ -566,6 +741,8 @@ CELERY_TASK_ROUTES = {
     "apps.ai.tasks.*": {"queue": "ai"},
 }
 ```
+
+**Implementation Note:** `CELERY_RESULT_BACKEND = "django-db"` stores task results in PostgreSQL using the `django-celery-results` package. This keeps all data centralized without requiring a separate result store like Redis. _(Decision: Phase 06-ai-module)_
 
 ```python
 # config/celery.py

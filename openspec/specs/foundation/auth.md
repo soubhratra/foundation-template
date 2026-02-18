@@ -11,13 +11,14 @@ The Foundation Template implements a dual authentication strategy: session cooki
 
 ### Dual Auth Strategy
 
-| Platform | Auth Mechanism | Token Storage | Transport | CSRF |
-|----------|---------------|---------------|-----------|------|
-| Next.js (browser) | Session cookies | httpOnly cookie (managed by Django) | Cookie header (automatic) | CSRF token required for mutations |
-| Next.js (SSR) | Forwarded cookies | Server-side from incoming request | Cookie header (manual forwarding) | Not applicable (server-to-server) |
-| Expo (mobile) | JWT access + refresh tokens | expo-secure-store (Keychain/Keystore) | Authorization: Bearer header | Not applicable (no cookies) |
+| Platform          | Auth Mechanism              | Token Storage                         | Transport                         | CSRF                              |
+| ----------------- | --------------------------- | ------------------------------------- | --------------------------------- | --------------------------------- |
+| Next.js (browser) | Session cookies             | httpOnly cookie (managed by Django)   | Cookie header (automatic)         | CSRF token required for mutations |
+| Next.js (SSR)     | Forwarded cookies           | Server-side from incoming request     | Cookie header (manual forwarding) | Not applicable (server-to-server) |
+| Expo (mobile)     | JWT access + refresh tokens | expo-secure-store (Keychain/Keystore) | Authorization: Bearer header      | Not applicable (no cookies)       |
 
 **Why dual strategy:**
+
 - Web: httpOnly cookies are more secure than storing JWTs in browser storage. Django Allauth naturally provides session-based auth. Next.js middleware can read session cookies for server-side auth checks.
 - Mobile: Mobile apps cannot use cookies effectively. JWT access + refresh token pair stored in device secure storage. The API client handles transparent token refresh.
 
@@ -64,6 +65,136 @@ CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS", default=["http://localho
 CSRF_COOKIE_HTTPONLY = False  # Frontend needs to read CSRF token
 CSRF_COOKIE_SAMESITE = "Lax"
 ```
+
+### JWT Implementation Details
+
+#### Signing Algorithm
+
+**Algorithm:** HS256 (symmetric)
+**Key Source:** Django `SECRET_KEY`
+**Rationale:** Avoids RSA key provisioning complexity in template; simpler for starter projects while maintaining security.
+**Decision:** Phase 02
+
+**Configuration:**
+
+```python
+# config/settings/base.py
+SIMPLE_JWT = {
+    "ALGORITHM": "HS256",  # Symmetric signing
+    "SIGNING_KEY": SECRET_KEY,  # Reuse Django secret
+    # ... other settings
+}
+```
+
+#### Session-Aware JWT Strategy
+
+**Pattern:** Only issue JWT tokens when `Authorization` header is present in the request.
+
+**Rationale:**
+
+- Prevents session-based logins from receiving JWT tokens they don't need
+- Allows JWT token refresh flows without creating tokens for cookie-based users
+- Clear separation: browser users get cookies, mobile users get JWTs
+
+**Implementation:**
+
+```python
+# In auth controller
+def login(request):
+    # Check if request wants JWT (mobile) or session (web)
+    wants_jwt = "Authorization" in request.headers or "Bearer" in request.headers.get("Authorization", "")
+
+    if wants_jwt:
+        # Issue JWT tokens for mobile
+        return {"access": access_token, "refresh": refresh_token}
+    else:
+        # Create session for web
+        login(request, user)
+        return {"user": user_data}  # Session cookie set automatically
+```
+
+**Decision:** Phase 02-api-core-auth-backend
+
+#### Token Revocation Strategy
+
+**Pattern:** Clear refresh tokens from all user sessions on password reset.
+
+**Implementation Details:**
+
+- Refresh tokens are stored in Django sessions
+- On password reset, invalidate all sessions for the user
+- Forces re-authentication on all devices
+- Prevents hijacked refresh tokens from being used after password change
+
+**Code:**
+
+```python
+# On password reset
+def reset_password(user, new_password):
+    user.set_password(new_password)
+    user.save()
+
+    # Clear all sessions (invalidates refresh tokens)
+    Session.objects.filter(
+        session_data__contains=f'"_auth_user_id":"{user.pk}"'
+    ).delete()
+```
+
+**Decision:** Phase 02-api-core-auth-backend
+
+#### Controller-Level Dual Auth
+
+**Pattern:** Apply both `SessionAuth` and `jwt_token_auth` at the controller level.
+
+**Benefits:**
+
+- Public routes remain unauthenticated (no auth classes applied)
+- Protected routes accept both cookies (web) and bearer tokens (mobile)
+- Single endpoint serves both platforms
+
+**Example:**
+
+```python
+from ninja_extra import api_controller, route
+from ninja_extra.permissions import IsAuthenticated
+
+@api_controller("/users", tags=["Users"], permissions=[IsAuthenticated])
+class UserController:
+    @route.get("/me", auth=[SessionAuth(), jwt_token_auth])
+    def get_current_user(self, request):
+        # Works with both cookies and JWT
+        return {"user": request.user}
+```
+
+**Decision:** Phase 02
+
+### Known OpenAPI Spec Gaps
+
+**Issue:** Django Allauth headless endpoints (login, logout, JWT refresh) do not appear in the auto-generated OpenAPI spec.
+
+**Impact:**
+
+- Type generation does not include these auth endpoints
+- API client cannot use type-safe methods for auth calls
+
+**Workaround (Temporary):**
+
+```typescript
+// packages/business-logic/src/auth/client.ts
+// Manual fetch for Allauth endpoints until spec includes them
+export async function login(email: string, password: string) {
+  const response = await fetch(`${API_URL}/api/v1/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+  });
+  return response.json();
+}
+```
+
+**Long-term:** Wait for Django Allauth to add OpenAPI schema support, or manually extend the OpenAPI spec.
+
+**Decisions:** Phase 03 (manual fetch pattern), Phase 05 (JWT refresh endpoint)
 
 ### Signup Flow
 
@@ -352,20 +483,18 @@ export function AuthProvider({ children }) {
 
 ### CSRF Handling Strategy
 
-| Scenario | CSRF Required | Approach |
-|----------|--------------|----------|
-| Web GET requests | No | Cookies sent automatically |
-| Web POST/PATCH/DELETE | Yes | Read CSRF token from cookie, send in X-CSRFToken header |
-| Mobile requests | No | JWT auth, no cookies, CSRF not applicable |
-| Next.js SSR (server-to-server) | No | No cookies in server context, uses forwarded auth |
+| Scenario                       | CSRF Required | Approach                                                |
+| ------------------------------ | ------------- | ------------------------------------------------------- |
+| Web GET requests               | No            | Cookies sent automatically                              |
+| Web POST/PATCH/DELETE          | Yes           | Read CSRF token from cookie, send in X-CSRFToken header |
+| Mobile requests                | No            | JWT auth, no cookies, CSRF not applicable               |
+| Next.js SSR (server-to-server) | No            | No cookies in server context, uses forwarded auth       |
 
 ```typescript
 // Web: CSRF token handling in API client
 function getCsrfToken(): string | null {
   if (typeof document === "undefined") return null;
-  const cookie = document.cookie
-    .split("; ")
-    .find((row) => row.startsWith("csrftoken="));
+  const cookie = document.cookie.split("; ").find((row) => row.startsWith("csrftoken="));
   return cookie ? cookie.split("=")[1] : null;
 }
 
@@ -392,30 +521,30 @@ const webApiClient = createClient<paths>({
 
 ### Auth API Endpoints
 
-| Method | Path | Purpose | Auth Required |
-|--------|------|---------|--------------|
-| POST | `/api/v1/auth/signup` | Create new account | No |
-| POST | `/api/v1/auth/login` | Authenticate user | No |
-| POST | `/api/v1/auth/logout` | End session / invalidate token | Yes |
-| POST | `/api/v1/auth/password/reset` | Request password reset email | No |
-| POST | `/api/v1/auth/password/reset/confirm` | Set new password with reset key | No |
-| POST | `/api/v1/auth/password/change` | Change password (authenticated) | Yes |
-| POST | `/api/v1/auth/email/verify` | Verify email with key | No |
-| POST | `/api/v1/auth/email/verify/resend` | Resend verification email | Yes |
-| POST | `/api/v1/auth/token/refresh` | Refresh JWT access token (mobile) | No (refresh token required) |
-| GET | `/api/v1/users/me` | Get current authenticated user | Yes |
+| Method | Path                                  | Purpose                           | Auth Required               |
+| ------ | ------------------------------------- | --------------------------------- | --------------------------- |
+| POST   | `/api/v1/auth/signup`                 | Create new account                | No                          |
+| POST   | `/api/v1/auth/login`                  | Authenticate user                 | No                          |
+| POST   | `/api/v1/auth/logout`                 | End session / invalidate token    | Yes                         |
+| POST   | `/api/v1/auth/password/reset`         | Request password reset email      | No                          |
+| POST   | `/api/v1/auth/password/reset/confirm` | Set new password with reset key   | No                          |
+| POST   | `/api/v1/auth/password/change`        | Change password (authenticated)   | Yes                         |
+| POST   | `/api/v1/auth/email/verify`           | Verify email with key             | No                          |
+| POST   | `/api/v1/auth/email/verify/resend`    | Resend verification email         | Yes                         |
+| POST   | `/api/v1/auth/token/refresh`          | Refresh JWT access token (mobile) | No (refresh token required) |
+| GET    | `/api/v1/users/me`                    | Get current authenticated user    | Yes                         |
 
 ### Development vs Production Auth Settings
 
-| Setting | Development | Production |
-|---------|------------|------------|
-| SESSION_COOKIE_SECURE | False | True |
-| CSRF_COOKIE_SECURE | False | True |
-| SESSION_COOKIE_DOMAIN | Not set (localhost) | .example.com |
-| CORS_ALLOWED_ORIGINS | ["http://localhost:3000"] | Env var list |
-| CSRF_TRUSTED_ORIGINS | ["http://localhost:3000"] | Env var list |
-| EMAIL_BACKEND | django.core.mail.backends.console.EmailBackend | Production email (SES, Resend) |
-| ACCOUNT_EMAIL_VERIFICATION | "optional" (for dev convenience) | "mandatory" |
+| Setting                    | Development                                    | Production                     |
+| -------------------------- | ---------------------------------------------- | ------------------------------ |
+| SESSION_COOKIE_SECURE      | False                                          | True                           |
+| CSRF_COOKIE_SECURE         | False                                          | True                           |
+| SESSION_COOKIE_DOMAIN      | Not set (localhost)                            | .example.com                   |
+| CORS_ALLOWED_ORIGINS       | ["http://localhost:3000"]                      | Env var list                   |
+| CSRF_TRUSTED_ORIGINS       | ["http://localhost:3000"]                      | Env var list                   |
+| EMAIL_BACKEND              | django.core.mail.backends.console.EmailBackend | Production email (SES, Resend) |
+| ACCOUNT_EMAIL_VERIFICATION | "optional" (for dev convenience)               | "mandatory"                    |
 
 ## Constraints
 

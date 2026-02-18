@@ -13,11 +13,11 @@ The Foundation Template uses a Docker-first deployment strategy. All services ar
 
 Three compose files serve distinct purposes:
 
-| File | Purpose | Usage |
-|------|---------|-------|
-| `docker-compose.yml` | Infrastructure only (default dev) | `docker compose up` -- runs Postgres + Redis. Apps run on host. |
-| `docker-compose.full.yml` | Full Docker dev (all services) | `docker compose -f docker-compose.full.yml up` -- runs everything in containers. |
-| `docker-compose.prod.yml` | Production overrides | Extends base compose. Uses production Dockerfile stages. Adds restart policies. |
+| File                      | Purpose                           | Usage                                                                            |
+| ------------------------- | --------------------------------- | -------------------------------------------------------------------------------- |
+| `docker-compose.yml`      | Infrastructure only (default dev) | `docker compose up` -- runs Postgres + Redis. Apps run on host.                  |
+| `docker-compose.full.yml` | Full Docker dev (all services)    | `docker compose -f docker-compose.full.yml up` -- runs everything in containers. |
+| `docker-compose.prod.yml` | Production overrides              | Extends base compose. Uses production Dockerfile stages. Adds restart policies.  |
 
 **Default development model (hybrid):**
 
@@ -50,6 +50,7 @@ volumes:
 ```
 
 **Why hybrid dev is the default:**
+
 - File watching and hot reload work natively on host (no Docker VM filesystem latency)
 - pnpm/node_modules stay on host (no platform binary mismatches)
 - IDE autocomplete works without Docker volume indirection
@@ -63,7 +64,7 @@ services:
   api:
     build:
       context: ./apps/api
-      target: prod  # Uses production stage of multi-stage Dockerfile
+      target: prod # Uses production stage of multi-stage Dockerfile
     environment:
       DEBUG: "false"
     restart: unless-stopped
@@ -82,12 +83,12 @@ services:
 
 ### Docker Image Choices
 
-| Image | Why |
-|-------|-----|
+| Image                    | Why                                                                                                                                  |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ |
 | `pgvector/pgvector:pg16` | Official PGVector image based on Postgres 16. Extension pre-installed. Do NOT use plain `postgres:16` and install PGVector manually. |
-| `python:3.12-slim` | Slim variant reduces image size. Pin Python version to match local dev. |
-| `node:20-slim` | LTS version. Matches pnpm compatibility requirements. |
-| `redis:7-alpine` | Alpine variant for minimal image size. Redis 7 for Celery and caching. |
+| `python:3.12-slim`       | Slim variant reduces image size. Pin Python version to match local dev.                                                              |
+| `node:20-slim`           | LTS version. Matches pnpm compatibility requirements.                                                                                |
+| `redis:7-alpine`         | Alpine variant for minimal image size. Redis 7 for Celery and caching.                                                               |
 
 ### Dockerfile Patterns (Multi-Stage)
 
@@ -133,6 +134,22 @@ COPY . .
 RUN pnpm build
 CMD ["pnpm", "start"]
 ```
+
+**Implementation Notes:**
+
+- **Multi-Stage Builds:** Both API and web Dockerfiles use multi-stage builds to minimize final image size. Development stages include dev dependencies and debugging tools; production stages strip unnecessary packages. _(Decision: Phase 07)_
+
+- **Next.js Standalone Mode:** For production, configure Next.js with `output: 'standalone'` in `next.config.js`. This enables minimal Docker deployment by bundling only required dependencies, reducing image size by ~70%. _(Decision: Phase 07)_
+
+  ```javascript
+  // apps/web/next.config.js
+  module.exports = {
+    output: "standalone", // Minimal production bundle
+    // ... other config
+  };
+  ```
+
+  **Required:** When using standalone output, wrap `useSearchParams()` in a Suspense boundary in the root layout to prevent hydration errors. _(Decision: Phase 07)_
 
 **Expo Mobile:** NOT containerized. Even in full Docker mode, the Expo dev server runs on the host. Metro bundler requires host network access and USB access to physical devices.
 
@@ -238,12 +255,31 @@ jobs:
 ```
 
 **Key CI decisions:**
+
 - Three parallel jobs (api, web, mobile) -- a flake8 failure does not block mobile type-checking
 - Postgres service container with PGVector for API tests
 - `uv` for Python dependency installation (faster than pip)
 - pnpm caching via `actions/setup-node` built-in cache
 - Detox E2E tests are expensive (macOS runner); run on merge to main only
 - Expo/EAS Build for actual mobile builds (separate from basic CI)
+
+**CI/CD Implementation Patterns:**
+
+- **Parallel Job Execution:** Three separate jobs (`api`, `web`, `mobile`) run simultaneously for maximum CI speed. Failures are isolated by platform. _(Decision: Phase 07-03)_
+
+- **Triple-Layer Caching:** pip (uv compatible), pnpm, and Turbo caching reduces CI time from 10+ minutes to 2-3 minutes. GitHub Actions caches pnpm store; Turborepo caches build outputs. _(Decision: Phase 07-03)_
+
+- **Type Staleness Gate:** Separate workflow checks if generated TypeScript types match the committed OpenAPI spec using SHA-256 hash comparison. Clearer failure messaging than inline type-check. _(Decision: Phase 07-03)_
+
+  ```yaml
+  # .github/workflows/type-check.yml
+  - name: Check type staleness
+    run: |
+      sha256sum apps/api/openapi.json > before.txt
+      pnpm turbo generate:api-types
+      sha256sum apps/api/openapi.json > after.txt
+      diff before.txt after.txt || (echo "Types are stale!" && exit 1)
+  ```
 
 ### Environment Variable Strategy
 
@@ -261,6 +297,7 @@ foundation-template/
 ```
 
 **Docker Compose `.env`:**
+
 ```bash
 POSTGRES_DB=foundation
 POSTGRES_USER=foundation
@@ -269,6 +306,7 @@ DATABASE_URL=postgres://foundation:foundation@db:5432/foundation
 ```
 
 **Django `apps/api/.env`:**
+
 ```bash
 SECRET_KEY=django-insecure-change-me-in-production
 DEBUG=True
@@ -280,6 +318,7 @@ DJANGO_SETTINGS_MODULE=config.settings.development
 ```
 
 **Next.js `apps/web/.env.local`:**
+
 ```bash
 NEXT_PUBLIC_API_URL=http://localhost:8000
 ```
@@ -290,15 +329,15 @@ NEXT_PUBLIC_API_URL=http://localhost:8000
 
 The same Docker images deploy to any container platform:
 
-| Target | Method | Notes |
-|--------|--------|-------|
-| Local dev | Docker Compose (hybrid) | `docker compose up` for infra; apps on host |
-| AWS | ECS/Fargate or EC2 + Docker Compose | Fargate for serverless containers; EC2 for more control |
-| GCP | Cloud Run or GKE | Cloud Run is simplest for containerized apps |
-| Azure | Container Apps or AKS | Container Apps is the PaaS option |
-| DigitalOcean | App Platform or Droplet + Docker Compose | App Platform auto-deploys from Dockerfile |
-| Railway/Render | Direct Docker deployment | Simplest for solo developer; detects Dockerfile automatically |
-| Self-hosted | Docker Compose on VPS | Same compose file with production overrides |
+| Target         | Method                                   | Notes                                                         |
+| -------------- | ---------------------------------------- | ------------------------------------------------------------- |
+| Local dev      | Docker Compose (hybrid)                  | `docker compose up` for infra; apps on host                   |
+| AWS            | ECS/Fargate or EC2 + Docker Compose      | Fargate for serverless containers; EC2 for more control       |
+| GCP            | Cloud Run or GKE                         | Cloud Run is simplest for containerized apps                  |
+| Azure          | Container Apps or AKS                    | Container Apps is the PaaS option                             |
+| DigitalOcean   | App Platform or Droplet + Docker Compose | App Platform auto-deploys from Dockerfile                     |
+| Railway/Render | Direct Docker deployment                 | Simplest for solo developer; detects Dockerfile automatically |
+| Self-hosted    | Docker Compose on VPS                    | Same compose file with production overrides                   |
 
 **Recommended starting point for solo developer:** Railway or Render for API, Vercel for Next.js web app, EAS Build for mobile. Move to AWS/GCP when scaling demands it.
 

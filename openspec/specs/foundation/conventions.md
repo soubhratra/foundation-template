@@ -13,25 +13,25 @@ This document defines naming, structure, and style conventions for every languag
 
 #### Module and File Naming
 
-| Item | Convention | Example |
-|------|-----------|---------|
-| Django app names | snake_case, plural nouns | `accounts`, `core`, `ai` |
-| Python files | snake_case | `user_service.py`, `auth_schemas.py` |
-| Classes | PascalCase | `UserService`, `AccountController` |
-| Functions / methods | snake_case | `get_current_user()`, `create_embedding()` |
-| Constants | UPPER_SNAKE_CASE | `MAX_EMBEDDING_DIMENSIONS`, `DEFAULT_PAGE_SIZE` |
-| Private methods | leading underscore | `_validate_token()` |
-| Django model classes | PascalCase, singular noun | `User`, `Document`, `Embedding` |
-| Pydantic schema classes | PascalCase with suffix | `UserOut`, `UserCreateIn`, `LoginIn`, `TokenOut` |
+| Item                    | Convention                | Example                                          |
+| ----------------------- | ------------------------- | ------------------------------------------------ |
+| Django app names        | snake_case, plural nouns  | `accounts`, `core`, `ai`                         |
+| Python files            | snake_case                | `user_service.py`, `auth_schemas.py`             |
+| Classes                 | PascalCase                | `UserService`, `AccountController`               |
+| Functions / methods     | snake_case                | `get_current_user()`, `create_embedding()`       |
+| Constants               | UPPER_SNAKE_CASE          | `MAX_EMBEDDING_DIMENSIONS`, `DEFAULT_PAGE_SIZE`  |
+| Private methods         | leading underscore        | `_validate_token()`                              |
+| Django model classes    | PascalCase, singular noun | `User`, `Document`, `Embedding`                  |
+| Pydantic schema classes | PascalCase with suffix    | `UserOut`, `UserCreateIn`, `LoginIn`, `TokenOut` |
 
 #### Pydantic Schema Naming Convention
 
-| Suffix | Usage | Example |
-|--------|-------|---------|
-| `In` | Request body schemas (input) | `UserCreateIn`, `LoginIn`, `PasswordResetIn` |
-| `Out` | Response schemas (output) | `UserOut`, `TokenOut`, `ErrorOut` |
-| `Filter` | Query parameter schemas | `UserFilter`, `DocumentFilter` |
-| `Update` | Partial update schemas | `UserUpdateIn`, `ProfileUpdateIn` |
+| Suffix   | Usage                        | Example                                      |
+| -------- | ---------------------------- | -------------------------------------------- |
+| `In`     | Request body schemas (input) | `UserCreateIn`, `LoginIn`, `PasswordResetIn` |
+| `Out`    | Response schemas (output)    | `UserOut`, `TokenOut`, `ErrorOut`            |
+| `Filter` | Query parameter schemas      | `UserFilter`, `DocumentFilter`               |
+| `Update` | Partial update schemas       | `UserUpdateIn`, `ProfileUpdateIn`            |
 
 #### Django App Structure (Layered Pattern)
 
@@ -55,6 +55,7 @@ apps/api/apps/<app_name>/
 ```
 
 **Layer responsibilities:**
+
 - **controllers.py**: HTTP concerns only. Request parsing, auth checking, delegating to services, returning responses.
 - **services.py**: Business logic. Testable without HTTP context. Receives typed inputs, returns domain objects.
 - **models.py**: Data layer. Django ORM models, custom managers, querysets.
@@ -112,26 +113,26 @@ Selected via `DJANGO_SETTINGS_MODULE=config.settings.development` environment va
 
 #### File Naming
 
-| Item | Convention | Example |
-|------|-----------|---------|
-| Component files | kebab-case | `user-profile.tsx`, `auth-form.tsx` |
-| Hook files | kebab-case with use- prefix | `use-auth.ts`, `use-current-user.ts` |
-| Utility files | kebab-case | `format-date.ts`, `api-helpers.ts` |
-| Type files | kebab-case | `user-types.ts`, `api-types.d.ts` |
-| Test files | kebab-case with .test suffix | `user-profile.test.tsx`, `use-auth.test.ts` |
-| Config files | kebab-case or standard names | `eslint.config.js`, `tailwind.config.ts` |
-| Constant files | kebab-case | `route-paths.ts`, `api-endpoints.ts` |
+| Item            | Convention                   | Example                                     |
+| --------------- | ---------------------------- | ------------------------------------------- |
+| Component files | kebab-case                   | `user-profile.tsx`, `auth-form.tsx`         |
+| Hook files      | kebab-case with use- prefix  | `use-auth.ts`, `use-current-user.ts`        |
+| Utility files   | kebab-case                   | `format-date.ts`, `api-helpers.ts`          |
+| Type files      | kebab-case                   | `user-types.ts`, `api-types.d.ts`           |
+| Test files      | kebab-case with .test suffix | `user-profile.test.tsx`, `use-auth.test.ts` |
+| Config files    | kebab-case or standard names | `eslint.config.js`, `tailwind.config.ts`    |
+| Constant files  | kebab-case                   | `route-paths.ts`, `api-endpoints.ts`        |
 
 #### Component and Export Naming
 
-| Item | Convention | Example |
-|------|-----------|---------|
-| React components | PascalCase | `UserProfile`, `AuthForm`, `DashboardLayout` |
-| Hooks | camelCase with use prefix | `useAuth`, `useCurrentUser`, `useApiClient` |
-| Utilities | camelCase | `formatDate`, `parseApiError`, `buildQueryString` |
-| Constants | UPPER_SNAKE_CASE | `API_BASE_URL`, `MAX_FILE_SIZE` |
-| Types/Interfaces | PascalCase | `User`, `AuthState`, `ApiResponse<T>` |
-| Enums | PascalCase | `UserRole`, `AuthStatus` |
+| Item             | Convention                | Example                                           |
+| ---------------- | ------------------------- | ------------------------------------------------- |
+| React components | PascalCase                | `UserProfile`, `AuthForm`, `DashboardLayout`      |
+| Hooks            | camelCase with use prefix | `useAuth`, `useCurrentUser`, `useApiClient`       |
+| Utilities        | camelCase                 | `formatDate`, `parseApiError`, `buildQueryString` |
+| Constants        | UPPER_SNAKE_CASE          | `API_BASE_URL`, `MAX_FILE_SIZE`                   |
+| Types/Interfaces | PascalCase                | `User`, `AuthState`, `ApiResponse<T>`             |
+| Enums            | PascalCase                | `UserRole`, `AuthStatus`                          |
 
 #### Barrel Exports
 
@@ -146,6 +147,7 @@ export type { LoginInput, SignupInput } from "./auth";
 ```
 
 **Rules:**
+
 - Barrel exports in `packages/*/src/index.ts` -- always.
 - Barrel exports in `apps/*/components/` -- optional, use when directory has 5+ components.
 - Never re-export third-party libraries through barrels.
@@ -156,31 +158,26 @@ export type { LoginInput, SignupInput } from "./auth";
 // packages/config-eslint/index.js
 import tseslint from "typescript-eslint";
 
-export const baseConfig = tseslint.config(
-  ...tseslint.configs.recommended,
-  {
-    ignores: ["**/dist/**", "**/.next/**", "**/node_modules/**"],
-  }
-);
+export const baseConfig = tseslint.config(...tseslint.configs.recommended, {
+  ignores: ["**/dist/**", "**/.next/**", "**/node_modules/**"],
+});
 
 // packages/config-eslint/next.js
 import { baseConfig } from "./index.js";
 import reactPlugin from "eslint-plugin-react";
 import nextPlugin from "@next/eslint-plugin-next";
 
-export const nextConfig = tseslint.config(
-  ...baseConfig,
-  { plugins: { react: reactPlugin, "@next/next": nextPlugin } }
-);
+export const nextConfig = tseslint.config(...baseConfig, {
+  plugins: { react: reactPlugin, "@next/next": nextPlugin },
+});
 
 // packages/config-eslint/react-native.js
 import { baseConfig } from "./index.js";
 import reactPlugin from "eslint-plugin-react";
 
-export const reactNativeConfig = tseslint.config(
-  ...baseConfig,
-  { plugins: { react: reactPlugin } }
-);
+export const reactNativeConfig = tseslint.config(...baseConfig, {
+  plugins: { react: reactPlugin },
+});
 ```
 
 **ESLint 9 flat config is mandatory.** Legacy `.eslintrc` files must not exist anywhere in the repo.
@@ -191,16 +188,17 @@ export const reactNativeConfig = tseslint.config(
 
 All internal packages use the `@repo/` scope:
 
-| Package | Name |
-|---------|------|
-| API client | `@repo/api-client` |
-| Validation schemas | `@repo/schemas` |
-| UI primitives | `@repo/ui-primitives` |
-| ESLint config | `@repo/config-eslint` |
-| TypeScript config | `@repo/config-ts` |
-| Django API (tasks only) | `@repo/api` |
+| Package                 | Name                  |
+| ----------------------- | --------------------- |
+| API client              | `@repo/api-client`    |
+| Validation schemas      | `@repo/schemas`       |
+| UI primitives           | `@repo/ui-primitives` |
+| ESLint config           | `@repo/config-eslint` |
+| TypeScript config       | `@repo/config-ts`     |
+| Django API (tasks only) | `@repo/api`           |
 
 **Rules:**
+
 - `@repo/` scope is reserved for internal packages. Never publish to npm.
 - Each package.json declares `"private": true`.
 - Internal dependencies use `"workspace:*"` protocol in pnpm.
@@ -228,14 +226,14 @@ Every shared package must declare proper `exports` for both dev and build:
 
 #### Branch Naming
 
-| Pattern | Usage | Example |
-|---------|-------|---------|
-| `main` | Production-ready code | -- |
-| `feat/<description>` | New features | `feat/user-profile-page` |
-| `fix/<description>` | Bug fixes | `fix/login-csrf-token` |
-| `chore/<description>` | Maintenance tasks | `chore/update-dependencies` |
-| `docs/<description>` | Documentation only | `docs/api-contracts-spec` |
-| `refactor/<description>` | Code restructuring | `refactor/auth-service-layer` |
+| Pattern                  | Usage                 | Example                       |
+| ------------------------ | --------------------- | ----------------------------- |
+| `main`                   | Production-ready code | --                            |
+| `feat/<description>`     | New features          | `feat/user-profile-page`      |
+| `fix/<description>`      | Bug fixes             | `fix/login-csrf-token`        |
+| `chore/<description>`    | Maintenance tasks     | `chore/update-dependencies`   |
+| `docs/<description>`     | Documentation only    | `docs/api-contracts-spec`     |
+| `refactor/<description>` | Code restructuring    | `refactor/auth-service-layer` |
 
 #### Commit Message Format
 
@@ -252,6 +250,7 @@ Every shared package must declare proper `exports` for both dev and build:
 **Scopes:** `api`, `web`, `mobile`, `api-client`, `schemas`, `ui`, `config`, `docker`, `ci`
 
 **Examples:**
+
 ```
 feat(api): add user profile update endpoint
 fix(web): resolve CSRF token forwarding in auth proxy
@@ -265,12 +264,12 @@ ci: add OpenAPI spec drift detection
 
 #### Strategy Per Service
 
-| Service | Env File | Gitignored | Prefix Rules |
-|---------|----------|------------|--------------|
-| Docker Compose | `.env` | Yes | None |
-| Django | `apps/api/.env` | Yes | None |
-| Next.js | `apps/web/.env.local` | Yes | `NEXT_PUBLIC_` for client-exposed vars |
-| Expo | `apps/mobile/.env` | Yes | `EXPO_PUBLIC_` for client-exposed vars |
+| Service        | Env File              | Gitignored | Prefix Rules                           |
+| -------------- | --------------------- | ---------- | -------------------------------------- |
+| Docker Compose | `.env`                | Yes        | None                                   |
+| Django         | `apps/api/.env`       | Yes        | None                                   |
+| Next.js        | `apps/web/.env.local` | Yes        | `NEXT_PUBLIC_` for client-exposed vars |
+| Expo           | `apps/mobile/.env`    | Yes        | `EXPO_PUBLIC_` for client-exposed vars |
 
 Each service has a committed `.env.example` with dummy values:
 
@@ -287,6 +286,7 @@ NEXT_PUBLIC_API_URL=http://localhost:8000
 ```
 
 **Rules:**
+
 - `.env` files are ALWAYS gitignored. Never commit secrets.
 - `.env.example` files are ALWAYS committed. Document every required variable.
 - Validate env vars on startup (Django: django-environ, Next.js: built-in).
@@ -360,7 +360,7 @@ apps/
 repos:
   # Python quality
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.8.0  # Pin to specific version
+    rev: v0.8.0 # Pin to specific version
     hooks:
       - id: ruff
         args: [--fix]
@@ -396,6 +396,22 @@ repos:
   }
 }
 ```
+
+**Pre-Commit Implementation Strategy:**
+
+- **Auto-fix with Block:** Hooks auto-fix format and lint issues where possible (`ruff --fix`, `eslint --fix`, `prettier --write`), but block commits if violations remain. Balances speed and control. _(Decision: Phase 07-devex-ci-cd)_
+
+- **Staged Files Only:** Pre-commit runs only on staged files for speed (typical runtime <5 seconds). CI runs full checks on all files for completeness. _(Decision: Phase 07-devex-ci-cd)_
+
+- **Scope:** Python (ruff), JS/TS (ESLint + Prettier via lint-staged), file hygiene (trailing whitespace, end-of-file, YAML syntax).
+
+**Testing Conventions:**
+
+- **Django Test Client:** Use Django's test client for Ninja Extra controllers, not direct controller instantiation. Avoids registry conflicts. _(Decision: Phase 07)_
+
+- **PGVector Extension Ordering:** Create PGVector extension before any tables with vector fields in migration dependencies. Fields depend on extension types. _(Decision: Phase 07)_
+
+- **Mobile E2E Scope:** Template includes iOS-only Detox configuration. Android can be added by users; keeping template simple. _(Decision: Phase 07)_
 
 ## Constraints
 

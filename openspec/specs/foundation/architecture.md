@@ -173,33 +173,33 @@ foundation-template/
 
 ### Structure Rationale
 
-| Directory | Rationale |
-|-----------|-----------|
-| `apps/` | Deployable applications. Turborepo convention. Each app has its own build process and server. |
-| `apps/api/` | Django project. NOT a pnpm workspace. Python dependencies managed by uv. Participates in Turborepo via minimal package.json for task registration. |
-| `packages/` | Shared libraries consumed by apps. Not independently deployable. |
-| `packages/api-client/` | Auto-generated types live in committed file. Custom wrappers and re-exports are stable across regeneration. |
-| `packages/config-*` | Shared configurations prevent drift between apps. Each app extends rather than duplicates. |
-| `apps/api/config/settings/` | Split settings pattern (base/development/production) selected via DJANGO_SETTINGS_MODULE env var. |
-| `apps/api/apps/` | Django applications follow controllers/services/models layered pattern. |
-| `apps/api/apps/ai/` | AI module is fully isolated. All AI code lives here. Removable without affecting other apps. |
-| `tooling/` | Not a Turborepo workspace. Scripts and Dockerfiles supporting development. Keeps the root clean. |
+| Directory                   | Rationale                                                                                                                                          |
+| --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `apps/`                     | Deployable applications. Turborepo convention. Each app has its own build process and server.                                                      |
+| `apps/api/`                 | Django project. NOT a pnpm workspace. Python dependencies managed by uv. Participates in Turborepo via minimal package.json for task registration. |
+| `packages/`                 | Shared libraries consumed by apps. Not independently deployable.                                                                                   |
+| `packages/api-client/`      | Auto-generated types live in committed file. Custom wrappers and re-exports are stable across regeneration.                                        |
+| `packages/config-*`         | Shared configurations prevent drift between apps. Each app extends rather than duplicates.                                                         |
+| `apps/api/config/settings/` | Split settings pattern (base/development/production) selected via DJANGO_SETTINGS_MODULE env var.                                                  |
+| `apps/api/apps/`            | Django applications follow controllers/services/models layered pattern.                                                                            |
+| `apps/api/apps/ai/`         | AI module is fully isolated. All AI code lives here. Removable without affecting other apps.                                                       |
+| `tooling/`                  | Not a Turborepo workspace. Scripts and Dockerfiles supporting development. Keeps the root clean.                                                   |
 
 ### Component Responsibilities
 
-| Component | Responsibility | Does NOT Do |
-|-----------|---------------|-------------|
-| Django Ninja Extra API | All business logic, auth, data persistence, OpenAPI spec generation | Serve HTML, manage JS/TS dependencies |
-| Next.js Web App | Web UI rendering, SSR/SSG, SEO, auth middleware (cookie validation) | Business logic, direct database access |
-| Expo Mobile App | iOS/Android native experience, push notifications, device APIs | Business logic, session cookie auth |
-| @repo/api-client | Type-safe HTTP client, auto-generated types | Business logic, validation |
-| @repo/schemas | Cross-platform input validation (Zod) | API communication, UI rendering |
-| @repo/ui-primitives | Foundational cross-platform UI components (Button, Text, Input) | Navigation, complex layouts, animations |
-| @repo/business-logic | Platform-agnostic React hooks (useAuth, useUser), utilities, constants, formatters | UI rendering, direct API calls (delegates to api-client) |
-| @repo/config-eslint | Shared ESLint configurations | Runtime code |
-| @repo/config-ts | Shared TypeScript configurations | Runtime code |
-| PostgreSQL + PGVector | Relational data storage, vector embeddings | Application logic |
-| Redis | Celery task broker, django-redis caching, optional session storage | Business logic, data persistence |
+| Component              | Responsibility                                                                     | Does NOT Do                                              |
+| ---------------------- | ---------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| Django Ninja Extra API | All business logic, auth, data persistence, OpenAPI spec generation                | Serve HTML, manage JS/TS dependencies                    |
+| Next.js Web App        | Web UI rendering, SSR/SSG, SEO, auth middleware (cookie validation)                | Business logic, direct database access                   |
+| Expo Mobile App        | iOS/Android native experience, push notifications, device APIs                     | Business logic, session cookie auth                      |
+| @repo/api-client       | Type-safe HTTP client, auto-generated types                                        | Business logic, validation                               |
+| @repo/schemas          | Cross-platform input validation (Zod)                                              | API communication, UI rendering                          |
+| @repo/ui-primitives    | Foundational cross-platform UI components (Button, Text, Input)                    | Navigation, complex layouts, animations                  |
+| @repo/business-logic   | Platform-agnostic React hooks (useAuth, useUser), utilities, constants, formatters | UI rendering, direct API calls (delegates to api-client) |
+| @repo/config-eslint    | Shared ESLint configurations                                                       | Runtime code                                             |
+| @repo/config-ts        | Shared TypeScript configurations                                                   | Runtime code                                             |
+| PostgreSQL + PGVector  | Relational data storage, vector embeddings                                         | Application logic                                        |
+| Redis                  | Celery task broker, django-redis caching, optional session storage                 | Business logic, data persistence                         |
 
 ### Package Dependency Graph
 
@@ -233,6 +233,7 @@ foundation-template/
 ```
 
 **Dependency rules:**
+
 - config-eslint, config-ts: No monorepo dependencies. Foundation layer.
 - schemas: No monorepo dependencies. Pure Zod schemas.
 - ui-primitives: No monorepo dependencies. Pure React Native Web primitives.
@@ -240,6 +241,164 @@ foundation-template/
 - business-logic: Depends on api-client (uses typed client) and schemas (uses validation). Contains React hooks, utility functions. This is the primary code-sharing layer.
 - web and mobile: Depend on all packages they need directly. Composition layer.
 - No package-to-package chains longer than one hop.
+
+### Workspace Configuration Patterns
+
+#### Config Packages in Root devDependencies
+
+**Pattern:** Link `@repo/config-*` packages in root `package.json` devDependencies.
+
+**Rationale:**
+
+- Allows Node.js and TypeScript module resolution to find config packages
+- Enables config verification commands at root level
+- Required for ESLint and TypeScript to resolve shared configurations
+
+**Implementation:**
+
+```json
+// Root package.json
+{
+  "devDependencies": {
+    "@repo/config-eslint": "workspace:*",
+    "@repo/config-ts": "workspace:*",
+    "typescript": "^5.6.0",
+    "eslint": "^9.0.0"
+  }
+}
+```
+
+**Decision:** Phase 01
+
+#### Root ESLint Configuration
+
+**Location:** `eslint.config.js` at repository root
+**Rationale:** lint-staged runs from root and needs config for package-level discovery.
+
+**Pattern:**
+
+```javascript
+// eslint.config.js (root)
+import baseConfig from "@repo/config-eslint";
+
+export default [...baseConfig];
+```
+
+**Note:** Individual packages can extend this with package-specific rules.
+
+**Decision:** Phase 08-cli-scaffolder
+
+#### Expo Type Environment Alignment
+
+**Issue:** TypeScript ReactNode mismatch between Expo (React Native) and web packages.
+**Impact:** Metro type-check fails with incompatible React type definitions.
+
+**Solution:** Align `@types/react` versions across all packages to React 19 definitions.
+
+**Configuration:**
+
+```json
+// apps/mobile/package.json
+{
+  "devDependencies": {
+    "@types/react": "~19.0.0", // Match web packages
+    "react": "19.0.0",
+    "react-native": "0.76.x"
+  }
+}
+```
+
+**Decision:** Phase 03
+
+#### Metro Workspace Package Resolution
+
+**Issue:** Expo bundler needs explicit alias to resolve `@repo/*` workspace packages.
+**Impact:** Without alias, Metro cannot find `@repo/api-client` and other shared packages.
+
+**Solution:** Add Metro alias for workspace packages.
+
+**Configuration:**
+
+```javascript
+// apps/mobile/metro.config.js
+const { getDefaultConfig } = require("expo/metro-config");
+const path = require("path");
+
+const config = getDefaultConfig(__dirname);
+
+config.watchFolders = [path.resolve(__dirname, "../..")];
+
+config.resolver.nodeModulesPaths = [
+  path.resolve(__dirname, "node_modules"),
+  path.resolve(__dirname, "../../node_modules"),
+];
+
+// Workspace package aliases
+config.resolver.extraNodeModules = {
+  "@repo/api-client": path.resolve(__dirname, "../../packages/api-client"),
+  "@repo/validation": path.resolve(__dirname, "../../packages/validation"),
+  "@repo/ui": path.resolve(__dirname, "../../packages/ui"),
+  "@repo/business-logic": path.resolve(__dirname, "../../packages/business-logic"),
+};
+
+module.exports = config;
+```
+
+**Decision:** Phase 05-mobile-application
+
+### Centralization Patterns
+
+#### API Base URL Helper
+
+**Location:** `apps/web/app/base-url.ts` (or similar)
+**Purpose:** Centralize API base URL construction for server and client components.
+
+**Pattern:**
+
+```typescript
+// apps/web/app/base-url.ts
+export function buildApiBaseUrl(request?: Request): string {
+  // Server-side: use internal URL
+  if (typeof window === "undefined") {
+    return process.env.API_INTERNAL_URL ?? "http://localhost:8000";
+  }
+  // Client-side: use public URL
+  return process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+}
+```
+
+**Benefit:** Layouts and routes reuse without duplicating logic.
+**Decision:** Phase 04-web-application
+
+#### CSRF-Aware API Helper
+
+**Location:** `apps/web/lib/postJson.ts` (or similar)
+**Purpose:** Centralize CSRF token handling for Django headless API mutations.
+
+**Pattern:**
+
+```typescript
+// apps/web/lib/postJson.ts
+function getCsrfToken(): string | null {
+  const match = document.cookie.match(/csrftoken=([^;]+)/);
+  return match ? match[1] : null;
+}
+
+export async function postJson(url: string, body: any) {
+  return fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": getCsrfToken() ?? "",
+    },
+    credentials: "include",
+    body: JSON.stringify(body),
+  });
+}
+```
+
+**Benefit:** Every auth mutation shares the same Django headless request wiring.
+**Decision:** Phase 04-web-application
 
 ### Build Order (Phase Dependency Chain)
 
@@ -397,6 +556,7 @@ volumes:
 ```
 
 **Why hybrid:**
+
 - File watching and hot reload work natively on host (no Docker VM filesystem latency)
 - pnpm/node_modules stay on host (no platform binary mismatches)
 - IDE autocomplete works without Docker volume indirection
@@ -406,15 +566,16 @@ volumes:
 
 ### Scaling Considerations
 
-| Concern | 100 users | 10K users | 100K+ users |
-|---------|-----------|-----------|-------------|
-| API | Single Django process (runserver) | Gunicorn 4-8 workers behind nginx | Horizontal scaling: multiple Django pods behind load balancer |
-| Database | Single Postgres instance | Connection pooling (PgBouncer), query optimization | Read replicas, partitioning, HNSW index tuning |
-| Background jobs | No worker needed | Celery with Redis broker, 2-4 workers | Dedicated Celery queues, autoscaling workers |
-| Frontend | Vercel free tier or single VPS | Vercel Pro or self-hosted with CDN | Edge functions, ISR, regional deployment |
-| AI/Embeddings | Synchronous generation | Async via Celery, batch processing | Dedicated embedding worker, pre-computed results |
+| Concern         | 100 users                         | 10K users                                          | 100K+ users                                                   |
+| --------------- | --------------------------------- | -------------------------------------------------- | ------------------------------------------------------------- |
+| API             | Single Django process (runserver) | Gunicorn 4-8 workers behind nginx                  | Horizontal scaling: multiple Django pods behind load balancer |
+| Database        | Single Postgres instance          | Connection pooling (PgBouncer), query optimization | Read replicas, partitioning, HNSW index tuning                |
+| Background jobs | No worker needed                  | Celery with Redis broker, 2-4 workers              | Dedicated Celery queues, autoscaling workers                  |
+| Frontend        | Vercel free tier or single VPS    | Vercel Pro or self-hosted with CDN                 | Edge functions, ISR, regional deployment                      |
+| AI/Embeddings   | Synchronous generation            | Async via Celery, batch processing                 | Dedicated embedding worker, pre-computed results              |
 
 **What breaks first:**
+
 1. Database connections (Django default: new connection per request; Postgres default limit: 100)
 2. Long-running AI requests (LLM calls take 5-30s, block Django workers)
 3. OpenAPI spec size (grows with API surface; split modules if needed)
@@ -423,17 +584,19 @@ volumes:
 
 **Strategy: Session-based for web, JWT for mobile.**
 
-| Platform | Auth Mechanism | Token Storage | Refresh Strategy |
-|----------|---------------|---------------|------------------|
-| Web (Next.js) | Session cookies (httpOnly) | Browser cookie (set by Django) | Django session middleware handles refresh |
-| Mobile (Expo) | JWT access + refresh tokens | expo-secure-store | api-client interceptor detects 401, POST /api/auth/refresh, retry |
+| Platform      | Auth Mechanism              | Token Storage                  | Refresh Strategy                                                  |
+| ------------- | --------------------------- | ------------------------------ | ----------------------------------------------------------------- |
+| Web (Next.js) | Session cookies (httpOnly)  | Browser cookie (set by Django) | Django session middleware handles refresh                         |
+| Mobile (Expo) | JWT access + refresh tokens | expo-secure-store              | api-client interceptor detects 401, POST /api/auth/refresh, retry |
 
 **Why dual-mode auth:**
+
 - **Web (Session/Cookie):** Django Allauth naturally provides session-based auth. httpOnly cookies are more secure than storing JWTs in browser localStorage. Next.js middleware can read the session cookie for server-side auth checks without exposing tokens to client JavaScript.
 - **Mobile (JWT):** Mobile apps cannot use cookies effectively. JWT access + refresh token pair stored in expo-secure-store (hardware-backed secure storage). The api-client package includes an interceptor for transparent token refresh.
 - **Django Allauth** supports both flows. The headless mode provides token-based endpoints alongside session-based auth. `django-ninja-jwt` can be added for JWT-specific support with Django Ninja.
 
 **Auth flow:**
+
 ```
 Web: Browser -> httpOnly cookie -> Next.js middleware validates -> proxies to Django with cookie
 Mobile: App -> expo-secure-store token -> Authorization: Bearer header -> Django validates JWT
