@@ -8,30 +8,73 @@ A complete full-stack monorepo starter for building modern SaaS products. Includ
 
 ### Using the CLI Scaffolder (Recommended)
 
-Generate a new project from this template:
+**Create a new project from this template:**
 
 ```bash
-# From this repo
+# 1. Clone the foundation-template repository (one-time setup)
+git clone https://github.com/soubhratra/foundation-template.git
+cd foundation-template
+
+# 2. Install dependencies (one-time setup)
+pnpm install
+
+# 3. Build the CLI scaffolder (one-time setup)
 cd packages/create-foundation-app
 pnpm build
-node bin/cli.js
 
-# Or after publishing to npm
-pnpm create foundation-app
+# 4. Run the CLI to generate your project
+node bin/cli.js
 ```
 
-The CLI will:
+**The CLI will prompt you for:**
 
-- ✅ Prompt for project name and feature selection
-- ✅ Copy and transform the template
+1. **Project name** (e.g., `my-saas-app`)
+2. **Features to include** (web/mobile/landing/AI - all checked by default)
+3. **Output directory** (e.g., `../my-saas-app` - **outside this repo**)
+
+**The CLI will then:**
+
+- ✅ Copy template files to your specified location
+- ✅ Transform placeholders (foundation-template → my-saas-app)
 - ✅ Generate unique secrets (Django SECRET_KEY, database passwords)
-- ✅ Remove excluded platforms (web/mobile/landing/AI)
+- ✅ Remove excluded platforms (if any unchecked)
 - ✅ Run quality gates (lint + type-check + tests)
-- ✅ Deliver a working project ready to run
+- ✅ Deliver a **standalone project** ready to run
 
-### Manual Setup (Development)
+**After generation:**
 
-Clone and run this template directly:
+```bash
+# Navigate to your NEW project (outside foundation-template)
+cd ../my-saas-app  # or wherever you specified
+
+# Your new project is ready! Start development:
+docker compose up -d
+pnpm dev
+```
+
+> **Note:** The generated project is completely independent. You can safely delete the `foundation-template` directory after scaffolding.
+
+**📌 Using on a Different Computer:**
+
+On any new machine, simply clone `foundation-template`, run the CLI steps above, and generate your project. The template is a **development tool**, not part of your generated project.
+
+**📦 Future: npm Package (Coming Soon):**
+
+Once published to npm, you'll be able to run this from anywhere without cloning:
+
+```bash
+pnpm create foundation-app
+# or
+npx create-foundation-app
+```
+
+This will work the same way, but without requiring the clone step.
+
+---
+
+### Manual Setup (Alternative)
+
+Clone and run this template directly for development/testing:
 
 ```bash
 # 1. Clone the repository
