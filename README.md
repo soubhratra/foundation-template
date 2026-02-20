@@ -47,12 +47,17 @@ node bin/cli.js
 # Navigate to your NEW project (outside foundation-template)
 cd ../my-saas-app  # or wherever you specified
 
-# Your new project is ready! Start development:
+# Initialize fresh git repository (no template history)
+git init
+git add .
+git commit -m "feat: initial commit from foundation-template"
+
+# Start development
 docker compose up -d
 pnpm dev
 ```
 
-> **Note:** The generated project is completely independent. You can safely delete the `foundation-template` directory after scaffolding.
+> **Note:** The generated project is completely independent with NO git history from the template. You can safely delete the `foundation-template` directory after scaffolding.
 
 **📌 Using on a Different Computer:**
 

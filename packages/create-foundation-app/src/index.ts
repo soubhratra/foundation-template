@@ -112,6 +112,8 @@ export async function main() {
         "\n" +
         pc.dim(`  cd ${config.outputDir}`) +
         "\n" +
+        pc.dim("  git init  # Initialize fresh repository (no template history)") +
+        "\n" +
         pc.dim(`  ${skipValidation ? "pnpm install" : "# Dependencies already installed"}`) +
         "\n" +
         pc.dim("  docker compose up -d") +
