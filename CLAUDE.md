@@ -322,6 +322,25 @@ When working on a specific app, also read that app's local CLAUDE.md:
 - If a project needs to deviate from foundation specs, create project-specific
   specs in `openspec/specs/[domain]/` instead of modifying foundation specs.
 
+### Self-Contained Specs Rule
+
+Foundation specs (`openspec/specs/`) are copied verbatim to every new product scaffolded using this template. The `.planning/` directory is **not** copied — it is explicitly excluded by the CLI scaffolder.
+
+**Therefore: specs must be fully self-contained.** Every spec must include:
+
+- **What** the decision is (the rule or pattern)
+- **Why** it was chosen (rationale, tradeoffs, constraints)
+- **What alternatives were rejected** and why they were rejected
+
+Never reference `.planning/` files in spec documents as a source of rationale. Any rationale worth preserving must live in the spec itself, inline with the decision it explains.
+
+This rule applies equally to:
+
+- Foundation specs (`openspec/specs/foundation/`) — inherited by all products
+- Product-specific specs (`openspec/specs/[domain]/`) — created per product
+
+**When writing or updating any spec**, ask: _"If a developer on a new product repo read only this spec, would they understand the decision and could they make consistent future decisions without external context?"_ If no, add the missing rationale inline.
+
 ### Workflow Commands
 
 **Create a change:**
