@@ -310,6 +310,22 @@ export default [...baseConfig];
 
 **Decision:** Phase 03
 
+#### pnpm node-linker=hoisted
+
+**What:** `.npmrc` at repo root must contain:
+
+```
+node-linker=hoisted
+```
+
+**Why:** pnpm's default symlink strategy creates a virtual store layout where packages are symlinked rather than physically present in `node_modules/`. Metro bundler (Expo) cannot follow these symlinks during bundle resolution — it silently fails to find `@repo/*` workspace packages, producing confusing "cannot find module" errors at bundle time that don't appear in Next.js (which uses webpack and handles symlinks correctly).
+
+The hoisted layout physically copies all packages into `node_modules/` at the workspace root, which Metro can resolve without special configuration.
+
+**Rejected alternative:** pnpm default symlink strategy — works for Next.js and Node.js tools but silently breaks Metro. The failure is non-obvious because Next.js builds succeed while only the Expo bundler is affected.
+
+**Decision:** Phase 01 (Monorepo Foundation)
+
 #### Metro Workspace Package Resolution
 
 **Issue:** Expo bundler needs explicit alias to resolve `@repo/*` workspace packages.
