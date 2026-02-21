@@ -243,24 +243,24 @@ with connection.cursor() as cursor:
 
 **Available distance functions from `pgvector.django`:**
 
-| Function | Operator Class | Use Case |
-|----------|---------------|----------|
-| `CosineDistance` | `vector_cosine_ops` | Default for OpenAI/Anthropic embeddings. Range: 0 (identical) to 2 (opposite). |
-| `L2Distance` | `vector_l2_ops` | Euclidean distance. Use when magnitude matters. |
-| `MaxInnerProduct` | `vector_ip_ops` | Dot product. Use for pre-normalized embeddings. |
+| Function          | Operator Class      | Use Case                                                                       |
+| ----------------- | ------------------- | ------------------------------------------------------------------------------ |
+| `CosineDistance`  | `vector_cosine_ops` | Default for OpenAI/Anthropic embeddings. Range: 0 (identical) to 2 (opposite). |
+| `L2Distance`      | `vector_l2_ops`     | Euclidean distance. Use when magnitude matters.                                |
+| `MaxInnerProduct` | `vector_ip_ops`     | Dot product. Use for pre-normalized embeddings.                                |
 
 **Rule:** The distance function used in queries MUST match the operator class on the HNSW index. Using `CosineDistance` with a `vector_l2_ops` index silently bypasses the index.
 
 ### Migration Strategy
 
-| Rule | Rationale |
-|------|-----------|
-| Always use migrations | Never modify the database schema manually. Django migrations are the source of truth. |
-| Never use `--fake` | Faking migrations causes drift between migration state and actual database schema. |
+| Rule                             | Rationale                                                                                    |
+| -------------------------------- | -------------------------------------------------------------------------------------------- |
+| Always use migrations            | Never modify the database schema manually. Django migrations are the source of truth.        |
+| Never use `--fake`               | Faking migrations causes drift between migration state and actual database schema.           |
 | One migration per logical change | Keep migrations small and reviewable. Squash only when migration count impacts startup time. |
-| Test migrations in CI | CI runs `python manage.py migrate` against a fresh Postgres database on every PR. |
-| Data migrations for data changes | Use `RunPython` operations for data transformations. Keep them idempotent. |
-| Custom user model first | `accounts.0001_initial` must be the first app migration to run. |
+| Test migrations in CI            | CI runs `python manage.py migrate` against a fresh Postgres database on every PR.            |
+| Data migrations for data changes | Use `RunPython` operations for data transformations. Keep them idempotent.                   |
+| Custom user model first          | `accounts.0001_initial` must be the first app migration to run.                              |
 
 **GIVEN** a developer adds a new field to a model
 **WHEN** they run `python manage.py makemigrations`
@@ -447,8 +447,6 @@ class DocumentOut(BaseModel):
 6. **Embedding dimension must be declared explicitly.** VectorField(dimensions=1536) -- never omit the dimensions parameter. Mismatched dimensions cause cryptic errors.
 7. **HNSW index operator class must match the distance function.** Use `vector_cosine_ops` for cosine similarity (default). Using the wrong operator class means the index is not utilized.
 
-## References
+## Note on Research Files
 
-- `.planning/research/ARCHITECTURE.md` -- Django app layered structure, model patterns
-- `.planning/research/PITFALLS.md` -- Custom user model pitfall, PGVector index pitfalls
-- `.planning/research/STACK.md` -- psycopg3, PGVector configuration
+The `.planning/` directory is excluded from projects scaffolded using this template. This spec is the self-contained source of rationale — all decisions, alternatives considered, and implementation constraints are documented inline above. No external research files are required to understand or implement the decisions in this spec.

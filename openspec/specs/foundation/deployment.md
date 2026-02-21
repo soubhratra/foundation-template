@@ -397,9 +397,6 @@ turbo dev                  # All JS/TS apps in parallel
 6. **CI mirrors local.** CI pipeline runs the same lint/test/type-check commands as local development. No CI-only test configuration.
 7. **Pinned CI action versions.** All GitHub Actions use pinned versions (e.g., `actions/checkout@v4`), not `@latest`.
 
-## References
+## Note on Research Files
 
-- `.planning/research/STACK.md` -- Docker Compose configuration, Dockerfile patterns, CI/CD pipeline details
-- `.planning/research/ARCHITECTURE.md` -- Docker Compose service architecture, environment variable strategy
-- `openspec/specs/foundation/stack.md` -- Technology versions and compatibility matrix
-- `openspec/specs/foundation/architecture.md` -- Monorepo structure and service boundaries
+The `.planning/` directory is excluded from projects scaffolded using this template. This spec is the self-contained source of rationale — all decisions, alternatives considered, and implementation constraints are documented inline above. No external research files are required to understand or implement the decisions in this spec.

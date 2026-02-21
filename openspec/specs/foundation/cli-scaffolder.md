@@ -450,8 +450,6 @@ async function main() {
 5. **Quality gates enforce correctness.** Generated project must pass lint + type-check (unless --skip-validation).
 6. **Re-prompt on validation errors.** Never exit CLI on invalid input.
 
-## References
+## Note on Research Files
 
-- `.planning/phases/08-cli-scaffolder/08-CONTEXT.md` -- User decisions from discuss-phase
-- `.planning/phases/08-cli-scaffolder/08-RESEARCH.md` -- CLI patterns research
-- `packages/create-foundation-app/README.md` -- Usage documentation
+The `.planning/` directory is excluded from projects scaffolded using this template. This spec is the self-contained source of rationale — all decisions, alternatives considered, and implementation constraints are documented inline above. No external research files are required to understand or implement the decisions in this spec.
