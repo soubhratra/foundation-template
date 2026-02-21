@@ -84,6 +84,13 @@ Phase 0 is not a bureaucratic gate. It determines which subsequent phases are wo
 
 **Why personality before tokens:** Token decisions (color palette, typography, radius, spacing) are implementations of personality. A personality described as "clinical and precise" leads to tight radius, cool neutrals, and monospace data typography. "Warm and approachable" leads to generous radius, warm neutrals, and humanist sans-serif fonts. Making token decisions without an agreed personality produces arbitrary choices that feel inconsistent in aggregate — different screens reflect different implied personalities because each was designed by a different person (or AI session) without a shared reference.
 
+**Default tool:** A structured AI conversation (Claude Code or equivalent) using a fixed set of prompts: the adjective-pair exercise, the primary emotional target question, and the anti-pattern exercise in sequence. Output is saved as a Markdown document in the project's design directory.
+
+**Alternatives considered:**
+
+- **FigJam or Miro workshop:** Valid for in-person or synchronous remote teams. Slower for solo or async-first workflows because the tool adds coordination overhead without improving the quality of the output.
+- **Unstructured freeform writing:** Produces inconsistent results without the adjective-pair and anti-pattern scaffold. Outputs vary widely in specificity and are harder to use as a downstream constraint in Phase 3. Rejected.
+
 **Rejected alternative:** Skipping the personality workshop and going directly to visual references or token decisions. This produces a "vision by accumulation" problem: each reference added looks good individually, but the collection has no coherent identity. Token decisions made without personality alignment drift toward personal preferences rather than product character.
 
 ---
@@ -178,6 +185,12 @@ Phase 0 is not a bureaucratic gate. It determines which subsequent phases are wo
 **Output:** Pixel-resolved Figma frames for the 5–8 screens that carry the highest design risk. Typically: the primary value screen (the "aha" moment), the onboarding entry point, the primary data entry flow, the empty state, and the error/recovery state.
 
 **Default tool:** Figma, using the component library from Phase 5. No new components introduced in hi-fi — if a design requires a component not in the Phase 5 library, pause and add it to the library first.
+
+**Alternatives considered:**
+
+- **Sketch with Abstract/Kactus:** Acceptable for teams with existing Sketch workflows and version control in place. Lacks Figma's collaborative real-time editing and native Variables support from Phase 5.
+- **Framer or Webflow (hi-fi with live code output):** Produces interactive prototypes but couples design directly to implementation, making design review dependent on a running environment. The design-code boundary is intentional in this workflow — Phase 7 handles the translation step explicitly. Rejected.
+- **Skip hi-fi, implement from wireframes:** Valid and correct at Medium intensity per the intensity gate. At High intensity, wireframe-only handoff leaves too much visual ambiguity for consumer-facing screens where design differentiation is the competitive lever. Rejected for High intensity.
 
 **Why only High intensity:** At Medium intensity, the design system and wireframes provide sufficient fidelity for engineering to implement correctly. Hi-fi is cost-effective only when: (a) the product is consumer-facing and visual differentiation matters, (b) there are ambiguous interaction patterns that engineering cannot resolve from wireframes alone, or (c) stakeholder approval requires visual fidelity. None of those conditions are routinely present in Medium intensity efforts.
 
