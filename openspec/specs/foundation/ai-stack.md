@@ -770,8 +770,6 @@ app.autodiscover_tasks()
 10. **LLM model names never hardcoded.** All model names read from Django settings or environment variables. This enables provider swaps without code changes.
 11. **AI dependencies are optional.** `langgraph`, `langchain-openai`, `openai`, `tiktoken`, `langgraph-checkpoint-postgres` live in an optional dependency group in `pyproject.toml`.
 
-## References
+## Note on Research Files
 
-- `.planning/research/ARCHITECTURE.md` -- AI module data flow, embedding pipeline diagram
-- `.planning/research/PITFALLS.md` -- Pitfall #5: PGVector wrong index type
-- `.planning/research/STACK.md` -- LangGraph, PGVector, Celery configuration
+The `.planning/` directory is excluded from projects scaffolded using this template. This spec is the self-contained source of rationale — all decisions, alternatives considered, and implementation constraints are documented inline above. No external research files are required to understand or implement the decisions in this spec.

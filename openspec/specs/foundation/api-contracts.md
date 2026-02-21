@@ -467,8 +467,6 @@ Available at `/api/v1/health/`. Returns 200 with database connectivity status.
 6. **CORS is explicit.** No wildcard origins. Environment-variable-driven origin list.
 7. **API version in URL.** All endpoints under `/api/v1/`. No versionless endpoints except health check.
 
-## References
+## Note on Research Files
 
-- `.planning/research/STACK.md` -- openapi-typescript + openapi-fetch configuration
-- `.planning/research/ARCHITECTURE.md` -- OpenAPI pipeline diagram, BFF proxy pattern
-- `.planning/research/PITFALLS.md` -- Pipeline fragility pitfalls (schema drift, nullable confusion)
+The `.planning/` directory is excluded from projects scaffolded using this template. This spec is the self-contained source of rationale — all decisions, alternatives considered, and implementation constraints are documented inline above. No external research files are required to understand or implement the decisions in this spec.

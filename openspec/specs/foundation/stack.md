@@ -113,8 +113,6 @@ These technologies fill specific gaps in the core stack. They are recommended bu
 4. **No dual-purpose tools.** Each tool serves one purpose. If two tools overlap (e.g., black and ruff for formatting), keep only one.
 5. **Rejected technologies must not appear in any dependency file.** If psycopg2-binary, axios, or any rejected technology appears in requirements.txt, pyproject.toml, or package.json, the build should fail.
 
-## References
+## Note on Research Files
 
-- `.planning/research/STACK.md` -- Full supporting stack research with configuration examples
-- `.planning/research/PITFALLS.md` -- Technology-specific pitfalls and recovery strategies
-- `.planning/research/SUMMARY.md` -- Research synthesis and confidence assessment
+The `.planning/` directory is excluded from projects scaffolded using this template. This spec is the self-contained source of rationale — all decisions, alternatives considered, and implementation constraints are documented inline above. No external research files are required to understand or implement the decisions in this spec.

@@ -557,8 +557,6 @@ const webApiClient = createClient<paths>({
 7. **SameSite=None must never be used in production.** Development uses Lax; production uses Lax. None exposes the app to CSRF.
 8. **Refresh token rotation is recommended.** Each refresh request should return a new refresh token and invalidate the old one.
 
-## References
+## Note on Research Files
 
-- `.planning/research/ARCHITECTURE.md` -- Authentication flow diagrams, dual auth strategy rationale
-- `.planning/research/PITFALLS.md` -- Pitfall #2: Django Allauth cross-platform auth misconfiguration
-- `.planning/research/STACK.md` -- Django Allauth configuration, CORS setup
+The `.planning/` directory is excluded from projects scaffolded using this template. This spec is the self-contained source of rationale — all decisions, alternatives considered, and implementation constraints are documented inline above. No external research files are required to understand or implement the decisions in this spec.

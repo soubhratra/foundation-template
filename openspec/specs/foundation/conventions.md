@@ -423,8 +423,6 @@ repos:
 6. **Commit messages follow conventional commits.** Pre-commit hook validates format.
 7. **Environment variables are never hardcoded.** Use `.env.example` for documentation, `.env` for values, env var reads at runtime.
 
-## References
+## Note on Research Files
 
-- `.planning/research/STACK.md` -- ruff config, ESLint 9 flat config, pre-commit patterns
-- `.planning/research/ARCHITECTURE.md` -- Directory structure rationale, Django app structure
-- `.planning/research/PITFALLS.md` -- Monorepo configuration pitfalls
+The `.planning/` directory is excluded from projects scaffolded using this template. This spec is the self-contained source of rationale — all decisions, alternatives considered, and implementation constraints are documented inline above. No external research files are required to understand or implement the decisions in this spec.
