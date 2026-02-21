@@ -622,6 +622,9 @@ Mobile: App -> expo-secure-store token -> Authorization: Bearer header -> Django
 
 1. **Backend owns all business logic.** Next.js API routes are BFF thin proxies only: auth cookie translation, webhook receivers, server-side data fetching. Never business logic.
 2. **Django is a pnpm workspace for task orchestration only.** Python dependencies managed by uv. `apps/api/package.json` has no JS/TS dependencies — it exists solely to register scripts (`dev`, `lint`, `test`, `type-check`) so Turborepo can orchestrate them alongside JS/TS tasks.
+
+   **What breaks if you treat it as a real JS workspace:** Turborepo hashes package.json dependency graphs for cache invalidation. A Django app with no JS dependencies appears to Turborepo as a package whose inputs never change. Result: CI caches never hit (Turborepo reports MISS every run), or the inverse — Turborepo incorrectly caches Python tasks and skips re-running tests after code changes. The fix is explicit `inputs` globs in `turbo.json` covering `**/*.py` files, which bypasses Turborepo's dependency graph for Python tasks.
+
 3. **Custom user model before first migration.** apps/api/apps/accounts/models.py must define a custom AbstractUser subclass. AUTH_USER_MODEL must be set before `python manage.py migrate` is ever run. Recovery cost for missing this is HIGH.
 4. **Package dependency depth limit: 1 hop.** No package depends on another package that depends on another package. Apps depend on packages directly. Prevents circular dependencies and build cascade.
 5. **Expo never in Docker.** Even in docker-compose.full.yml, Expo is excluded. Metro bundler runs on host.
