@@ -630,8 +630,6 @@ Mobile: App -> expo-secure-store token -> Authorization: Bearer header -> Django
 5. **Expo never in Docker.** Even in docker-compose.full.yml, Expo is excluded. Metro bundler runs on host.
 6. **AI module must be cleanly removable.** All AI code in apps/api/apps/ai/. No AI imports in non-AI Django apps. No AI dependencies in root requirements unless conditional.
 
-## References
+## Note on Research Files
 
-- `.planning/research/ARCHITECTURE.md` -- Full architecture research with data flow diagrams
-- `.planning/research/PITFALLS.md` -- Turborepo/Docker/Metro pitfalls and mitigations
-- `.planning/research/STACK.md` -- Technology choices and configuration patterns
+The `.planning/` directory is excluded from projects scaffolded using this template. This spec is the self-contained source of rationale — all decisions, alternatives considered, and implementation constraints are documented inline above. No external research files are required to understand or implement the decisions in this spec.
