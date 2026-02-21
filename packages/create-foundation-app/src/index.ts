@@ -114,6 +114,10 @@ export async function main() {
         "\n" +
         pc.dim("  git init  # Initialize fresh repository (no template history)") +
         "\n" +
+        pc.dim("  # Before coding UI: run /ux-design-workflow (Design DNA First)") +
+        "\n" +
+        pc.dim("  # See: openspec/specs/foundation/ux-design.md") +
+        "\n" +
         pc.dim(`  ${skipValidation ? "pnpm install" : "# Dependencies already installed"}`) +
         "\n" +
         pc.dim("  docker compose up -d") +

@@ -286,6 +286,25 @@ When working on a specific app, also read that app's local CLAUDE.md:
 - `apps/api/CLAUDE.md` — Points to relevant specs for backend work
 - `apps/mobile/CLAUDE.md` — Points to relevant specs for mobile work
 
+### Rule 7: UI/UX Design Workflow
+
+Before building any user-facing UI, read `openspec/specs/foundation/ux-design.md`.
+
+**For new projects (first milestone with UI):**
+Invoke the `ux-design-workflow` skill. Run comprehensive mode (Phase 0 → intensity-gated phases).
+Do this BEFORE any GSD phase planning for UI features.
+
+**For features or change requests:**
+Run the due-diligence checklist from `openspec/specs/foundation/ux-design.md`.
+If 3+ questions are yes → invoke `ux-design-workflow` skill (due-diligence mode) before planning.
+If 2 or fewer → proceed using established design tokens and existing components.
+
+**Not applicable when:**
+
+- Feature has no visual surface (backend-only, CLI, API)
+- Change is copy/content update only
+- Design decision already made for this feature in the current session
+
 ---
 
 ## GSD Workflow Rules
