@@ -9,16 +9,16 @@ Requirements for the Billing & Payments Module milestone. Each maps to roadmap p
 
 ### Adapter Pattern (ADPTR)
 
-- [ ] **ADPTR-01**: `PaymentAdapter` Protocol defined in domain terms — no provider-specific types in abstract interface
-- [ ] **ADPTR-02**: `StripeAdapter` concrete implementation against the full protocol using `StripeClient` v14
-- [ ] **ADPTR-03**: Adapter is settings-configurable (`BILLING_ADAPTER` setting) — swappable by changing one Django setting
-- [ ] **ADPTR-04**: `BILLING_PLANS` dict in Django settings defines plan structure (no hardcoded plans in code)
-- [ ] **ADPTR-05**: `PlanProviderMapping` table maps internal plan IDs to provider price IDs (no `stripe_price_id` on Plan model)
+- [x] **ADPTR-01**: `PaymentAdapter` Protocol defined in domain terms — no provider-specific types in abstract interface
+- [x] **ADPTR-02**: `StripeAdapter` concrete implementation against the full protocol using `StripeClient` v14
+- [x] **ADPTR-03**: Adapter is settings-configurable (`BILLING_ADAPTER` setting) — swappable by changing one Django setting
+- [x] **ADPTR-04**: `BILLING_PLANS` dict in Django settings defines plan structure (no hardcoded plans in code)
+- [x] **ADPTR-05**: `PlanProviderMapping` table maps internal plan IDs to provider price IDs (no `stripe_price_id` on Plan model)
 
 ### Customer Management (CUST)
 
-- [ ] **CUST-01**: `Customer` model with OneToOne link to User, `stripe_customer_id` populated lazily on first billing interaction
-- [ ] **CUST-02**: Customer auto-created via `post_save` signal when a User is created
+- [x] **CUST-01**: `Customer` model with OneToOne link to User, `stripe_customer_id` populated lazily on first billing interaction
+- [x] **CUST-02**: Customer auto-created via `post_save` signal when a User is created
 - [ ] **CUST-03**: `@require_active_subscription` access-gating decorator checks subscription status and `cancel_at_period_end`
 
 ### Subscriptions (SUB)
@@ -28,12 +28,12 @@ Requirements for the Billing & Payments Module milestone. Each maps to roadmap p
 - [ ] **SUB-03**: User can downgrade their subscription plan
 - [ ] **SUB-04**: User can cancel their subscription (cancels at period end, not immediately)
 - [ ] **SUB-05**: User can reactivate a cancelled subscription before period end
-- [ ] **SUB-06**: `Subscription` model uses internal `SubscriptionStatus` enum (not raw Stripe status strings), includes `cancel_at_period_end` and timestamp audit fields
+- [x] **SUB-06**: `Subscription` model uses internal `SubscriptionStatus` enum (not raw Stripe status strings), includes `cancel_at_period_end` and timestamp audit fields
 
 ### One-Time Payments (PAY)
 
 - [ ] **PAY-01**: User can complete a one-time payment via Stripe Checkout session
-- [ ] **PAY-02**: One-time payment is recorded as a `Payment` model entry with status and amount
+- [x] **PAY-02**: One-time payment is recorded as a `Payment` model entry with status and amount
 
 ### Usage-Based Billing (USAGE)
 
@@ -111,44 +111,44 @@ Explicitly excluded. Documented to prevent scope creep.
 
 Which phases cover which requirements. Populated during roadmap creation.
 
-| Requirement | Phase | Status  |
-| ----------- | ----- | ------- |
-| ADPTR-01    | 9     | Pending |
-| ADPTR-02    | 9     | Pending |
-| ADPTR-03    | 9     | Pending |
-| ADPTR-04    | 9     | Pending |
-| ADPTR-05    | 9     | Pending |
-| CUST-01     | 9     | Pending |
-| CUST-02     | 9     | Pending |
-| SUB-06      | 9     | Pending |
-| PAY-02      | 9     | Pending |
-| HOOK-01     | 10    | Pending |
-| HOOK-02     | 10    | Pending |
-| HOOK-03     | 10    | Pending |
-| HOOK-04     | 10    | Pending |
-| SUB-01      | 10    | Pending |
-| SUB-02      | 10    | Pending |
-| SUB-03      | 10    | Pending |
-| SUB-04      | 10    | Pending |
-| SUB-05      | 10    | Pending |
-| PAY-01      | 10    | Pending |
-| USAGE-01    | 10    | Pending |
-| USAGE-02    | 10    | Pending |
-| CUST-03     | 10    | Pending |
-| INV-01      | 11    | Pending |
-| BILL-01     | 11    | Pending |
-| BILL-02     | 11    | Pending |
-| BILL-03     | 11    | Pending |
-| BILL-04     | 11    | Pending |
-| BILL-05     | 11    | Pending |
-| BILL-06     | 11    | Pending |
-| BILL-07     | 11    | Pending |
-| INV-02      | 12    | Pending |
-| INV-03      | 12    | Pending |
-| SCAFF-01    | 12    | Pending |
-| SCAFF-02    | 12    | Pending |
-| SCAFF-03    | 12    | Pending |
-| SCAFF-04    | 12    | Pending |
+| Requirement | Phase | Status   |
+| ----------- | ----- | -------- |
+| ADPTR-01    | 9     | Complete |
+| ADPTR-02    | 9     | Complete |
+| ADPTR-03    | 9     | Complete |
+| ADPTR-04    | 9     | Complete |
+| ADPTR-05    | 9     | Complete |
+| CUST-01     | 9     | Complete |
+| CUST-02     | 9     | Complete |
+| SUB-06      | 9     | Complete |
+| PAY-02      | 9     | Complete |
+| HOOK-01     | 10    | Pending  |
+| HOOK-02     | 10    | Pending  |
+| HOOK-03     | 10    | Pending  |
+| HOOK-04     | 10    | Pending  |
+| SUB-01      | 10    | Pending  |
+| SUB-02      | 10    | Pending  |
+| SUB-03      | 10    | Pending  |
+| SUB-04      | 10    | Pending  |
+| SUB-05      | 10    | Pending  |
+| PAY-01      | 10    | Pending  |
+| USAGE-01    | 10    | Pending  |
+| USAGE-02    | 10    | Pending  |
+| CUST-03     | 10    | Pending  |
+| INV-01      | 11    | Pending  |
+| BILL-01     | 11    | Pending  |
+| BILL-02     | 11    | Pending  |
+| BILL-03     | 11    | Pending  |
+| BILL-04     | 11    | Pending  |
+| BILL-05     | 11    | Pending  |
+| BILL-06     | 11    | Pending  |
+| BILL-07     | 11    | Pending  |
+| INV-02      | 12    | Pending  |
+| INV-03      | 12    | Pending  |
+| SCAFF-01    | 12    | Pending  |
+| SCAFF-02    | 12    | Pending  |
+| SCAFF-03    | 12    | Pending  |
+| SCAFF-04    | 12    | Pending  |
 
 **Coverage:**
 
