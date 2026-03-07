@@ -5,8 +5,8 @@ milestone_name: Billing & Payments Module
 current_phase: 9 of 12 (v1.1 phases 9–12)
 current_plan: —
 status: executing
-stopped_at: Completed 09-billing-scaffold 09-02-PLAN.md
-last_updated: "2026-03-07T22:09:24.909Z"
+stopped_at: Completed 09-billing-scaffold/09-01-PLAN.md
+last_updated: "2026-03-07T22:09:33.841Z"
 last_activity: 2026-03-07
 progress:
   total_phases: 4
@@ -73,6 +73,8 @@ Recent decisions affecting v1.1 work:
 - [Phase 9]: Test directory is apps/api/tests/billing/ (confirmed via codebase scan)
 - [Phase 09-billing-scaffold]: Abstract record_usage parameter renamed from stripe_customer_id to customer_id — enforces zero provider coupling in PaymentAdapter interface
 - [Phase 09-billing-scaffold]: signals.py created before makemigrations (Task 2 not Task 3) — BillingConfig.ready() triggers during django.setup() which runs during makemigrations
+- [Phase 09-billing-scaffold]: importorskip + RuntimeError guard: Django RuntimeError (not ImportError) raised when billing model exists but app not registered — wrapped with try/except for correct Wave 0 skip behavior
+- [Phase 09-billing-scaffold]: Settings-conditional test skips: BILLING_ADAPTER and STRIPE_SECRET_KEY tests guard with hasattr check rather than assert-only, enabling clean skips before Wave 1 settings are added
 
 ### Pending Todos
 
@@ -86,8 +88,8 @@ None yet.
 
 ## Session Continuity
 
-**Last Session:** 2026-03-07T22:09:15.788Z
-**Stopped At:** Completed 09-billing-scaffold 09-02-PLAN.md
+**Last Session:** 2026-03-07T22:09:33.838Z
+**Stopped At:** Completed 09-billing-scaffold/09-01-PLAN.md
 **Resume File:** None
 
 **Next Action:** `/gsd:execute-phase 9`
