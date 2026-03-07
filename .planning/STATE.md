@@ -4,14 +4,14 @@ milestone: v1.1
 milestone_name: Billing & Payments Module
 current_phase: 9 of 12 (v1.1 phases 9–12)
 current_plan: —
-status: planning
-stopped_at: Phase 9 context gathered
-last_updated: "2026-03-07T21:37:14.892Z"
+status: ready-to-execute
+stopped_at: Phase 9 planning complete — 3 plans written
+last_updated: "2026-03-07T22:30:00.000Z"
 last_activity: 2026-03-07
 progress:
   total_phases: 4
   completed_phases: 0
-  total_plans: 0
+  total_plans: 3
   completed_plans: 0
 ---
 
@@ -28,9 +28,9 @@ See: .planning/PROJECT.md (updated 2026-03-07)
 
 **Current Phase:** 9 of 12 (v1.1 phases 9–12)
 **Current Plan:** —
-**Status:** Ready to plan
+**Status:** Ready to execute
 **Last Activity:** 2026-03-07
-**Last Activity Description:** v1.1 roadmap created — 4 phases, 36 requirements mapped
+**Last Activity Description:** Phase 9 planning complete — 3 plans written (09-01, 09-02, 09-03)
 
 **Progress (v1.1):** [░░░░░░░░░░] 0%
 
@@ -61,7 +61,14 @@ Recent decisions affecting v1.1 work:
 - [Roadmap v1.1]: Webhook endpoint is a plain Django view (not Ninja controller) — raw body required for HMAC verification
 - [Roadmap v1.1]: `PlanProviderMapping` table instead of `stripe_price_id` on Plan model — prevents provider coupling
 - [Roadmap v1.1]: PDF generation always async via Celery task — WeasyPrint RSS leak requires task isolation
-- [Roadmap v1.1]: Phase 10 proration strategy (Subscription.modify vs SubscriptionSchedule) must be decided before upgrade/downgrade endpoint implementation
+- [Phase 9]: PaymentAdapter is ABC (not Protocol) — explicit inheritance enforces contract at class definition
+- [Phase 9]: Full adapter method set defined upfront (8 methods) — no stub-and-expand pattern
+- [Phase 9]: All 5 models in 0001_initial.py — avoids second migration in Phase 10 for ProcessedWebhookEvent
+- [Phase 9]: StripeAdapter uses stripe.StripeClient(api_key=...) — NOT stripe.api_key global (v14 pattern)
+- [Phase 9]: Signal handler uses `if created:` guard — load-bearing, prevents duplicate Customer on User re-save
+- [Phase 9]: Test stubs use pytest.importorskip — skip cleanly in Wave 0, run in Wave 1+
+- [Phase 9]: pyproject.toml uses [dependency-groups] table (not [project.optional-dependencies])
+- [Phase 9]: Test directory is apps/api/tests/billing/ (confirmed via codebase scan)
 
 ### Pending Todos
 
@@ -75,6 +82,8 @@ None yet.
 
 ## Session Continuity
 
-**Last Session:** 2026-03-07T21:37:14.890Z
-**Stopped At:** Phase 9 context gathered
-**Resume File:** .planning/phases/09-billing-scaffold/09-CONTEXT.md
+**Last Session:** 2026-03-07T22:30:00.000Z
+**Stopped At:** Phase 9 planning complete
+**Resume File:** .planning/phases/09-billing-scaffold/09-01-PLAN.md
+
+**Next Action:** `/gsd:execute-phase 9`

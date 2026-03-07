@@ -48,13 +48,11 @@ Full archive: `.planning/milestones/v1.0-ROADMAP.md`
 3. `Customer`, `Subscription`, `Payment` models exist with initial migration applied — `Subscription` uses `SubscriptionStatus` enum (not raw strings), has `cancel_at_period_end` and timestamp audit fields
 4. A new `User` creation triggers auto-creation of a linked `Customer` record via `post_save` signal
 5. `PlanProviderMapping` table exists and `BILLING_PLANS` dict in settings defines plan structure — no `stripe_price_id` field exists on any model
-   **Plans**: TBD
+   Plans:
 
-Plans:
-
-- [ ] 09-01: TBD
-- [ ] 09-02: TBD
-- [ ] 09-03: TBD
+- [ ] 09-01: Wave 0 — Test infrastructure stubs (pytest package, conftest, test_adapters, test_models, test_signals)
+- [ ] 09-02: Wave 1 — Billing module implementation (models, adapters, signals, apps, admin, migration 0001)
+- [ ] 09-03: Wave 2 — Settings wiring (INSTALLED_APPS, BILLING_ADAPTER, BILLING_PLANS, urls.py markers, pyproject.toml, .env.example)
 
 ### Phase 10: Webhook Infrastructure + Service Layer
 
