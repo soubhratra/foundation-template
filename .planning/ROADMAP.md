@@ -29,7 +29,7 @@ Full archive: `.planning/milestones/v1.0-ROADMAP.md`
 
 #### Phase Checklist
 
-- [ ] **Phase 9: Billing Scaffold** — Data models, PaymentAdapter interface, StripeAdapter, settings configuration, and module isolation markers
+- [x] **Phase 9: Billing Scaffold** — Data models, PaymentAdapter interface, StripeAdapter, settings configuration, and module isolation markers (completed 2026-03-07)
 - [ ] **Phase 10: Webhook Infrastructure + Service Layer** — BillingService business logic, Stripe webhook receiver, Tier-1 event handlers, async dispatch, subscription lifecycle, metered billing
 - [ ] **Phase 11: API Endpoints + Billing Frontend** — Ninja Extra billing controller, invoice list endpoint, Next.js /billing page with plan display, history, upgrade/downgrade/cancel flows
 - [ ] **Phase 12: Invoice PDF + CLI Scaffolder Integration** — Async PDF generation via WeasyPrint + Celery, invoice download endpoint, CLI scaffolder opt-out, removal verification test
@@ -124,7 +124,7 @@ Plans:
 | 6. AI Module                 | v1.0      | 5/5            | Complete    | 2026-02-17 |
 | 7. DevEx + CI/CD             | v1.0      | 4/4            | Complete    | 2026-02-17 |
 | 8. CLI Scaffolder            | v1.0      | 3/3            | Complete    | 2026-02-17 |
-| 9. Billing Scaffold          | 2/3       | In Progress    |             | -          |
+| 9. Billing Scaffold          | 3/3       | Complete       | 2026-03-07  | -          |
 | 10. Webhook Infra + Service  | v1.1      | 0/TBD          | Not started | -          |
 | 11. API Endpoints + Frontend | v1.1      | 0/TBD          | Not started | -          |
 | 12. Invoice PDF + CLI        | v1.1      | 0/TBD          | Not started | -          |

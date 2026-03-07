@@ -5,14 +5,14 @@ milestone_name: Billing & Payments Module
 current_phase: 9 of 12 (v1.1 phases 9–12)
 current_plan: —
 status: executing
-stopped_at: Completed 09-billing-scaffold/09-01-PLAN.md
-last_updated: "2026-03-07T22:09:33.841Z"
+stopped_at: Completed 09-billing-scaffold/09-03-PLAN.md
+last_updated: "2026-03-07T22:16:36.515Z"
 last_activity: 2026-03-07
 progress:
   total_phases: 4
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 3
-  completed_plans: 2
+  completed_plans: 3
 ---
 
 # Project State
@@ -51,6 +51,7 @@ See: .planning/PROJECT.md (updated 2026-03-07)
 _Updated after each plan completion_
 | Phase 09-billing-scaffold P02 | 18 | 3 tasks | 8 files |
 | Phase 09-billing-scaffold P01 | 5min | 2 tasks | 5 files |
+| Phase 09-billing-scaffold P03 | 4min | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -75,6 +76,8 @@ Recent decisions affecting v1.1 work:
 - [Phase 09-billing-scaffold]: signals.py created before makemigrations (Task 2 not Task 3) — BillingConfig.ready() triggers during django.setup() which runs during makemigrations
 - [Phase 09-billing-scaffold]: importorskip + RuntimeError guard: Django RuntimeError (not ImportError) raised when billing model exists but app not registered — wrapped with try/except for correct Wave 0 skip behavior
 - [Phase 09-billing-scaffold]: Settings-conditional test skips: BILLING_ADAPTER and STRIPE_SECRET_KEY tests guard with hasattr check rather than assert-only, enabling clean skips before Wave 1 settings are added
+- [Phase 09-billing-scaffold]: STRIPE_SECRET_KEY defaults to empty string — safe for dev, test_stripe_adapter_instantiates skips cleanly without real key
+- [Phase 09-billing-scaffold]: Pre-existing allauth W-level deprecation warnings in base.py — not errors, manage.py check exits 0, deferred to settings cleanup
 
 ### Pending Todos
 
@@ -88,8 +91,8 @@ None yet.
 
 ## Session Continuity
 
-**Last Session:** 2026-03-07T22:09:33.838Z
-**Stopped At:** Completed 09-billing-scaffold/09-01-PLAN.md
+**Last Session:** 2026-03-07T22:16:36.512Z
+**Stopped At:** Completed 09-billing-scaffold/09-03-PLAN.md
 **Resume File:** None
 
 **Next Action:** `/gsd:execute-phase 9`
