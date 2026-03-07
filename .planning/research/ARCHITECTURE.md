@@ -1,972 +1,887 @@
-# Architecture Research
+# Architecture Patterns: Billing & Payments Module
 
-**Domain:** Full-stack SaaS foundation template (Turborepo monorepo)
-**Researched:** 2026-02-08
-**Confidence:** MEDIUM (WebSearch/WebFetch unavailable; findings based on training data through May 2025 plus established patterns for all named technologies. All claims should be verified against current docs during implementation.)
-
----
-
-## System Overview
-
-```
-                            CLIENTS
-  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐
-  │   Next.js 15     │  │   Expo Mobile    │  │  Third-Party     │
-  │   (App Router)   │  │   (iOS/Android)  │  │  API Consumers   │
-  │   SSR + CSR      │  │   Managed Flow   │  │                  │
-  └───────┬──────────┘  └───────┬──────────┘  └───────┬──────────┘
-          │                     │                     │
-          │  ┌─────────────────────────────────┐      │
-          │  │      SHARED PACKAGES (TS)       │      │
-          │  │  api-client | validation | ui   │      │
-          │  │  business-logic | config        │      │
-          │  └─────────────────────────────────┘      │
-          │                     │                     │
-          ▼                     ▼                     ▼
-  ┌───────────────────────────────────────────────────────────────┐
-  │                    Django Ninja Extra API                      │
-  │              (REST + OpenAPI spec generation)                  │
-  │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────────┐  │
-  │  │  Auth    │  │  Core    │  │  Billing │  │  AI Module   │  │
-  │  │ (Allauth)│  │  CRUD    │  │  (Stripe)│  │ (LangGraph)  │  │
-  │  └──────────┘  └──────────┘  └──────────┘  └──────────────┘  │
-  ├───────────────────────────────────────────────────────────────┤
-  │                     Django ORM Layer                           │
-  ├───────────────────────────────────────────────────────────────┤
-  │              PostgreSQL 16+ with PGVector                     │
-  └───────────────────────────────────────────────────────────────┘
-```
-
-### Component Responsibilities
-
-| Component | Responsibility | Typical Implementation |
-|-----------|----------------|------------------------|
-| **Django Ninja Extra API** | All business logic, auth, data persistence, OpenAPI spec generation | Django apps with Ninja Extra controllers, Pydantic schemas |
-| **Next.js 15 Frontend** | Web UI, SSR/SSG pages, SEO, Next.js middleware for auth guards | App Router, Server Components, Shadcn/ui + Tailwind |
-| **Expo Mobile App** | iOS/Android native experience, push notifications, device APIs | Expo managed workflow, Expo Router |
-| **Shared API Client** | Type-safe HTTP client auto-generated from OpenAPI | Generated via openapi-typescript + openapi-fetch or orval |
-| **Shared Validation** | Cross-platform input validation schemas | Zod schemas consumed by web, mobile, and optionally synced to Python Pydantic |
-| **Shared UI** | Reusable UI primitives working on both web and mobile | React Native Web components, or Tamagui/NativeWind |
-| **Shared Business Logic** | Platform-agnostic hooks, utilities, constants, formatters | Plain TypeScript, React hooks |
-| **PostgreSQL + PGVector** | Relational data, vector embeddings for AI features | PostgreSQL 16 with pgvector extension |
-| **AI Module (LangGraph)** | RAG pipeline, agent workflows, embedding generation | LangGraph Python package within Django, or separate worker |
+**Domain:** Billing and payments integration for Foundation Template monorepo
+**Researched:** 2026-03-07
+**Milestone context:** Subsequent milestone — adding billing module to existing system (apps/api/ Django Ninja Extra + apps/web/ Next.js 15 + apps/mobile/ Expo + packages/api-client/ auto-generated types)
+**Overall confidence:** HIGH — grounded in actual codebase inspection (accounts/models.py, ai/controllers.py, config/urls.py, config/settings/base.py, cli-scaffolder.md) plus Stripe official documentation patterns
 
 ---
 
-## Recommended Monorepo Structure
+## How This Module Fits the Existing System
 
-```
-foundation-template/
-├── apps/
-│   ├── web/                        # Next.js 15 App Router
-│   │   ├── app/                    # App Router pages/layouts
-│   │   │   ├── (auth)/             # Auth route group
-│   │   │   ├── (dashboard)/        # Dashboard route group
-│   │   │   ├── api/                # Next.js API routes (BFF proxy, webhooks)
-│   │   │   ├── layout.tsx
-│   │   │   └── page.tsx
-│   │   ├── components/             # Web-specific components
-│   │   ├── lib/                    # Web-specific utilities
-│   │   ├── middleware.ts           # Auth middleware
-│   │   ├── next.config.ts          # Next.js config (with RNW transpile)
-│   │   ├── tailwind.config.ts
-│   │   ├── tsconfig.json
-│   │   └── package.json
-│   │
-│   ├── mobile/                     # Expo React Native app
-│   │   ├── app/                    # Expo Router file-based routing
-│   │   │   ├── (auth)/
-│   │   │   ├── (tabs)/
-│   │   │   └── _layout.tsx
-│   │   ├── components/             # Mobile-specific components
-│   │   ├── lib/                    # Mobile-specific utilities
-│   │   ├── app.json                # Expo config
-│   │   ├── tsconfig.json
-│   │   └── package.json
-│   │
-│   └── api/                        # Django project root
-│       ├── manage.py
-│       ├── pyproject.toml          # Python dependencies (uv/poetry)
-│       ├── config/                 # Django project settings
-│       │   ├── __init__.py
-│       │   ├── settings/
-│       │   │   ├── __init__.py
-│       │   │   ├── base.py
-│       │   │   ├── development.py
-│       │   │   └── production.py
-│       │   ├── urls.py
-│       │   ├── wsgi.py
-│       │   └── asgi.py
-│       ├── apps/                   # Django apps
-│       │   ├── accounts/           # User model, Django Allauth config
-│       │   │   ├── models.py
-│       │   │   ├── schemas.py      # Pydantic schemas (Ninja)
-│       │   │   ├── controllers.py  # Ninja Extra controllers
-│       │   │   ├── services.py     # Business logic
-│       │   │   └── tests/
-│       │   ├── core/               # Shared Django utilities
-│       │   ├── billing/            # Stripe integration
-│       │   └── ai/                 # LangGraph module (removable)
-│       │       ├── graphs/         # LangGraph graph definitions
-│       │       ├── embeddings.py   # PGVector embedding pipeline
-│       │       ├── controllers.py
-│       │       └── schemas.py
-│       ├── tests/
-│       └── Dockerfile
-│
-├── packages/
-│   ├── api-client/                 # Auto-generated typed API client
-│   │   ├── src/
-│   │   │   ├── generated/          # Auto-generated types + client
-│   │   │   │   ├── types.ts        # From OpenAPI spec
-│   │   │   │   └── client.ts       # Typed fetch client
-│   │   │   ├── index.ts            # Re-exports + custom wrappers
-│   │   │   └── hooks.ts            # React Query hooks wrapping client
-│   │   ├── scripts/
-│   │   │   └── generate.ts         # OpenAPI generation script
-│   │   ├── openapi.json            # Cached OpenAPI spec from Django
-│   │   ├── tsconfig.json
-│   │   └── package.json
-│   │
-│   ├── validation/                 # Shared Zod schemas
-│   │   ├── src/
-│   │   │   ├── auth.ts             # Auth validation schemas
-│   │   │   ├── user.ts             # User schemas
-│   │   │   ├── billing.ts          # Billing schemas
-│   │   │   └── index.ts
-│   │   ├── tsconfig.json
-│   │   └── package.json
-│   │
-│   ├── ui/                         # Shared UI primitives
-│   │   ├── src/
-│   │   │   ├── button.tsx          # Cross-platform Button
-│   │   │   ├── input.tsx           # Cross-platform Input
-│   │   │   ├── text.tsx            # Cross-platform Text
-│   │   │   ├── primitives/         # Low-level primitives
-│   │   │   └── index.ts
-│   │   ├── tsconfig.json
-│   │   └── package.json
-│   │
-│   ├── business-logic/             # Shared hooks, utils, constants
-│   │   ├── src/
-│   │   │   ├── hooks/              # React hooks (useAuth, useUser)
-│   │   │   ├── utils/              # Formatters, helpers
-│   │   │   ├── constants/          # App-wide constants
-│   │   │   └── index.ts
-│   │   ├── tsconfig.json
-│   │   └── package.json
-│   │
-│   ├── config/                     # Shared eslint config
-│   │   ├── eslint-preset.js
-│   │   └── package.json
-│   │
-│   └── typescript-config/          # Shared TypeScript configs
-│       ├── base.json
-│       ├── nextjs.json
-│       ├── react-native.json
-│       └── package.json
-│
-├── tooling/                        # Build tools, scripts, CI helpers
-│   ├── scripts/
-│   │   ├── generate-api-client.sh  # Fetch OpenAPI spec + generate client
-│   │   └── setup.sh                # First-time project setup
-│   └── docker/
-│       ├── Dockerfile.api          # Django production Dockerfile
-│       ├── Dockerfile.web          # Next.js production Dockerfile
-│       └── nginx.conf              # Reverse proxy config (optional)
-│
-├── docker-compose.yml              # Local development orchestration
-├── docker-compose.prod.yml         # Production overrides
-├── turbo.json                      # Turborepo pipeline config
-├── package.json                    # Root workspace config
-├── pnpm-workspace.yaml             # pnpm workspace definition
-├── .env.example                    # Environment variable template
-├── .gitignore
-└── README.md
-```
+The billing module is a new Django app at `apps/api/apps/billing/` following the exact same structural pattern as `apps/api/apps/ai/`. It registers via `api.auto_discover_controllers()` (already present in `config/urls.py`), gets added to `INSTALLED_APPS` in `config/settings/base.py`, and is designed for clean removal by the CLI scaffolder — just like the AI module.
 
-### Structure Rationale
+The module introduces:
 
-- **`apps/` vs `packages/`:** Turborepo convention. `apps/` contains deployable applications (things with their own server/build process). `packages/` contains shared libraries consumed by apps. This is the standard Turborepo pattern and should not be deviated from.
-
-- **Django in `apps/api/`:** Even though Django is Python, it lives in `apps/` because it is a deployable application. Turborepo does not natively manage Python dependencies, but it can still orchestrate tasks (lint, test, build) for the Django project via custom scripts defined in `turbo.json`. The Python dependency management happens via `pyproject.toml` with uv or poetry, independent of the pnpm workspace.
-
-- **`packages/api-client/` with `generated/` subfolder:** The generated code is isolated in a subdirectory so it can be gitignored or committed (team preference). The outer `src/` adds custom wrappers, React Query hooks, and re-exports that remain stable even when the generated code changes.
-
-- **`packages/ui/` for cross-platform components:** This package uses React Native Web primitives (View, Text, Pressable) that render natively on mobile and as divs/spans on web. This is the simplest path to genuine code sharing -- not every component needs to be cross-platform, only foundational primitives.
-
-- **`packages/config/` and `packages/typescript-config/`:** Following Turborepo's recommended pattern for sharing configurations. Each app extends these base configs, reducing drift.
-
-- **`tooling/`:** Not a Turborepo workspace -- just scripts and Dockerfiles that support development. Keeps the root clean.
+- **2 new Django models:** `Customer` (OneToOne to User), `Subscription` (FK to Customer)
+- **1 payment adapter ABC** with a Stripe concrete implementation
+- **6–8 new API endpoints** under `/api/v1/billing/`
+- **1 webhook endpoint** registered as a plain Django view (not a Ninja controller — raw body required)
+- **4 new billing pages** in `apps/web/app/(dashboard)/billing/`
+- **New types** automatically propagated through the OpenAPI pipeline to `packages/api-client/`
 
 ---
 
-## Architectural Patterns
+## 1. Directory Structure: `apps/api/apps/billing/`
 
-### Pattern 1: Backend-for-Frontend (BFF) Thin Proxy via Next.js API Routes
+```
+apps/api/apps/billing/
+├── __init__.py
+├── apps.py                    # BillingConfig: name = "apps.billing"
+├── admin.py                   # CustomerAdmin, SubscriptionAdmin
+├── models.py                  # Customer (OneToOne → User), Subscription
+├── schemas.py                 # Pydantic request/response schemas
+├── controllers.py             # BillingController (Ninja Extra) — CSRF-protected routes
+├── services.py                # BillingService — all business logic, no HTTP
+├── adapters.py                # PaymentAdapter ABC + StripeAdapter concrete class
+├── webhooks.py                # Raw Django view for Stripe webhook (NOT a Ninja controller)
+├── signals.py                 # post_save signal: create Customer when User created
+└── migrations/
+    └── 0001_initial.py
+```
 
-**What:** Next.js API routes act as a thin proxy layer between the browser and Django API for specific concerns: CSRF token handling, cookie-to-header auth token translation, webhook endpoints (e.g., Stripe), and server-side data fetching in Server Components.
+### Why `webhooks.py` is a separate plain Django view, not a Ninja controller
 
-**When to use:** When the web client needs server-side session management, when you need to aggregate multiple Django API calls into one response, or when third-party webhooks need a stable URL that differs from the Django endpoint.
+Stripe webhook signature verification (`stripe.Webhook.construct_event()`) requires the **raw, unmodified request body bytes**. Django Ninja parses the request body as part of its request processing, which can corrupt the raw bytes. Registering the webhook as a plain `@csrf_exempt` function view in `config/urls.py` with `request.body` gives guaranteed access to the raw bytes.
 
-**Trade-offs:**
-- PRO: Simplifies auth (httpOnly cookies managed by Next.js, token forwarded to Django)
-- PRO: Server Components can call Django directly (server-to-server, no CORS)
-- CON: Adds a network hop for proxied requests
-- CON: Must not become a second API -- keep it thin
+Source: [Stripe webhook signature documentation](https://docs.stripe.com/webhooks/signature), [Stripe Django integration 2025](https://www.paritydeals.com/blog/how-to-integrate-stripe-with-django-a-step-by-step-guide-2025/)
 
-**Example:**
+---
+
+## 2. PaymentAdapter ABC Pattern
+
+### Abstract Base Class (`apps/billing/adapters.py`)
+
+```python
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
+from typing import Any
+
+
+@dataclass
+class CheckoutResult:
+    session_id: str
+    checkout_url: str
+
+
+@dataclass
+class PortalResult:
+    portal_url: str
+
+
+@dataclass
+class WebhookEvent:
+    event_type: str          # e.g. "customer.subscription.updated"
+    stripe_event_id: str
+    data: dict[str, Any]
+
+
+class PaymentAdapter(ABC):
+    """
+    Abstract interface for payment processor integration.
+
+    Concrete implementations: StripeAdapter (shipped), others possible.
+    The adapter is never imported by controllers directly — BillingService
+    resolves it via settings (BILLING_ADAPTER setting).
+    """
+
+    @abstractmethod
+    def create_customer(self, email: str, name: str) -> str:
+        """Create a customer in the payment processor. Returns external customer ID."""
+        ...
+
+    @abstractmethod
+    def create_checkout_session(
+        self,
+        customer_external_id: str,
+        price_id: str,
+        success_url: str,
+        cancel_url: str,
+    ) -> CheckoutResult:
+        """Create a hosted checkout session. Returns session_id + redirect URL."""
+        ...
+
+    @abstractmethod
+    def create_portal_session(
+        self,
+        customer_external_id: str,
+        return_url: str,
+    ) -> PortalResult:
+        """Create a self-serve billing portal session. Returns redirect URL."""
+        ...
+
+    @abstractmethod
+    def cancel_subscription(self, subscription_external_id: str) -> None:
+        """Cancel a subscription immediately or at period end."""
+        ...
+
+    @abstractmethod
+    def construct_webhook_event(
+        self,
+        payload: bytes,
+        signature_header: str,
+        webhook_secret: str,
+    ) -> WebhookEvent:
+        """
+        Verify and parse an inbound webhook payload.
+        Raises ValueError on invalid signature.
+        """
+        ...
+```
+
+### Stripe Concrete Implementation (`StripeAdapter`)
+
+```python
+import stripe
+from django.conf import settings
+
+
+class StripeAdapter(PaymentAdapter):
+    """
+    Stripe implementation of PaymentAdapter.
+
+    Uses stripe.StripeClient (v8+ API). Configured via STRIPE_SECRET_KEY setting.
+    """
+
+    def __init__(self) -> None:
+        self._client = stripe.StripeClient(api_key=settings.STRIPE_SECRET_KEY)
+
+    def create_customer(self, email: str, name: str) -> str:
+        customer = self._client.customers.create({"email": email, "name": name})
+        return customer.id
+
+    def create_checkout_session(
+        self,
+        customer_external_id: str,
+        price_id: str,
+        success_url: str,
+        cancel_url: str,
+    ) -> CheckoutResult:
+        session = self._client.checkout.sessions.create({
+            "customer": customer_external_id,
+            "mode": "subscription",
+            "line_items": [{"price": price_id, "quantity": 1}],
+            "success_url": success_url,
+            "cancel_url": cancel_url,
+        })
+        return CheckoutResult(session_id=session.id, checkout_url=session.url)
+
+    def create_portal_session(
+        self,
+        customer_external_id: str,
+        return_url: str,
+    ) -> PortalResult:
+        session = self._client.billing_portal.sessions.create({
+            "customer": customer_external_id,
+            "return_url": return_url,
+        })
+        return PortalResult(portal_url=session.url)
+
+    def cancel_subscription(self, subscription_external_id: str) -> None:
+        self._client.subscriptions.cancel(subscription_external_id)
+
+    def construct_webhook_event(
+        self,
+        payload: bytes,
+        signature_header: str,
+        webhook_secret: str,
+    ) -> WebhookEvent:
+        # stripe.WebhookSignature.verify_header raises SignatureVerificationError
+        # if signature is invalid — propagate as ValueError per ABC contract.
+        try:
+            event = stripe.WebhookSignature.verify_header(
+                payload.decode("utf-8"),
+                signature_header,
+                webhook_secret,
+            )
+        except stripe.error.SignatureVerificationError as exc:
+            raise ValueError("Invalid Stripe webhook signature") from exc
+
+        return WebhookEvent(
+            event_type=event["type"],
+            stripe_event_id=event["id"],
+            data=event["data"]["object"],
+        )
+```
+
+### Adapter Registration (settings-driven)
+
+```python
+# config/settings/base.py (additions for billing module)
+BILLING_ADAPTER = "apps.billing.adapters.StripeAdapter"
+STRIPE_SECRET_KEY = env("STRIPE_SECRET_KEY", default="")
+STRIPE_PUBLISHABLE_KEY = env("STRIPE_PUBLISHABLE_KEY", default="")
+STRIPE_WEBHOOK_SECRET = env("STRIPE_WEBHOOK_SECRET", default="")
+```
+
+```python
+# apps/billing/services.py
+from django.conf import settings
+from django.utils.module_loading import import_string
+from .adapters import PaymentAdapter
+
+def get_payment_adapter() -> PaymentAdapter:
+    """Resolve adapter from settings. Instantiated fresh per call (stateless)."""
+    adapter_class = import_string(settings.BILLING_ADAPTER)
+    return adapter_class()
+```
+
+This lets a future payment processor swap in by changing one settings value, without touching controllers or services. It also makes unit testing trivial: mock `get_payment_adapter()` to return a stub.
+
+---
+
+## 3. Frontend Route Structure (`apps/web/`)
+
+### App Router pages
+
+```
+apps/web/app/
+└── (dashboard)/
+    └── billing/
+        ├── page.tsx                   # Billing overview (current plan, usage, next renewal)
+        ├── checkout/
+        │   └── page.tsx               # Plan selection → Stripe Checkout redirect
+        ├── success/
+        │   └── page.tsx               # Post-checkout confirmation (Stripe redirects here)
+        └── portal/
+            └── page.tsx               # Redirect to Stripe Customer Portal (server component)
+```
+
+### Next.js API route for Stripe webhook
+
+```
+apps/web/app/
+└── api/
+    └── billing/
+        └── webhook/
+            └── route.ts               # POST /api/billing/webhook — proxy to Django
+```
+
+The Next.js webhook route exists as a stable public URL that Stripe can target. It reads the raw body and the `Stripe-Signature` header and proxies both to Django's webhook endpoint (`/api/v1/billing/webhook/`). This separation means Stripe always sends to a Next.js URL, and Django handles verification and processing — consistent with the "Next.js API routes as thin proxies" constraint in the foundation architecture.
+
+**Alternative considered:** Register webhook directly with Django (`/api/v1/billing/webhook/`). This is also valid but requires the Django server to be publicly accessible from Stripe. Both patterns are acceptable; the Next.js proxy is preferred when using Vercel (which naturally exposes a public URL) with Railway/Fly for Django (which may be internal-only). If Django is publicly exposed, skip the proxy and register the Django URL directly with Stripe.
+
+### Component locations
+
+```
+apps/web/
+├── app/(dashboard)/billing/
+│   └── [pages as above]
+├── components/billing/
+│   ├── plan-card.tsx                  # Displays a pricing plan
+│   ├── subscription-status.tsx        # Badge: active / past_due / canceled
+│   ├── billing-overview.tsx           # Current plan summary card
+│   └── upgrade-button.tsx             # Initiates checkout session
+└── lib/billing/
+    └── hooks.ts                       # useSubscription(), useCheckout() React Query hooks
+```
+
+---
+
+## 4. Customer Model — Relation to Existing User Model
+
+### Decision: OneToOne extension via separate `Customer` model
+
+```python
+# apps/billing/models.py
+from django.conf import settings
+from django.db import models
+
+
+class Customer(models.Model):
+    """
+    Billing profile for a user. Created automatically via post_save signal.
+
+    Relationship: One User → One Customer (always exists after User creation).
+    The User model itself is NOT modified. This preserves the accounts app's
+    auth-only responsibility and keeps billing cleanly removable.
+    """
+
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="billing_customer",
+    )
+    stripe_customer_id = models.CharField(
+        max_length=255,
+        blank=True,
+        db_index=True,
+        help_text="Stripe customer ID (cus_xxx). Empty until first billing interaction.",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "billing_customers"
+
+    def __str__(self) -> str:
+        return f"Customer({self.user.email})"
+
+
+class Subscription(models.Model):
+    """
+    Active subscription record. Kept in sync with Stripe via webhooks.
+    """
+
+    STATUS_ACTIVE = "active"
+    STATUS_PAST_DUE = "past_due"
+    STATUS_CANCELED = "canceled"
+    STATUS_TRIALING = "trialing"
+    STATUS_INCOMPLETE = "incomplete"
+
+    STATUS_CHOICES = [
+        (STATUS_ACTIVE, "Active"),
+        (STATUS_PAST_DUE, "Past Due"),
+        (STATUS_CANCELED, "Canceled"),
+        (STATUS_TRIALING, "Trialing"),
+        (STATUS_INCOMPLETE, "Incomplete"),
+    ]
+
+    customer = models.OneToOneField(
+        Customer,
+        on_delete=models.CASCADE,
+        related_name="subscription",
+        help_text="One active subscription per customer.",
+    )
+    stripe_subscription_id = models.CharField(
+        max_length=255,
+        unique=True,
+        db_index=True,
+    )
+    stripe_price_id = models.CharField(
+        max_length=255,
+        help_text="Stripe Price ID (price_xxx) for the active plan.",
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default=STATUS_INCOMPLETE,
+        db_index=True,
+    )
+    current_period_start = models.DateTimeField(null=True, blank=True)
+    current_period_end = models.DateTimeField(null=True, blank=True)
+    cancel_at_period_end = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "billing_subscriptions"
+
+    def __str__(self) -> str:
+        return f"Subscription({self.customer.user.email}, {self.status})"
+```
+
+### Why OneToOne and not AbstractUser subclass
+
+- The existing `apps/accounts/models.py` already defines a minimal `User(AbstractUser)`. Django requires the custom user model to be set before the first migration — changing it after is a database recreation. Subclassing again is not possible without replacing accounts entirely.
+- OneToOne keeps billing completely isolated. Removing the billing module requires only deleting `apps/billing/` and the `"apps.billing"` INSTALLED_APPS entry — no schema changes to the users table.
+- The `related_name="billing_customer"` avoids naming collision with any future `profile` or other OneToOne extensions.
+- `stripe_customer_id` is initially blank. It is populated lazily on first billing interaction via `BillingService.get_or_create_stripe_customer()`. This avoids unnecessary Stripe API calls for users who never touch billing.
+
+### Auto-creation via signal (`apps/billing/signals.py`)
+
+```python
+from django.conf import settings
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+
+
+@receiver(post_save, sender=settings.AUTH_USER_MODEL)
+def create_billing_customer(sender, instance, created, **kwargs):
+    """
+    Auto-create a Customer record whenever a new User is created.
+    The Stripe customer ID is populated lazily on first billing interaction.
+    """
+    if created:
+        from apps.billing.models import Customer
+        Customer.objects.get_or_create(user=instance)
+```
+
+Signal registered in `BillingConfig.ready()` in `apps.py`:
+
+```python
+# apps/billing/apps.py
+from django.apps import AppConfig
+
+
+class BillingConfig(AppConfig):
+    default_auto_field = "django.db.models.BigAutoField"
+    name = "apps.billing"
+
+    def ready(self) -> None:
+        import apps.billing.signals  # noqa: F401
+```
+
+---
+
+## 5. Webhook Endpoint Registration in Django Ninja Extra
+
+### Why the webhook is NOT a Ninja controller
+
+Stripe requires the **raw, unmodified request body bytes** for HMAC verification. Django Ninja parses the request body during its processing pipeline, which breaks `request.body` access for raw bytes. The webhook must be a plain Django view exempted from CSRF.
+
+### Registration pattern
+
+```python
+# config/urls.py (additions — alongside existing urlpatterns)
+from django.views.decorators.csrf import csrf_exempt
+from apps.billing.webhooks import stripe_webhook_view
+
+urlpatterns = [
+    # ... existing patterns ...
+    path("api/v1/billing/webhook/", csrf_exempt(stripe_webhook_view)),
+]
+```
+
+This is added BEFORE `path("api/v1/", api.urls)` to ensure it is matched first.
+
+### Webhook view (`apps/billing/webhooks.py`)
+
+```python
+import json
+import logging
+
+from django.conf import settings
+from django.http import HttpRequest, HttpResponse
+from django.views.decorators.http import require_POST
+
+from apps.billing.services import BillingService
+
+logger = logging.getLogger(__name__)
+
+
+@require_POST
+def stripe_webhook_view(request: HttpRequest) -> HttpResponse:
+    """
+    Receives Stripe webhook events.
+
+    - Must NOT be a Ninja controller (raw body required for signature verification).
+    - Registered with @csrf_exempt in urls.py.
+    - Signature verification happens inside BillingService.handle_webhook_event().
+    - Returns 200 immediately after dispatching. Idempotent: duplicate events are no-ops.
+    """
+    payload: bytes = request.body
+    sig_header: str = request.headers.get("Stripe-Signature", "")
+
+    if not sig_header:
+        logger.warning("Stripe webhook received without Stripe-Signature header")
+        return HttpResponse(status=400)
+
+    service = BillingService()
+    try:
+        service.handle_webhook_event(
+            payload=payload,
+            signature_header=sig_header,
+            webhook_secret=settings.STRIPE_WEBHOOK_SECRET,
+        )
+    except ValueError:
+        logger.warning("Stripe webhook signature verification failed")
+        return HttpResponse(status=400)
+    except Exception:
+        logger.exception("Stripe webhook processing error")
+        return HttpResponse(status=500)
+
+    return HttpResponse(status=200)
+```
+
+### Webhook event routing inside `BillingService`
+
+```python
+# apps/billing/services.py (partial)
+HANDLED_EVENTS = {
+    "customer.subscription.created",
+    "customer.subscription.updated",
+    "customer.subscription.deleted",
+    "invoice.payment_succeeded",
+    "invoice.payment_failed",
+}
+
+def handle_webhook_event(self, payload: bytes, signature_header: str, webhook_secret: str) -> None:
+    adapter = get_payment_adapter()
+    event = adapter.construct_webhook_event(payload, signature_header, webhook_secret)
+
+    if event.event_type not in HANDLED_EVENTS:
+        logger.debug(f"Ignoring unhandled Stripe event: {event.event_type}")
+        return
+
+    handler = getattr(self, f"_handle_{event.event_type.replace('.', '_')}", None)
+    if handler:
+        handler(event.data)
+```
+
+### Nginx header forwarding (production pitfall)
+
+Nginx drops headers containing underscores by default. The `Stripe-Signature` header uses a hyphen (not underscore) and is safe. However, verify nginx config does not set `underscores_in_headers off` globally — this would affect custom headers. The header name itself is safe, but document this in PITFALLS.
+
+---
+
+## 6. Removable Module Pattern — CLI Scaffolder Compatibility
+
+The billing module follows the exact same isolation pattern as the AI module. The CLI scaffolder spec defines `removeAIModule()` as the template. A parallel `removeBillingModule()` function removes billing with the same four steps.
+
+### Isolation requirements (mirrors AI module spec)
+
+1. All billing code resides in `apps/api/apps/billing/`. No other Django app imports from `apps.billing`.
+2. `"apps.billing"` is conditionally present in `INSTALLED_APPS` — the scaffolder strips the line.
+3. Billing Python dependencies (`stripe`) are in a dedicated optional group in `pyproject.toml`.
+4. Billing env vars (`STRIPE_SECRET_KEY`, etc.) are in a `# BILLING MODULE` section in `.env.example` — the scaffolder strips the section.
+5. The billing webhook URL registration in `config/urls.py` is wrapped in a comment block that the scaffolder can identify and remove.
+6. Frontend billing pages in `apps/web/app/(dashboard)/billing/` are in a self-contained directory — the scaffolder deletes the directory.
+
+### Scaffolder function pattern
+
 ```typescript
-// apps/web/app/api/proxy/[...path]/route.ts
-import { cookies } from 'next/headers';
+// packages/create-foundation-app/src/features/removeBillingModule.ts
+async function removeBillingModule(outputDir: string): Promise<void> {
+  // 1. Delete Django app directory
+  await remove(join(outputDir, "apps/api/apps/billing"));
 
-export async function GET(
-  request: Request,
-  { params }: { params: { path: string[] } }
-) {
-  const cookieStore = await cookies();
-  const token = cookieStore.get('auth-token')?.value;
-  const apiPath = params.path.join('/');
+  // 2. Remove from INSTALLED_APPS
+  const settingsPath = join(outputDir, "apps/api/config/settings/base.py");
+  let settings = await readFile(settingsPath, "utf-8");
+  settings = settings.replace(/^\s*"apps\.billing",?\s*$/gm, "");
+  await writeFile(settingsPath, settings, "utf-8");
 
-  const response = await fetch(
-    `${process.env.DJANGO_API_URL}/api/v1/${apiPath}`,
-    {
-      headers: {
-        Authorization: token ? `Bearer ${token}` : '',
-        'Content-Type': 'application/json',
-      },
-    }
-  );
+  // 3. Remove Python dependency
+  const pyprojectPath = join(outputDir, "apps/api/pyproject.toml");
+  let pyproject = await readFile(pyprojectPath, "utf-8");
+  pyproject = pyproject.replace(/^stripe.*$/gm, "");
+  await writeFile(pyprojectPath, pyproject, "utf-8");
 
-  const data = await response.json();
-  return Response.json(data, { status: response.status });
+  // 4. Remove webhook URL from urls.py (comment-delimited block)
+  const urlsPath = join(outputDir, "apps/api/config/urls.py");
+  let urls = await readFile(urlsPath, "utf-8");
+  urls = urls.replace(/# BILLING_START[\s\S]*?# BILLING_END\n?/gm, "");
+  await writeFile(urlsPath, urls, "utf-8");
+
+  // 5. Remove billing env vars from .env.example
+  const envPath = join(outputDir, "apps/api/.env.example");
+  let env = await readFile(envPath, "utf-8");
+  env = env.replace(/# BILLING MODULE[\s\S]*?# END BILLING MODULE\n?/gm, "");
+  await writeFile(envPath, env, "utf-8");
+
+  // 6. Remove frontend billing pages
+  await remove(join(outputDir, "apps/web/app/(dashboard)/billing"));
 }
 ```
 
-**Recommended approach:** Direct client-to-Django calls for most data fetching (the API client package handles this). Use Next.js API routes ONLY for: (1) Server Component data loading, (2) auth token exchange, (3) webhook receivers, (4) server-side operations that need secrets not exposed to the browser.
-
-### Pattern 2: OpenAPI-First Type Generation Pipeline
-
-**What:** Django Ninja Extra generates an OpenAPI 3.1 schema from Pydantic models and controller decorators. This schema is consumed by a code generation tool that produces TypeScript types and a typed fetch client, which lives in `packages/api-client/`.
-
-**When to use:** Always. This is the core integration pattern that keeps the Python backend and TypeScript frontends in sync.
-
-**Trade-offs:**
-- PRO: Single source of truth for API contracts (Python Pydantic models)
-- PRO: TypeScript consumers get compile-time type safety
-- PRO: No manual type maintenance
-- CON: Generation step must be run after API changes
-- CON: Complex response types (unions, discriminated unions) may need manual refinement
-
-**Pipeline:**
-```
-┌─────────────────┐     ┌──────────────────┐     ┌──────────────────┐
-│  Django Ninja    │     │  OpenAPI JSON     │     │  TypeScript      │
-│  Pydantic Models │────>│  Schema           │────>│  Types + Client  │
-│  + Controllers   │     │  (apps/api/)      │     │  (packages/      │
-│                  │     │                   │     │   api-client/)   │
-└─────────────────┘     └──────────────────┘     └──────────────────┘
-        |                       |                        |
-   python manage.py          curl or                openapi-ts or
-   export_openapi_schema     script                 orval generate
-```
-
-**Recommended tools:**
-- **openapi-typescript** (v7+) for type generation -- produces TypeScript types from OpenAPI 3.x schemas. Lightweight, well-maintained.
-- **openapi-fetch** for the runtime client -- tiny (~6kb), uses native fetch, fully typed from openapi-typescript output. No code generation needed for the client itself, just types.
-- Alternative: **orval** if you want auto-generated React Query hooks. More opinionated but reduces boilerplate significantly.
-
-**Example Turborepo pipeline (`turbo.json` excerpt):**
-```json
-{
-  "tasks": {
-    "generate": {
-      "dependsOn": ["^build"],
-      "outputs": ["src/generated/**"]
-    },
-    "api#export-schema": {
-      "cache": false
-    }
-  }
-}
-```
-
-### Pattern 3: Layered Django App Structure (Controllers / Services / Repositories)
-
-**What:** Each Django app follows a strict layered architecture: Controllers (Ninja Extra) handle HTTP concerns, Services contain business logic, and the ORM models/managers serve as the repository layer.
-
-**When to use:** Always. This prevents the common Django anti-pattern of fat views/controllers.
-
-**Trade-offs:**
-- PRO: Testable business logic (services can be tested without HTTP)
-- PRO: Controllers stay thin -- just validation, auth, and delegation
-- CON: More files per app
-- CON: Can feel over-engineered for simple CRUD
-
-**Example:**
-```python
-# apps/api/apps/accounts/controllers.py
-from ninja_extra import api_controller, route
-from ninja_extra.permissions import IsAuthenticated
-
-from .schemas import UserOut, UserUpdateIn
-from .services import UserService
-
-@api_controller('/users', tags=['Users'])
-class UserController:
-    def __init__(self):
-        self.service = UserService()
-
-    @route.get('/me', response=UserOut, permissions=[IsAuthenticated])
-    def get_current_user(self, request):
-        return self.service.get_user(request.user.id)
-
-    @route.patch('/me', response=UserOut, permissions=[IsAuthenticated])
-    def update_current_user(self, request, payload: UserUpdateIn):
-        return self.service.update_user(request.user.id, payload)
-```
+### URL registration template block (in `config/urls.py`)
 
 ```python
-# apps/api/apps/accounts/services.py
-from django.contrib.auth import get_user_model
-from .schemas import UserUpdateIn
+# BILLING_START
+from django.views.decorators.csrf import csrf_exempt
+from apps.billing.webhooks import stripe_webhook_view
+# BILLING_END
 
-User = get_user_model()
-
-class UserService:
-    def get_user(self, user_id: int) -> User:
-        return User.objects.get(id=user_id)
-
-    def update_user(self, user_id: int, data: UserUpdateIn) -> User:
-        user = User.objects.get(id=user_id)
-        for field, value in data.dict(exclude_unset=True).items():
-            setattr(user, field, value)
-        user.save()
-        return user
+urlpatterns = [
+    # ... existing ...
+    # BILLING_START
+    path("api/v1/billing/webhook/", csrf_exempt(stripe_webhook_view)),
+    # BILLING_END
+    path("api/v1/", api.urls),
+]
 ```
 
-### Pattern 4: Cross-Platform UI via React Native Web (Selective Sharing)
-
-**What:** Share foundational UI primitives (Button, Text, Input, Card) between Next.js web and Expo mobile using React Native Web. NOT all components -- only low-level primitives where visual parity matters.
-
-**When to use:** For design-system-level primitives. Platform-specific components (navigation, native features) remain in their respective `apps/` directories.
-
-**Trade-offs:**
-- PRO: True code reuse for core UI elements
-- PRO: Consistent design language across platforms
-- CON: React Native Web adds complexity to Next.js config (module resolution, transpilation)
-- CON: Not all React Native components have web equivalents
-- CON: Styling approaches may diverge (Tailwind on web, StyleSheet on native)
-
-**Recommended approach -- NativeWind over raw React Native Web:**
-Use NativeWind (Tailwind CSS for React Native) in `packages/ui/`. NativeWind v4 supports both React Native and React Native Web, allowing the same className-based styling to work on both platforms. This eliminates the StyleSheet vs Tailwind divergence.
-
-**Next.js configuration for React Native Web:**
-```javascript
-// apps/web/next.config.ts
-import type { NextConfig } from 'next';
-
-const nextConfig: NextConfig = {
-  transpilePackages: [
-    'react-native',
-    'react-native-web',
-    'nativewind',
-    '@repo/ui',
-    '@repo/business-logic',
-  ],
-  webpack: (config) => {
-    config.resolve.alias = {
-      ...(config.resolve.alias || {}),
-      'react-native$': 'react-native-web',
-    };
-    return config;
-  },
-};
-
-export default nextConfig;
-```
-
-**Expo configuration (must resolve monorepo packages):**
-```javascript
-// apps/mobile/metro.config.js
-const { getDefaultConfig } = require('expo/metro-config');
-const path = require('path');
-
-const projectRoot = __dirname;
-const monorepoRoot = path.resolve(projectRoot, '../..');
-
-const config = getDefaultConfig(projectRoot);
-config.watchFolders = [monorepoRoot];
-config.resolver.nodeModulesPaths = [
-  path.resolve(projectRoot, 'node_modules'),
-  path.resolve(monorepoRoot, 'node_modules'),
-];
-
-module.exports = config;
-```
+The `BILLING_START` / `BILLING_END` comment delimiters are the scaffolder's surgical removal markers, identical in spirit to how the AI module uses `"apps.ai"` as its identifier.
 
 ---
 
-## Data Flow
+## 7. Impact on `packages/api-client/` and Shared Types
 
-### Primary Request Flow (Client to Database)
+### How billing types propagate automatically
 
-```
-[Browser/Mobile App]
-    |
-    |  HTTP request (fetch via api-client package)
-    |  Authorization: Bearer <token>
-    |
-    v
-[Django Ninja Extra API]
-    |
-    |-- Middleware: Auth token validation (Django Allauth / JWT)
-    |-- Controller: Request validation (Pydantic schema)
-    |-- Service: Business logic
-    |-- ORM: Database query
-    |
-    v
-[PostgreSQL 16 + PGVector]
-    |
-    v
-[Response: Pydantic schema -> JSON]
-    |
-    v
-[Client: openapi-fetch typed response -> React state]
+The billing module's Pydantic schemas in `apps/billing/schemas.py` are exposed through Ninja Extra controllers. `api.auto_discover_controllers()` in `config/urls.py` picks them up automatically. Running the existing type generation pipeline produces billing types with zero extra configuration:
+
+```bash
+# No new steps needed — existing pipeline handles billing
+turbo generate:api-types
 ```
 
-### Server Component Data Flow (Next.js SSR)
+### New schemas that become TypeScript types
 
-```
-[Browser requests page]
-    |
-    v
-[Next.js Server (Server Component)]
-    |
-    |  Server-to-server fetch (no CORS, internal network)
-    |  Uses service account token or forwarded user cookie
-    |
-    v
-[Django Ninja Extra API]
-    |
-    v
-[Server Component renders HTML with data]
-    |
-    v
-[HTML streamed to browser]
-    |
-    v
-[Client Components hydrate with server-fetched data]
-```
-
-### Authentication Flow
-
-```
-                    SIGN UP / SIGN IN
-
-[Web Client]                              [Mobile Client]
-    |                                         |
-    |  POST /api/auth/login                   |  POST /api/auth/login
-    |  {email, password}                      |  {email, password}
-    |                                         |
-    v                                         v
-[Django Allauth + Ninja Extra Auth Controller]
-    |
-    |-- Validates credentials
-    |-- Creates session OR issues JWT tokens
-    |
-    v                                         v
-[Web: Set httpOnly cookie]            [Mobile: Return access + refresh tokens]
-    |                                         |
-    |  Cookie sent automatically              |  Stored in expo-secure-store
-    |  on subsequent requests                 |  Sent via Authorization header
-    |                                         |
-    v                                         v
-[Next.js Middleware]                  [Expo app-level auth check]
-    |                                         |
-    |-- Reads auth cookie                     |-- Reads token from secure store
-    |-- Validates (or proxies to Django)      |-- Attaches to api-client
-    |-- Redirects if unauthenticated          |-- Navigates to login if expired
-    |                                         |
-    v                                         v
-[Authenticated page renders]          [Authenticated screen renders]
+```python
+# apps/billing/schemas.py (new file)
+from pydantic import BaseModel
+from datetime import datetime
 
 
-                    TOKEN REFRESH
+class CustomerOut(BaseModel):
+    id: int
+    stripe_customer_id: str
+    created_at: datetime
 
-[Web: Cookie refresh handled by Django session middleware]
-[Mobile: api-client interceptor detects 401 -> POST /api/auth/refresh -> retry]
+
+class SubscriptionOut(BaseModel):
+    id: int
+    stripe_subscription_id: str
+    stripe_price_id: str
+    status: str                          # "active" | "past_due" | "canceled" | ...
+    current_period_start: datetime | None
+    current_period_end: datetime | None
+    cancel_at_period_end: bool
+
+
+class CheckoutSessionOut(BaseModel):
+    checkout_url: str
+
+
+class PortalSessionOut(BaseModel):
+    portal_url: str
+
+
+class CreateCheckoutIn(BaseModel):
+    price_id: str
+    success_url: str
+    cancel_url: str
 ```
 
-**Auth architecture decision: Session-based for web, JWT for mobile.**
+### Generated TypeScript types (from OpenAPI pipeline)
 
-Rationale:
-- **Web (Session/Cookie):** Django Allauth naturally provides session-based auth. httpOnly cookies are more secure than storing JWTs in browser storage. Next.js middleware can read the session cookie for server-side auth checks. No token refresh logic needed on the client.
-- **Mobile (JWT):** Mobile apps cannot use cookies effectively. JWT access + refresh token pair stored in `expo-secure-store`. The API client package includes an interceptor that handles transparent token refresh.
-- **Django Allauth** supports both flows. The `dj-rest-auth` package (built on top of Allauth) provides token-based endpoints alongside session-based auth. Alternatively, `django-ninja-jwt` provides JWT support specifically for Django Ninja.
+After running `turbo generate:api-types`, `packages/api-client/gen/v1/types.d.ts` will contain:
 
-### OpenAPI Type Sync Flow
-
-```
-[Developer changes Django Pydantic schema or controller]
-    |
-    v
-[Run: turbo run generate --filter=api-client]
-    |
-    |-- Step 1: Django management command exports openapi.json
-    |-- Step 2: openapi-typescript generates TypeScript types
-    |-- Step 3: Types are consumed by api-client package
-    |
-    v
-[TypeScript compilation catches type mismatches in web/mobile]
-    |
-    v
-[CI pipeline also runs generation + type-check to catch drift]
+```typescript
+// Auto-generated — do not edit
+export interface CustomerOut { ... }
+export interface SubscriptionOut { ... }
+export interface CheckoutSessionOut { checkout_url: string }
+export interface PortalSessionOut { portal_url: string }
 ```
 
-### AI Module Data Flow (LangGraph + PGVector)
+### `packages/schemas/` additions (Zod validation schemas)
+
+The existing `packages/schemas/src/` contains Zod schemas for cross-platform form validation. Add:
 
 ```
-[User submits query (web or mobile)]
-    |
-    v
-[Django AI Controller]
-    |
-    |-- Validates input
-    |-- Delegates to LangGraph graph
-    |
-    v
-[LangGraph Agent/Chain]
-    |
-    |-- Retrieval: Query PGVector for relevant embeddings
-    |-- Generation: Call LLM with context
-    |-- (Optional) Tool use: Call other Django services
-    |
-    v
-[Response streamed back via SSE or returned as JSON]
-    |
-    v
-[Client renders response]
-
-
-                EMBEDDING PIPELINE
-
-[New content created/updated in Django]
-    |
-    v
-[Django signal or Celery task]
-    |
-    |-- Generate embedding via OpenAI/local model
-    |-- Store in PGVector column
-    |
-    v
-[PGVector index updated, available for similarity search]
+packages/schemas/src/billing.ts    # Zod schemas matching billing Pydantic schemas
 ```
+
+These are used by `apps/web/` and `apps/mobile/` for client-side form validation (e.g., validating that a price_id is non-empty before initiating checkout). They are maintained separately from the generated OpenAPI types because they encode client-side business rules (e.g., acceptable price IDs) that are not expressible in the OpenAPI spec.
 
 ---
 
-## Docker Compose Service Architecture
+## 8. Component Boundaries and Data Flow
 
-```yaml
-# docker-compose.yml - Local Development
-services:
-  # Database
-  db:
-    image: pgvector/pgvector:pg16
-    ports:
-      - "5432:5432"
-    environment:
-      POSTGRES_DB: foundation
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
+### Complete data flow: User upgrades to paid plan
 
-  # Cache + Task Broker
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-
-  # Backend API
-  api:
-    build:
-      context: ./apps/api
-      dockerfile: Dockerfile
-    ports:
-      - "8000:8000"
-    volumes:
-      - ./apps/api:/app
-    environment:
-      - DATABASE_URL=postgresql://postgres:postgres@db:5432/foundation
-      - REDIS_URL=redis://redis:6379/0
-      - DJANGO_SETTINGS_MODULE=config.settings.development
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    command: python manage.py runserver 0.0.0.0:8000
-
-  # Background Workers (optional profile)
-  worker:
-    build:
-      context: ./apps/api
-      dockerfile: Dockerfile
-    volumes:
-      - ./apps/api:/app
-    environment:
-      - DATABASE_URL=postgresql://postgres:postgres@db:5432/foundation
-      - REDIS_URL=redis://redis:6379/0
-      - DJANGO_SETTINGS_MODULE=config.settings.development
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    command: celery -A config worker -l info
-    profiles:
-      - with-worker
-
-  # Dev Email Capture (optional profile)
-  mailpit:
-    image: axllent/mailpit
-    ports:
-      - "8025:8025"
-      - "1025:1025"
-    profiles:
-      - with-mail
-
-volumes:
-  postgres_data:
+```
+[Browser: /billing/checkout?plan=pro]
+    |
+    v
+[apps/web/app/(dashboard)/billing/checkout/page.tsx]
+    |  Server Component: calls GET /api/v1/billing/plans/
+    |  (or static price config from env — preferred to avoid round-trip)
+    |
+    v
+[Client Component: upgrade-button.tsx]
+    |  onClick → POST /api/v1/billing/checkout/
+    |  body: { price_id: "price_xxx", success_url, cancel_url }
+    |
+    v
+[apps/api/apps/billing/controllers.py: BillingController.create_checkout_session()]
+    |  IsAuthenticated permission
+    |  delegates to BillingService
+    |
+    v
+[apps/api/apps/billing/services.py: BillingService]
+    |  1. get_or_create_stripe_customer(user)
+    |     → if Customer.stripe_customer_id is empty:
+    |         call adapter.create_customer()
+    |         save stripe_customer_id to Customer
+    |  2. adapter.create_checkout_session(...)
+    |  3. return CheckoutSessionOut(checkout_url=...)
+    |
+    v
+[Stripe API]
+    |  Returns hosted checkout URL
+    |
+    v
+[Browser: redirected to Stripe checkout URL]
+    |
+    v
+[User completes payment on Stripe]
+    |
+    v
+[Stripe POSTs webhook to /api/v1/billing/webhook/]
+    |
+    v
+[apps/api/apps/billing/webhooks.py: stripe_webhook_view()]
+    |  1. Reads request.body (raw bytes)
+    |  2. adapter.construct_webhook_event() — verifies HMAC signature
+    |  3. service.handle_webhook_event() routes to handler
+    |     _handle_customer_subscription_created():
+    |       - Creates/updates Subscription record
+    |       - Sets status = "active"
+    |
+    v
+[Browser: redirected to /billing/success?session_id=xxx]
+    |
+    v
+[apps/web/app/(dashboard)/billing/success/page.tsx]
+    |  Server Component: GET /api/v1/billing/subscription/
+    |  Displays confirmation (subscription may already be active via webhook)
 ```
 
-**Key Docker decisions:**
+### Component responsibilities
 
-- **`pgvector/pgvector:pg16`** instead of plain `postgres:16` -- PGVector is pre-installed, no extension setup needed.
-- **Next.js and Expo are NOT in Docker for local development.** They run natively via `turbo run dev`. Reason: Hot module replacement, fast refresh, and file watching work much better natively. Docker adds latency to the frontend dev loop for no benefit. Only Django and infrastructure services (Postgres, Redis) run in Docker.
-- **Celery worker uses Docker profiles** (`--profile with-worker`) so it only runs when needed. Not every developer needs the async worker running.
-- **Mailpit** for local email testing -- captures emails sent by Django Allauth without needing a real SMTP server. Also uses profiles.
-- **Redis** is included for Celery broker, Django caching, and potential session storage. Even if not needed immediately, it is cheap to include and avoids adding it later.
+| Component                         | Responsibility                                               | Does NOT do                                      |
+| --------------------------------- | ------------------------------------------------------------ | ------------------------------------------------ |
+| `apps/billing/models.py`          | Customer and Subscription data persistence                   | Any Stripe API calls                             |
+| `apps/billing/adapters.py`        | Stripe API calls, webhook signature verification             | Business rules, DB writes                        |
+| `apps/billing/services.py`        | Business rules, orchestrates adapter + models                | HTTP request/response handling                   |
+| `apps/billing/controllers.py`     | HTTP layer: auth, request validation, response serialization | Business logic                                   |
+| `apps/billing/webhooks.py`        | Raw webhook ingestion, signature verification dispatch       | Processing webhook events (delegates to service) |
+| `apps/billing/signals.py`         | Auto-create Customer on User creation                        | Any billing business logic                       |
+| `apps/web/.../billing/` pages     | UI for billing management                                    | Any Stripe API calls or business logic           |
+| `packages/schemas/src/billing.ts` | Client-side form validation for billing inputs               | API calls, rendering                             |
 
 ---
 
-## Turborepo Pipeline Configuration
+## 9. Suggested Build Order
 
-```json
-{
-  "$schema": "https://turbo.build/schema.json",
-  "globalDependencies": [".env"],
-  "tasks": {
-    "build": {
-      "dependsOn": ["^build"],
-      "outputs": [".next/**", "!.next/cache/**", "dist/**"]
-    },
-    "dev": {
-      "cache": false,
-      "persistent": true,
-      "dependsOn": ["^build"]
-    },
-    "lint": {
-      "dependsOn": ["^build"]
-    },
-    "test": {
-      "dependsOn": ["^build"]
-    },
-    "typecheck": {
-      "dependsOn": ["^build"]
-    },
-    "generate": {
-      "cache": false,
-      "outputs": ["src/generated/**"]
-    },
-    "clean": {
-      "cache": false
-    }
-  }
-}
+Dependencies drive the sequence. Each step requires all prior steps.
+
 ```
+Step 1: Django models + migration
+  - Customer model (OneToOne → User)
+  - Subscription model (FK → Customer)
+  - Initial migration: 0001_initial.py
+  WHY FIRST: All other billing components depend on these tables existing.
 
-**Turborepo + Python nuance:** Turborepo orchestrates tasks defined in `package.json` scripts. For the Django project (`apps/api/`), create a minimal `package.json` that delegates to Python tooling:
+Step 2: PaymentAdapter ABC + StripeAdapter
+  - adapters.py (ABC + StripeAdapter class)
+  - Add stripe to pyproject.toml (uv add stripe)
+  - Add STRIPE_* settings to base.py + .env.example
+  WHY SECOND: Services and webhooks depend on the adapter interface.
 
-```json
-{
-  "name": "@repo/api",
-  "private": true,
-  "scripts": {
-    "dev": "python manage.py runserver 0.0.0.0:8000",
-    "test": "pytest",
-    "lint": "ruff check .",
-    "typecheck": "mypy .",
-    "export-schema": "python manage.py export_openapi_schema > ../../packages/api-client/openapi.json"
-  }
-}
+Step 3: BillingService (core logic, no HTTP)
+  - services.py
+  - get_or_create_stripe_customer()
+  - create_checkout_session()
+  - create_portal_session()
+  - handle_webhook_event() dispatcher
+  - Individual webhook handlers (_handle_customer_subscription_*)
+  WHY THIRD: Can be unit-tested in isolation before HTTP layer exists.
+
+Step 4: Pydantic schemas
+  - schemas.py
+  - CustomerOut, SubscriptionOut, CheckoutSessionOut, PortalSessionOut
+  - CreateCheckoutIn
+  WHY FOURTH: Ninja controllers require schemas. Schemas can reference models.
+
+Step 5: BillingController (Ninja Extra)
+  - controllers.py
+  - GET /billing/customer/ → current customer
+  - GET /billing/subscription/ → current subscription
+  - POST /billing/checkout/ → create checkout session
+  - POST /billing/portal/ → create portal session
+  - DELETE /billing/subscription/ → cancel subscription
+  WHY FIFTH: Controllers depend on schemas (Step 4) and services (Step 3).
+
+Step 6: Webhook view registration
+  - webhooks.py (stripe_webhook_view)
+  - config/urls.py addition (comment-delimited block)
+  WHY SIXTH: Depends on BillingService (Step 3) and adapter (Step 2).
+
+Step 7: Auto-create signal
+  - signals.py (post_save → create Customer)
+  - apps.py BillingConfig.ready() registers signal
+  WHY SEVENTH: Depends on Customer model (Step 1). Can be done after Step 1
+    but placed here to avoid confusion with initial migration state.
+
+Step 8: INSTALLED_APPS + auto_discover
+  - Add "apps.billing" to INSTALLED_APPS
+  - Run makemigrations + migrate
+  WHY EIGHTH: Signals and controllers only need registration after all code exists.
+
+Step 9: OpenAPI type regeneration
+  - turbo generate:api-types
+  - Commit updated openapi.json + gen/v1/types.d.ts
+  WHY NINTH: Requires the Django API to be running with billing endpoints registered.
+
+Step 10: Frontend billing pages
+  - apps/web/app/(dashboard)/billing/page.tsx
+  - apps/web/app/(dashboard)/billing/checkout/page.tsx
+  - apps/web/app/(dashboard)/billing/success/page.tsx
+  - apps/web/app/(dashboard)/billing/portal/page.tsx
+  - apps/web/components/billing/*.tsx
+  - packages/schemas/src/billing.ts
+  WHY TENTH: Requires generated types (Step 9) and working API endpoints (Steps 5-8).
+
+Step 11: CLI scaffolder integration
+  - removeBillingModule() in create-foundation-app
+  - Add billing to feature selection prompt
+  WHY LAST: Scaffolder should only be extended after the module is stable.
 ```
-
-This lets `turbo run lint` or `turbo run test` include the Django project alongside TypeScript packages. The Python package manager (uv/poetry) handles dependency installation separately -- it is not managed by pnpm.
 
 ---
 
 ## Anti-Patterns to Avoid
 
-### Anti-Pattern 1: Fat Next.js API Routes (Accidental Second Backend)
+### Anti-Pattern 1: Stripe API calls in controllers
 
-**What people do:** Move business logic into Next.js API routes, creating a shadow backend alongside Django. Routes start querying the database directly, handling auth, performing complex operations.
+**What goes wrong:** Controllers import `stripe` directly and call `stripe.Customer.create()` inline.
 
-**Why it is wrong:** Two sources of truth for business logic. Mobile app cannot access Next.js API routes, so features are duplicated. Django's ORM, migrations, and Allauth auth are bypassed.
+**Why bad:** Cannot be unit-tested without real Stripe credentials. Cannot swap payment processor. Business logic leaks into the HTTP layer.
 
-**Do this instead:** Keep ALL business logic in Django. Next.js API routes should only: (1) proxy requests to Django when cookie-to-token translation is needed, (2) receive webhooks, (3) handle Next.js-specific concerns like revalidation triggers. The vast majority of data fetching should go directly from the client to Django via the API client package.
+**Instead:** All Stripe calls go through `PaymentAdapter`. Controllers call `BillingService`, which calls the adapter. Controllers never import `stripe`.
 
-### Anti-Pattern 2: Sharing ALL Components via React Native Web
+### Anti-Pattern 2: Modifying the User model for billing fields
 
-**What people do:** Try to make every UI component cross-platform, including complex layouts, navigation, forms with web-specific behavior.
+**What goes wrong:** Adding `stripe_customer_id` directly to `apps/accounts/models.py User(AbstractUser)`.
 
-**Why it is wrong:** React Native Web has gaps. Complex web-specific patterns (CSS Grid layouts, hover states with complex popovers, web form APIs) do not translate well. You end up with `Platform.OS` checks everywhere, defeating the purpose of sharing.
+**Why bad:** Accounts app is auth-only. Billing fields in the User model make the billing module non-removable. The CLI scaffolder cannot cleanly strip fields from an AbstractUser subclass without risk.
 
-**Do this instead:** Share only foundational primitives in `packages/ui/`: Button, Text, Input, Card, Avatar, Badge, Icon. Keep platform-specific components (navigation bars, web-specific data tables, mobile-specific gesture handlers) in their respective `apps/` directories. The shared `packages/business-logic/` and `packages/api-client/` provide the real code reuse value.
+**Instead:** OneToOne Customer model in `apps/billing/models.py`. Auto-created via signal.
 
-### Anti-Pattern 3: Coupling Type Generation to Dev Server Startup
+### Anti-Pattern 3: Parsing request.body in a Ninja controller for webhooks
 
-**What people do:** Auto-generate the API client on every dev server start, requiring Django to be running before Next.js or Expo can start.
+**What goes wrong:** Registering the webhook as a `@api_controller` endpoint and accessing `request.body`.
 
-**Why it is wrong:** Creates a hard dependency that slows down development. Frontend developers cannot work unless the backend is running. CI pipelines become fragile.
+**Why bad:** Django Ninja processes the request body for JSON parsing. After Ninja reads it, `request.body` may be empty or already-decoded. Stripe signature verification requires raw bytes, causing `SignatureVerificationError` for all valid events.
 
-**Do this instead:** Commit the generated `openapi.json` and generated types to version control. Run type generation as an explicit step (`turbo run generate`) after API changes, not as part of the dev startup flow. CI verifies that committed types match the current Django schema. This allows frontend developers to work with stale-but-present types when the backend is unavailable.
+**Instead:** Register as a plain Django view in `config/urls.py` with `@csrf_exempt`. Access `request.body` (raw bytes) directly. Delegate signature verification to the adapter.
 
-### Anti-Pattern 4: Monolithic Django Settings
+### Anti-Pattern 4: Processing webhook events synchronously in the view
 
-**What people do:** Use a single `settings.py` with `if DEBUG:` conditionals scattered throughout.
+**What goes wrong:** Running all business logic (database updates, email sends) synchronously in `stripe_webhook_view()`. If this takes more than ~5 seconds, Stripe retries the webhook, causing duplicate processing.
 
-**Why it is wrong:** Hard to reason about which settings apply in which environment. Easy to accidentally ship debug settings to production.
+**Instead:** For heavy webhook processing, dispatch a Celery task from the view and return 200 immediately. For lightweight operations (simple DB updates), synchronous processing in the service is fine. Add idempotency checks using `stripe_event_id` if needed.
 
-**Do this instead:** Use the split settings pattern: `settings/base.py` (shared), `settings/development.py` (imports base + dev overrides), `settings/production.py` (imports base + prod overrides). Select via `DJANGO_SETTINGS_MODULE` environment variable.
+### Anti-Pattern 5: Storing plan metadata in the Subscription model
 
-### Anti-Pattern 5: Deeply Nested Shared Package Dependencies
+**What goes wrong:** Adding fields like `plan_name`, `monthly_price`, `feature_limits` to the Subscription model.
 
-**What people do:** Create packages that depend on other packages that depend on other packages: `ui` imports from `business-logic` which imports from `validation` which imports from `api-client`.
+**Why bad:** Plan metadata belongs in configuration (environment variables or a static `BILLING_PLANS` dict in settings), not in the database. Storing it creates synchronization problems when plans are updated in Stripe.
 
-**Why it is wrong:** Creates circular dependency risks, increases build times, and makes it impossible to use one package without pulling in the entire dependency tree.
-
-**Do this instead:** Keep packages at a flat dependency level. `api-client` depends on `validation` (for request body types). `ui` depends on nothing else in the monorepo. `business-logic` depends on `api-client` and `validation`. Apps (`web`, `mobile`) depend on all packages they need directly. No package-to-package chains longer than one hop.
+**Instead:** Keep Subscription lean: only `stripe_subscription_id`, `stripe_price_id`, `status`, and period dates. Resolve plan name and features at query time by mapping `stripe_price_id` to a `BILLING_PLANS` settings dict.
 
 ---
 
-## Package Dependency Graph
+## Integration Points with Existing Codebase
 
-```
-                        ┌─────────────┐
-                        │   config    │   (no deps -- base tsconfigs, eslint)
-                        └─────────────┘
-                              ^
-        ┌─────────────────────┼─────────────────────┐
-        |                     |                     |
-  ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-  │ validation  │     │     ui      │     │ api-client  │
-  │ (zod)       │     │ (RNW)      │     │ (generated) │
-  └──────┬──────┘     └─────────────┘     └──────┬──────┘
-         |                                       |
-         |            ┌─────────────┐            |
-         └───────────>│  business-  │<───────────┘
-                      │  logic      │
-                      │ (hooks,etc) │
-                      └──────┬──────┘
-                             |
-              ┌──────────────┼──────────────┐
-              v              v              v
-        ┌──────────┐  ┌──────────┐  ┌──────────────┐
-        │   web    │  │  mobile  │  │  (future      │
-        │ (Next.js)│  │  (Expo)  │  │   apps)       │
-        └──────────┘  └──────────┘  └──────────────┘
-```
-
-**Dependency rules:**
-- `config` / `typescript-config`: No monorepo dependencies. Foundation layer.
-- `validation`: No monorepo dependencies. Pure Zod schemas.
-- `ui`: No monorepo dependencies. Pure React Native Web primitives. Styled with NativeWind.
-- `api-client`: Depends on `validation` (imports Zod schemas for request validation).
-- `business-logic`: Depends on `api-client` (uses typed client) and `validation` (uses schemas). Contains React hooks, utility functions.
-- `web` and `mobile`: Depend on all packages they need. This is the composition layer.
-
----
-
-## Scaling Considerations
-
-| Concern | At 100 users | At 10K users | At 100K+ users |
-|---------|--------------|--------------|----------------|
-| **API** | Single Django process (runserver) | Gunicorn with 4-8 workers behind nginx | Horizontal scaling: multiple Django pods behind load balancer |
-| **Database** | Single Postgres instance, no read replicas | Connection pooling (PgBouncer), query optimization, indexes | Read replicas, partitioning for large tables, PGVector HNSW indexes |
-| **Background jobs** | No worker needed (or single Celery worker) | Celery with Redis broker, 2-4 workers | Dedicated Celery queues, autoscaling workers, task prioritization |
-| **Frontend** | Vercel free tier or single VPS | Vercel Pro or self-hosted with CDN | Edge functions, ISR, regional deployment |
-| **Mobile** | Direct API calls | Same as web -- API is the bottleneck | Same scaling story as API |
-| **AI/Embeddings** | Sync embedding generation | Async via Celery, batch processing | Dedicated embedding worker, HNSW index tuning, pre-computed results |
-
-### Scaling Priorities (What Breaks First)
-
-1. **Database connections:** Django's default is to open a new connection per request. At 1K+ concurrent users, PostgreSQL's connection limit (default 100) becomes a bottleneck. **Fix:** Add PgBouncer or django-db-connection-pool early.
-2. **Long-running AI requests:** LLM calls can take 5-30 seconds. Synchronous handling blocks Django workers. **Fix:** Use Celery for AI tasks from day one, return results via polling or SSE.
-3. **OpenAPI spec size:** As the API grows, the generated TypeScript types file can become very large. **Fix:** Split API into versioned modules, generate per-module clients if needed.
-
----
-
-## Build Order (Dependencies Between Components)
-
-The following build order reflects the dependency graph and should inform the roadmap phase structure:
-
-```
-Phase 1: Foundation
-  |-- 1a. Monorepo scaffolding (turbo.json, pnpm-workspace.yaml, package.json)
-  |-- 1b. packages/config (tsconfig bases, eslint config)
-  |-- 1c. Docker Compose (db, redis)
-  |-- 1d. apps/api scaffolding (Django project, settings, custom user model)
-           MUST be done before any API work.
-           Custom user model MUST be created before first migration.
-
-Phase 2: API Core
-  |-- 2a. Django Ninja Extra setup (api.py, router registration)
-  |-- 2b. Django Allauth setup (auth endpoints)
-  |-- 2c. OpenAPI schema export (management command)
-  |-- 2d. packages/api-client (type generation pipeline)
-           Requires: Phase 1 complete, Django running with at least one endpoint
-
-Phase 3: Shared Packages
-  |-- 3a. packages/validation (Zod schemas matching Pydantic models)
-  |-- 3b. packages/business-logic (auth hooks, API hooks using api-client)
-  |-- 3c. packages/ui (React Native Web primitives)
-           Requires: packages/config for tsconfig
-           Can be developed in parallel with Phase 2
-
-Phase 4: Web Application
-  |-- 4a. apps/web scaffolding (Next.js 15 App Router)
-  |-- 4b. React Native Web integration in Next.js config
-  |-- 4c. Auth flow (middleware, login/signup pages)
-  |-- 4d. Dashboard pages consuming api-client
-  |-- 4e. Shadcn/ui setup + web-specific components
-           Requires: Phase 2 (api-client), Phase 3 (shared packages)
-
-Phase 5: Mobile Application
-  |-- 5a. apps/mobile scaffolding (Expo managed workflow)
-  |-- 5b. Metro config for monorepo package resolution
-  |-- 5c. Auth flow (secure storage, JWT management)
-  |-- 5d. Screens consuming shared packages
-  |-- 5e. Mobile-specific features (push notifications, etc.)
-           Requires: Phase 2 (api-client), Phase 3 (shared packages)
-           Can be done in parallel with Phase 4
-
-Phase 6: AI Module (Optional)
-  |-- 6a. PGVector setup (model mixin, embedding field)
-  |-- 6b. LangGraph graph definitions
-  |-- 6c. Embedding pipeline (Celery tasks)
-  |-- 6d. AI API endpoints
-  |-- 6e. Frontend AI UI (chat interface, etc.)
-           Requires: Phase 2 (API), Phase 1d (database)
-           Designed to be removable: all code in apps/api/apps/ai/
-
-Phase 7: DevEx and CI/CD
-  |-- 7a. GitHub Actions (lint, test, typecheck, type generation verification)
-  |-- 7b. Pre-commit hooks
-  |-- 7c. Production Dockerfiles
-  |-- 7d. Deployment configuration
-           Can be incrementally built alongside other phases
-```
-
-**Critical path:** Phase 1 -> Phase 2 -> Phase 3 -> Phase 4/5 (parallel). The AI module is entirely orthogonal and can be built at any time after Phase 2.
-
-**Why this order:**
-1. Custom user model in Django MUST be created before the first migration. Changing it later requires database recreation. This is why Django scaffolding is Phase 1.
-2. The API client package is the bridge between Python and TypeScript. It must exist before any frontend can meaningfully integrate.
-3. Shared packages (validation, business-logic, ui) can be developed in parallel with the API because they have independent test harnesses, but they become useful only when consumed by apps.
-4. Web and mobile can be developed in parallel once the shared packages exist.
-
----
-
-## Key Technology Integration Details
-
-### pnpm Workspace Configuration
-
-```yaml
-# pnpm-workspace.yaml
-packages:
-  - 'apps/*'
-  - 'packages/*'
-  - 'tooling/*'
-```
-
-Note: `apps/api` is listed as a workspace even though it is a Python project. It has a minimal `package.json` to participate in Turborepo task orchestration. Its Python dependencies are managed separately by `pyproject.toml`.
-
-### Workspace Package Naming Convention
-
-Use `@repo/` scope for all internal packages:
-- `@repo/api-client`
-- `@repo/validation`
-- `@repo/ui`
-- `@repo/business-logic`
-- `@repo/config`
-- `@repo/typescript-config`
-- `@repo/api` (Django -- minimal package.json)
-
-This convention is recommended by Turborepo documentation and avoids naming collisions with npm packages.
-
-### Environment Variable Strategy
-
-```
-.env.example              # Template with all required vars (committed)
-.env                      # Local overrides (gitignored)
-apps/api/.env             # Django-specific vars (gitignored)
-apps/web/.env.local       # Next.js local vars (gitignored)
-```
-
-Turborepo's `globalDependencies` in `turbo.json` should include `.env` so that cache is invalidated when environment changes. Next.js automatically loads `.env.local`. Django loads via `django-environ` or `python-dotenv`.
-
----
-
-## Integration Points
-
-### External Services
-
-| Service | Integration Pattern | Notes |
-|---------|---------------------|-------|
-| **Stripe** | Webhooks to Next.js API route or Django endpoint; Stripe SDK in Django services | Webhook signature verification is critical. Use Stripe CLI for local testing. |
-| **Email (Resend/SES)** | Django email backend; Allauth uses it for verification | Mailpit for local dev. Switch to production provider via Django EMAIL_BACKEND setting. |
-| **LLM Provider (OpenAI/Anthropic)** | Python SDK in Django AI module | API keys in environment, never committed. Rate limiting in service layer. |
-| **Object Storage (S3/R2)** | django-storages with S3 backend | For user uploads, AI document storage. Use presigned URLs for direct uploads. |
-
-### Internal Boundaries
-
-| Boundary | Communication | Notes |
-|----------|---------------|-------|
-| **Web <-> Django API** | HTTP REST via api-client (direct) or Next.js API route (proxy) | Direct for most calls. Proxy only for auth cookie handling. |
-| **Mobile <-> Django API** | HTTP REST via api-client (always direct) | JWT auth. Never proxied. |
-| **Django <-> PostgreSQL** | Django ORM | Migrations managed by Django. PGVector accessed via pgvector-python. |
-| **Django <-> Redis** | django-redis for caching; Celery for task broker | Redis is infrastructure, not a data store. |
-| **Django <-> LangGraph** | In-process Python call (same Django process) | LangGraph graphs are imported and invoked directly. For long-running graphs, dispatch via Celery. |
-| **Web <-> Expo (shared code)** | packages/* (build-time sharing, not runtime) | No runtime communication. Code sharing is via the monorepo build system. |
+| Existing element                        | How billing touches it                                         | Change required                               |
+| --------------------------------------- | -------------------------------------------------------------- | --------------------------------------------- |
+| `config/urls.py`                        | Adds webhook URL path + imports                                | ADD comment-delimited block before `api.urls` |
+| `config/settings/base.py`               | Adds `"apps.billing"` to INSTALLED*APPS + 4 STRIPE*\* settings | ADD                                           |
+| `apps/accounts/models.py`               | No changes                                                     | NONE — OneToOne from billing side             |
+| `api.auto_discover_controllers()`       | Picks up BillingController automatically                       | NONE — already works                          |
+| `packages/api-client/openapi.json`      | New billing endpoints appear after type regen                  | REGENERATE after Step 8                       |
+| `packages/api-client/gen/v1/types.d.ts` | New billing types auto-generated                               | REGENERATE after Step 8                       |
+| `apps/web/app/(dashboard)/layout.tsx`   | May need billing nav link                                      | ADD nav link                                  |
+| CLI scaffolder feature selection        | New "Billing Module" checkbox                                  | ADD in Step 11                                |
 
 ---
 
 ## Sources
 
-- Turborepo documentation: structuring repositories with apps/ and packages/ convention (turbo.build/repo/docs) -- MEDIUM confidence (training data, not live-verified)
-- Django Ninja documentation: router organization, Pydantic schema integration (django-ninja.dev) -- MEDIUM confidence
-- Django Ninja Extra: controller-based API organization pattern (django-ninja-extra) -- MEDIUM confidence
-- React Native Web: aliasing react-native to react-native-web in Next.js webpack config (necolas.github.io/react-native-web) -- MEDIUM confidence
-- Expo monorepo documentation: Metro config for monorepo workspace resolution (docs.expo.dev) -- MEDIUM confidence
-- NativeWind v4: Tailwind CSS support for React Native and React Native Web -- LOW confidence (rapidly evolving, verify current docs)
-- openapi-typescript + openapi-fetch: TypeScript type generation from OpenAPI specs (openapi-ts.dev) -- MEDIUM confidence
-- Django Allauth: session and token-based authentication (docs.allauth.org) -- MEDIUM confidence
-- pgvector: PostgreSQL vector similarity search extension (github.com/pgvector/pgvector) -- HIGH confidence (well-established, stable API)
-- LangGraph: Python agent framework with graph-based workflows (langchain-ai/langgraph) -- LOW confidence (rapidly evolving API, verify current docs)
-- Docker official images: pgvector/pgvector, redis:7-alpine -- HIGH confidence
+- Stripe webhook signature verification: [docs.stripe.com/webhooks/signature](https://docs.stripe.com/webhooks/signature) — HIGH confidence (official Stripe documentation)
+- Stripe Python SDK v8 (StripeClient API): [github.com/stripe/stripe-python](https://github.com/stripe/stripe-python) — HIGH confidence (official SDK)
+- Stripe webhook CSRF exemption requirement: [Django CSRF docs](https://docs.djangoproject.com/en/6.0/howto/csrf/), [Django Ninja CSRF docs](https://django-ninja.dev/reference/csrf/) — HIGH confidence
+- Django OneToOne profile pattern for User extension: [Django documentation on customizing auth](https://docs.djangoproject.com/en/4.2/topics/auth/customizing/) — HIGH confidence
+- Existing codebase: `apps/api/apps/ai/controllers.py`, `config/urls.py`, `config/settings/base.py`, `openspec/specs/foundation/cli-scaffolder.md` — HIGH confidence (direct inspection)
+- Adam Johnson — building webhook receivers in Django: [adamj.eu/tech/2021/05/09/how-to-build-a-webhook-receiver-in-django/](https://adamj.eu/tech/2021/05/09/how-to-build-a-webhook-receiver-in-django/) — MEDIUM confidence (well-regarded, patterns are stable)
 
 ---
 
-*Architecture research for: Foundation Template (Full-Stack SaaS Monorepo)*
-*Researched: 2026-02-08*
-*Overall confidence: MEDIUM -- All findings based on training data (cutoff May 2025). WebSearch and WebFetch were unavailable for live verification. Core patterns (Turborepo structure, Django project layout, Docker Compose) are well-established and unlikely to have changed. React Native Web + NativeWind integration and LangGraph API should be verified against current documentation during implementation.*
+_Billing & Payments Architecture — Foundation Template_
+_Researched: 2026-03-07_

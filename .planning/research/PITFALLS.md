@@ -1,495 +1,830 @@
-# Pitfalls Research
+# Domain Pitfalls: Billing & Payments Module
 
-**Domain:** Full-stack SaaS foundation template (Django Ninja Extra + Next.js 15 + Expo + Turborepo)
-**Researched:** 2026-02-08
-**Confidence:** MEDIUM (WebSearch/WebFetch unavailable; findings based on training data verified against known documentation patterns. All items flagged where validation is recommended.)
+**Domain:** Adding a billing/payments module to an existing Django + Next.js SaaS template
+**Researched:** 2026-03-07
+**Confidence:** MEDIUM-HIGH (WebSearch verified; training data corroborated by current community sources. Stripe-specific claims verified against Stripe documentation patterns. WeasyPrint specifics corroborated by GitHub issues and 2025 community posts.)
 
 ---
 
 ## Critical Pitfalls
 
-Mistakes that cause rewrites, architectural dead-ends, or multi-day debugging sessions.
-
-### Pitfall 1: Turborepo Cannot Orchestrate Python -- Treating It Like a JS Workspace
-
-**What goes wrong:**
-Turborepo is built around npm/pnpm workspaces. Developers try to put the Django app as a Turborepo "package" with a `package.json` that wraps Python commands (`"dev": "python manage.py runserver"`). This breaks Turborepo's dependency graph because Python packages do not declare dependencies through `package.json`. Turborepo cannot hash Python files for cache invalidation, cannot resolve Python import graphs, and cannot determine when the Django app's outputs are stale. Cache hits become unreliable -- either always stale (wasting CI time) or incorrectly cached (serving old builds).
-
-**Why it happens:**
-Turborepo docs focus entirely on JS/TS. Developers assume "just add a package.json wrapper" is sufficient. It works for `turbo run dev` but silently breaks caching and dependency tracking.
-
-**How to avoid:**
-- Keep Django as a **sibling directory** (`apps/api/`) with its own `pyproject.toml` managed by `uv`, NOT as a Turborepo workspace package
-- Create a thin `package.json` in `apps/api/` ONLY for Turborepo task registration (scripts that delegate to Python tooling), with explicit `inputs` globs in `turbo.json` that cover `**/*.py`, `requirements*.txt`, `pyproject.toml`
-- In `turbo.json`, configure the Django app's tasks with explicit `inputs` and `outputs` rather than relying on Turborepo's automatic file hashing:
-  ```json
-  {
-    "tasks": {
-      "api#lint": {
-        "inputs": ["apps/api/**/*.py", "apps/api/pyproject.toml"],
-        "outputs": [],
-        "cache": true
-      },
-      "api#test": {
-        "inputs": ["apps/api/**/*.py", "apps/api/pyproject.toml"],
-        "outputs": ["apps/api/coverage/**"],
-        "cache": true
-      }
-    }
-  }
-  ```
-- Use Turborepo ONLY for orchestration (parallel `dev`, CI task graph). Use `uv` for Python dependency resolution independently
-- Do NOT put Python virtualenvs inside Turborepo-tracked directories
-
-**Warning signs:**
-- CI caches never hit for Python tasks despite no changes
-- Turborepo reports "cache MISS" for Django tasks every run
-- `turbo run test` re-runs Python tests that haven't changed
-- Developers manually clearing Turborepo cache "because it gets confused"
-
-**Phase to address:** Phase 1 (Monorepo Foundation). Getting this wrong means reworking the entire CI pipeline later.
-
-**Recovery cost:** MEDIUM -- requires restructuring `turbo.json` task configuration and CI, but not code changes.
-
-**Confidence:** MEDIUM -- based on Turborepo documentation patterns and community reports. Verify `inputs`/`outputs` syntax against current Turborepo docs.
+Mistakes that cause rewrites, incorrect billing, or irreversible data loss.
 
 ---
 
-### Pitfall 2: Django Allauth Auth Misconfiguration for Cross-Platform SPA + Mobile
+### Pitfall 1: PaymentAdapter Abstraction That Leaks Stripe Concepts
 
 **What goes wrong:**
-Django Allauth has a "headless" mode designed for SPA/API usage, but developers make three interrelated mistakes:
+The adapter ABC is designed to hide provider details, but Stripe-specific concepts bleed into the shared interface. The most common forms:
 
-1. **Mixing session and token auth without a strategy.** Next.js (same-origin or subdomain) works best with session cookies. Expo (mobile) needs token auth (JWT or session token in headers). Developers either force tokens everywhere (losing CSRF protection on web) or force sessions everywhere (breaking mobile).
+1. **Stripe status strings in the interface.** The abstract method returns a `status` field typed as `Literal["requires_payment_method", "requires_action", "succeeded"]` — these are Stripe PaymentIntent statuses. When you add a second provider, these literals are meaningless.
 
-2. **CSRF token mishandling.** Django's CSRF protection uses cookies. When Next.js is on a different origin than Django, the CSRF cookie isn't sent. Developers disable CSRF entirely ("it works now!") instead of properly configuring trusted origins and ensuring the CSRF token is forwarded.
+2. **Stripe customer ID on the user model.** `user.stripe_customer_id` is added to the User model directly. A second provider would require `user.paypal_customer_id`. The model cannot be cleaned up without a migration.
 
-3. **Cookie domain misconfiguration.** For session auth to work across `api.example.com` and `app.example.com`, cookies need `Domain=.example.com`, `SameSite=Lax` (not `Strict`), and `Secure=True`. In development with `localhost:3000` (Next.js) and `localhost:8000` (Django), cookies don't share because they're different ports. Developers "fix" this with `SameSite=None` + `Secure=False` in dev, then forget to change it in production.
+3. **Provider webhook payload exposed to service layer.** The webhook handler calls `adapter.process_webhook(stripe_event)` and passes the raw Stripe event object downstream. The service layer ends up `isinstance`-checking for Stripe types.
+
+4. **Price/Plan IDs are Stripe price IDs.** The adapter interface has `create_subscription(price_id: str)` where `price_id` means a Stripe price ID (`price_abc123`). No other provider uses the same ID format.
 
 **Why it happens:**
-Django Allauth's headless mode is relatively new. Documentation assumes familiarity with Django's auth internals. The three-platform auth requirement (Next.js SSR, Next.js client, Expo) means three different auth flows that must coexist.
+The first implementation is Stripe. It is tempting to write the interface to match what Stripe needs, then "abstract it later." Later never comes.
 
-**How to avoid:**
-- **Dual auth strategy:** Use session cookies for Next.js (same-origin proxy or subdomain) and token-based auth (via Allauth headless tokens) for Expo mobile
-- **Next.js API proxy:** Route `/api/auth/*` through Next.js rewrites to Django. This makes auth same-origin, eliminating CORS/CSRF issues for web:
-  ```javascript
-  // next.config.js
-  async rewrites() {
-    return [
-      { source: '/api/:path*', destination: 'http://django:8000/api/:path*' }
-    ]
-  }
-  ```
-- **Django Allauth headless config:**
+**Prevention:**
+Define the interface in terms of your domain, not Stripe's:
+
+```python
+# GOOD: Domain-centric adapter interface
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
+from enum import Enum
+
+class PaymentStatus(Enum):
+    PENDING = "pending"
+    REQUIRES_ACTION = "requires_action"   # SCA/3DS
+    SUCCEEDED = "succeeded"
+    FAILED = "failed"
+    CANCELED = "canceled"
+
+@dataclass
+class PaymentResult:
+    status: PaymentStatus
+    provider_reference: str            # Opaque to the service layer
+    client_secret: str | None = None   # For frontend action (3DS, etc.)
+    action_url: str | None = None      # Redirect URL if required
+
+class PaymentAdapter(ABC):
+    @abstractmethod
+    def create_customer(self, user_id: int, email: str) -> str:
+        """Returns an opaque provider_customer_id string."""
+        ...
+
+    @abstractmethod
+    def create_subscription(
+        self,
+        provider_customer_id: str,
+        plan_key: str,           # Your internal plan key, NOT a Stripe price ID
+        trial_days: int = 0,
+    ) -> PaymentResult:
+        ...
+
+    @abstractmethod
+    def cancel_subscription(
+        self,
+        provider_subscription_id: str,
+        at_period_end: bool = True,
+    ) -> None:
+        ...
+
+    @abstractmethod
+    def parse_webhook(self, payload: bytes, signature: str) -> "WebhookEvent":
+        """Returns a provider-agnostic WebhookEvent, NOT a raw Stripe object."""
+        ...
+```
+
+Keep `stripe_customer_id` in a separate `BillingProfile` model (not on `User`). The `BillingProfile` model is part of the billing module; removing the module removes this model cleanly.
+
+**Warning signs:**
+
+- The word "stripe" appears in a method signature on the abstract base class
+- Service layer code imports `stripe` directly (not via the adapter)
+- A `stripe_*` field on the User model or any model outside `apps/billing/`
+- `isinstance(event, stripe.Event)` anywhere outside `StripeAdapter`
+
+**Phase to address:** Billing Phase 1 (Adapter scaffolding). The interface must be locked before any implementation begins.
+
+**Recovery cost:** HIGH — changing the interface after both adapter and service layers are built requires touching every call site.
+
+**Confidence:** HIGH
+
+---
+
+### Pitfall 2: Webhook Processing Without Idempotency Guard
+
+**What goes wrong:**
+Stripe retries webhooks when your endpoint returns a non-2xx response or times out (up to 3 days, exponential backoff). Without an idempotency guard:
+
+1. A slow database write causes a timeout. Stripe retries. The subscription is created twice.
+2. A deploy restarts the server mid-webhook. Stripe retries. The user is double-charged or their plan is toggled off then on.
+3. Two concurrent webhook deliveries for the same event arrive due to Stripe's at-least-once guarantee. Both handlers run simultaneously and create duplicate records.
+
+The race condition in case 3 is subtle: both handlers check "has this event been processed?" at the same moment, both get `False`, both proceed, and both write.
+
+**Prevention:**
+
+Use a `ProcessedWebhookEvent` model with a unique constraint on `stripe_event_id`, and use `get_or_create` in an atomic transaction:
+
+```python
+# apps/billing/models.py
+class ProcessedWebhookEvent(models.Model):
+    provider = models.CharField(max_length=50, default="stripe")
+    event_id = models.CharField(max_length=255)
+    event_type = models.CharField(max_length=255)
+    processed_at = models.DateTimeField(auto_now_add=True)
+    status = models.CharField(
+        max_length=20,
+        choices=[("processing", "Processing"), ("done", "Done"), ("failed", "Failed")],
+        default="processing",
+    )
+
+    class Meta:
+        unique_together = [("provider", "event_id")]
+        indexes = [models.Index(fields=["provider", "event_id"])]
+```
+
+```python
+# apps/billing/webhooks.py
+from django.db import transaction, IntegrityError
+
+def handle_stripe_webhook(payload: bytes, sig_header: str) -> None:
+    event = stripe.Webhook.construct_event(
+        payload, sig_header, settings.STRIPE_WEBHOOK_SECRET
+    )
+
+    # Atomic idempotency guard — unique constraint races go to IntegrityError
+    try:
+        with transaction.atomic():
+            webhook_record, created = ProcessedWebhookEvent.objects.get_or_create(
+                provider="stripe",
+                event_id=event["id"],
+                defaults={"event_type": event["type"]},
+            )
+            if not created:
+                return  # Already processed or in-flight
+
+        # Process OUTSIDE the initial transaction to avoid long-held locks
+        _dispatch_webhook_event(event)
+
+        webhook_record.status = "done"
+        webhook_record.save(update_fields=["status"])
+
+    except IntegrityError:
+        # Race condition: another process won the insert. Skip.
+        return
+```
+
+The two-transaction pattern (create record → process → mark done) keeps the idempotency lock narrow. Do not run all webhook processing inside one giant transaction, as long-running processing + a held row lock = deadlocks.
+
+**Warning signs:**
+
+- Webhook handler has no check for already-processed events
+- Subscription created twice for the same user (duplicate rows detectable in admin)
+- Users reporting being charged twice on flaky network days
+- `stripe_subscription_id` lacks a `unique=True` constraint on the model
+
+**Phase to address:** Billing Phase 2 (Webhook infrastructure). This must be the first thing implemented before any webhook handler logic.
+
+**Recovery cost:** HIGH — duplicate billing records require manual reconciliation. Data integrity issues compound over time.
+
+**Confidence:** HIGH (Stripe documentation + community pattern)
+
+---
+
+### Pitfall 3: Wrong Webhook Events Listened To (Event Confusion)
+
+**What goes wrong:**
+Stripe has overlapping events that seem interchangeable but are not. Three common mistakes:
+
+**Mistake A: Using `payment_intent.succeeded` for subscriptions instead of `invoice.payment_succeeded`.**
+For one-time payments via Checkout: listen to `checkout.session.completed`.
+For subscriptions: listen to `invoice.payment_succeeded` (and `invoice.payment_failed`). Subscriptions create invoices automatically each period. `payment_intent.succeeded` fires on the underlying PaymentIntent, but it fires for EVERY invoice, including upcoming ones that happen during the life of a subscription. Developers accidentally activate accounts before the first invoice settles, or re-activate accounts on renewal invoices they didn't intend to handle.
+
+**Mistake B: Using `customer.subscription.updated` to grant/revoke access.**
+`customer.subscription.updated` fires on ANY change: metadata updates, trial extensions, payment method changes. If you grant access on this event, trial extensions re-trigger access grants. Use `customer.subscription.updated` only to sync local state. Grant access based on the `status` field value transitions (e.g., `trialing` → `active`), not the event itself.
+
+**Mistake C: Using `checkout.session.completed` for subscriptions AND one-time payments, but not distinguishing the mode.**
+`checkout.session.completed` fires for both `mode: "payment"` and `mode: "subscription"` sessions. If a single handler handles both, fulfillment logic runs twice or incorrectly.
+
+**Prevention:**
+
+```python
+# Minimum event set for subscription billing:
+SUBSCRIPTION_EVENTS = {
+    "checkout.session.completed",            # Initial subscription signup via Checkout
+    "invoice.payment_succeeded",             # Recurring payment success → renew access
+    "invoice.payment_failed",                # Payment failure → send dunning email
+    "customer.subscription.updated",         # Sync status (cancel_at_period_end, etc.)
+    "customer.subscription.deleted",         # Hard cancellation → revoke access
+    "customer.subscription.trial_will_end",  # Upcoming trial end notification
+}
+
+def handle_checkout_session_completed(session):
+    # ALWAYS check mode before acting
+    if session["mode"] == "subscription":
+        _handle_subscription_checkout(session)
+    elif session["mode"] == "payment":
+        _handle_one_time_payment(session)
+    # Do not fall through without an explicit check
+```
+
+**Warning signs:**
+
+- Users whose access is revoked on plan metadata changes
+- Users with `status=active` in the DB but a Stripe subscription with `status=past_due`
+- Handling `payment_intent.succeeded` for subscription renewal — this fires for many more events than expected
+
+**Phase to address:** Billing Phase 2 (Webhook infrastructure). The event routing table must be explicit and documented.
+
+**Recovery cost:** MEDIUM — fixing event routing doesn't lose data, but requires reconciling any incorrect state transitions that already occurred.
+
+**Confidence:** HIGH (Stripe documentation patterns + community experience)
+
+---
+
+### Pitfall 4: Billing Data Model Decisions That Cause Pain Later
+
+**What goes wrong, specifically:**
+
+**A. Storing Stripe price IDs directly on Plan/Product models.**
+
+```python
+# FRAGILE: ties your data model to Stripe's ID format
+class Plan(models.Model):
+    stripe_price_id = models.CharField(max_length=255, unique=True)
+    stripe_price_id_monthly = models.CharField(...)
+    stripe_price_id_yearly = models.CharField(...)
+```
+
+When you add another billing provider, or when Stripe price IDs change (e.g., migrating from legacy Plans API to Products/Prices API), every row in this table must be updated. Instead, store provider-specific IDs in a separate `PlanProviderMapping` table keyed by `(plan_id, provider)`.
+
+**B. Storing subscription status as a free-form string copied from Stripe.**
+`subscription.status = "active"` mirrors Stripe's status enum. This creates an implicit dependency: if Stripe adds a new status (they have in the past), your code breaks on unhandled values. Define your own `SubscriptionStatus` enum with only the statuses you act on, and map Stripe statuses to yours in the adapter.
+
+**C. No `cancel_at_period_end` flag — using `status` alone to determine access.**
+A user who cancels is still `active` until period end. If you revoke access on `customer.subscription.updated` when status is not `active`, you revoke access immediately. You need both `status` and `cancel_at_period_end` to correctly determine access.
+
+**D. Storing plan feature flags directly on the Subscription model.**
+When plan features change, historical subscriptions reference the old feature set. Features should be on the `Plan` model (or a separate `PlanFeature` table), not on `Subscription`.
+
+**E. No audit log for subscription status transitions.**
+Billing disputes require proof of when a subscription was active. A soft `status` field with no history makes it impossible to reconstruct timeline. At minimum, keep `started_at`, `cancelled_at`, `trial_ends_at`, `current_period_end` as explicit timestamp fields.
+
+**Recommended minimal schema:**
+
+```python
+class BillingProfile(models.Model):
+    """One per user. Lives in billing app. Removed when billing module is removed."""
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="billing_profile",
+    )
+    provider_customer_id = models.CharField(max_length=255, blank=True)
+    # provider is which adapter is active; allows multi-provider in future
+    provider = models.CharField(max_length=50, default="stripe")
+
+class Subscription(models.Model):
+    billing_profile = models.ForeignKey(BillingProfile, on_delete=models.PROTECT)
+    plan = models.ForeignKey("Plan", on_delete=models.PROTECT)
+    provider_subscription_id = models.CharField(max_length=255, unique=True)
+    status = models.CharField(
+        max_length=30,
+        choices=SubscriptionStatus.choices,    # Your enum, not Stripe's
+    )
+    cancel_at_period_end = models.BooleanField(default=False)
+    trial_ends_at = models.DateTimeField(null=True, blank=True)
+    current_period_start = models.DateTimeField()
+    current_period_end = models.DateTimeField()
+    cancelled_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+class PlanProviderMapping(models.Model):
+    """Maps your internal Plan to provider-specific price IDs."""
+    plan = models.ForeignKey("Plan", on_delete=models.CASCADE)
+    provider = models.CharField(max_length=50)
+    provider_price_id = models.CharField(max_length=255)
+    billing_interval = models.CharField(
+        max_length=20,
+        choices=[("month", "Monthly"), ("year", "Yearly")],
+    )
+
+    class Meta:
+        unique_together = [("plan", "provider", "billing_interval")]
+```
+
+**Warning signs:**
+
+- `stripe_price_id` field directly on Plan or Subscription model
+- `subscription.status == "active"` used as the sole access gate
+- No `cancel_at_period_end` field
+- Subscription status stored as `CharField` without a choices constraint or enum
+
+**Phase to address:** Billing Phase 1 (Data model design). Changing schema after webhooks are live requires a migration AND a data backfill.
+
+**Recovery cost:** HIGH for schema changes on a live system. Adding `cancel_at_period_end` retroactively requires backfilling from Stripe's API for every active subscription.
+
+**Confidence:** HIGH
+
+---
+
+### Pitfall 5: Plan Upgrade/Downgrade Logic Using Direct Subscription Updates Instead of Subscription Schedules
+
+**What goes wrong:**
+Upgrades (higher tier) should take effect immediately with proration. Downgrades (lower tier) should typically take effect at period end to avoid immediate loss of paid access.
+
+Developers implement this by calling `stripe.Subscription.modify()` with `proration_behavior="none"` for downgrades and `"create_prorations"` for upgrades. This works until the edge case: a customer upgrades, then downgrades within the same billing period. The interim proration credit from the upgrade is lost or double-applied because the proration calculation runs against a subscription that was already partially prorated.
+
+The correct tool for deferred downgrades is `subscription_schedule`, which queues phase changes at period boundaries. However, `subscription_schedule` adds complexity: once a subscription is managed by a schedule, ALL future modifications must go through the schedule API, or you get a `subscription_already_has_schedule` error.
+
+**Prevention — simple but correct approach:**
+
+- **Upgrades:** `stripe.Subscription.modify(sub_id, items=[...], proration_behavior="always_invoice")`. This immediately invoices the prorated difference, giving the user access to the higher tier now.
+- **Downgrades:** Set `cancel_at_period_end=False`, modify items with `proration_behavior="none"`, and set `billing_cycle_anchor="unchanged"`. Store a `pending_plan_change` on the local Subscription model and apply it on the next `invoice.payment_succeeded` event.
+
+Do NOT mix subscription schedule and non-schedule approaches within the same codebase. Pick one pattern and document it.
+
+**Warning signs:**
+
+- `stripe.SubscriptionSchedule` imported alongside `stripe.Subscription.modify` with no clear rule for which to use when
+- Proration credits disappearing after upgrade-then-downgrade flows
+- `stripe.error.InvalidRequestError: subscription_already_has_schedule` appearing in logs
+
+**Phase to address:** Billing Phase 3 (Plan management). Must be designed before the plan-change endpoint is built.
+
+**Recovery cost:** MEDIUM — incorrect proration requires issuing manual Stripe credits to affected customers.
+
+**Confidence:** MEDIUM (based on Stripe documentation + community reports; verify current subscription schedules API behavior)
+
+---
+
+### Pitfall 6: Webhook Endpoint Timing Out Because Processing Is Synchronous
+
+**What goes wrong:**
+The Stripe webhook endpoint runs all processing synchronously within the HTTP request. If the processing involves:
+
+- Sending a confirmation email
+- Generating a PDF invoice
+- Calling another external API (Mailchimp, Slack, etc.)
+- Creating downstream records across multiple models
+
+...the total time can exceed Stripe's 30-second timeout. When Stripe receives no response within 30 seconds, it marks the delivery as failed and retries. Your idempotency guard (Pitfall 2) prevents double-processing, but the original event is marked "failed" in Stripe's dashboard, creating false alarms.
+
+**Prevention:**
+Return a `200 OK` immediately after signature verification and idempotency guard, then process asynchronously:
+
+```python
+# apps/billing/views.py (Django Ninja endpoint)
+@router.post("/webhooks/stripe/", auth=None)  # No auth — Stripe signs the payload
+def stripe_webhook(request: HttpRequest):
+    payload = request.body
+    sig_header = request.headers.get("Stripe-Signature", "")
+
+    # Step 1: Verify signature (fast — milliseconds)
+    try:
+        event = stripe.Webhook.construct_event(
+            payload, sig_header, settings.STRIPE_WEBHOOK_SECRET
+        )
+    except (ValueError, stripe.error.SignatureVerificationError):
+        raise HttpError(400, "Invalid payload or signature")
+
+    # Step 2: Idempotency guard (fast — single DB lookup with unique constraint)
+    _, created = ProcessedWebhookEvent.objects.get_or_create(
+        provider="stripe",
+        event_id=event["id"],
+        defaults={"event_type": event["type"]},
+    )
+    if not created:
+        return {"status": "already_processed"}
+
+    # Step 3: Dispatch to Celery task — return 200 immediately
+    process_stripe_webhook.delay(event_id=event["id"], event_type=event["type"])
+
+    return {"status": "accepted"}
+```
+
+The Celery task fetches the event from Stripe by ID (rather than storing the full payload, which avoids PII in the task queue) or processes the locally stored event data.
+
+**Warning signs:**
+
+- `WebhookError: Timed out` appearing in Stripe dashboard webhook delivery logs
+- Webhook handler that imports `send_mail` or `generate_pdf` at the top level
+- Webhook endpoint response time > 5 seconds in any monitoring tool
+
+**Phase to address:** Billing Phase 2 (Webhook infrastructure). Async dispatch must be part of the initial webhook design, not added later.
+
+**Recovery cost:** LOW-MEDIUM — refactoring sync to async is straightforward, but you must replay any events that timed out in Stripe's delivery logs.
+
+**Confidence:** HIGH
+
+---
+
+## Moderate Pitfalls
+
+Mistakes that create bugs, user confusion, or significant debugging time.
+
+---
+
+### Pitfall 7: PDF Invoice Generation Blocking the Request Thread
+
+**What goes wrong:**
+WeasyPrint (the recommended Python HTML-to-PDF library) has two production problems:
+
+1. **Memory leak per generation.** Each PDF generated increases the process RSS by 17-40MB. This memory is not released until the worker is restarted. Django workers serving PDF endpoints will exhaust memory over hours, causing OOM kills and downtime.
+
+2. **Font resolution failures in Docker.** WeasyPrint resolves fonts from the OS. In a minimal Docker image (`python:3.12-slim`), system fonts are not installed. Custom fonts loaded via `@font-face` with relative paths in CSS fail silently (the font falls back to a default) or raise `URLFetchingError`. The PDF looks wrong in production but correct in local dev (where fonts are installed).
+
+3. **WeasyPrint v53+ breaking change.** Version 53 switched from Cairo to pydyf as the PDF generator. This dropped PNG output and changed how some CSS properties are rendered. If your template was tested on WeasyPrint < 53, it may produce different output on v53+.
+
+**Prevention:**
+
+Always generate PDFs in a Celery task, never in the request cycle:
+
+```python
+@celery_app.task(bind=True, max_retries=3)
+def generate_invoice_pdf(self, invoice_id: int) -> str:
+    """Returns S3/storage URL of generated PDF."""
+    invoice = Invoice.objects.select_related("subscription__billing_profile__user").get(
+        id=invoice_id
+    )
+    # Render HTML template
+    html_content = render_to_string("billing/invoice.html", {"invoice": invoice})
+
+    # WeasyPrint import inside the task function (not at module level)
+    # This avoids issues with WeasyPrint's global state in forked Celery workers
+    from weasyprint import HTML, CSS
+    from weasyprint.text.fonts import FontConfiguration
+
+    font_config = FontConfiguration()
+    pdf_bytes = HTML(string=html_content, base_url=settings.STATIC_ROOT).write_pdf(
+        font_config=font_config,
+    )
+
+    # Upload to storage and return URL — don't return raw bytes through Celery
+    url = upload_to_storage(pdf_bytes, f"invoices/{invoice.id}.pdf")
+    return url
+```
+
+**Docker font setup** — install fonts in your Dockerfile:
+
+```dockerfile
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    fonts-liberation \
+    fonts-dejavu-core \
+    && rm -rf /var/lib/apt/lists/*
+```
+
+Pin WeasyPrint to a specific minor version and test PDF output visually on every upgrade.
+
+**Warning signs:**
+
+- Django worker memory growing monotonically over hours (check with `docker stats`)
+- PDF fonts different between local and staging environments
+- `weasyprint.urls.URLFetchingError` in logs
+
+**Phase to address:** Billing Phase 4 (Invoice generation). Design for async from the start.
+
+**Recovery cost:** LOW — switching to Celery task is a straightforward refactor, but memory OOM kills in production require immediate attention.
+
+**Confidence:** HIGH (WeasyPrint memory issue confirmed in Django ticket #34356 and WeasyPrint GitHub issues)
+
+---
+
+### Pitfall 8: Usage-Based Billing Reporting Timing Errors
+
+**What goes wrong:**
+Usage-based (metered) billing requires reporting usage to Stripe via the Meter Event API. Two common mistakes:
+
+1. **Reporting usage at the moment of consumption rather than aggregating first.** Stripe's Meter Event endpoint allows 1,000 calls per second in live mode. An application with 500 concurrent users each making 10 actions per second would need 5,000 API calls per second — 5x the limit. At scale, this causes rate limiting errors that silently drop usage events, undercharging customers.
+
+2. **Not accounting for Stripe's 35-day lookback window.** Stripe processes meter events asynchronously and truncates event timestamps to the nearest 15 minutes for analytics. If your reporting job is delayed (e.g., a Celery queue backup), you have a 35-day window to report late usage. But if your local aggregation table doesn't persist usage for that long before marking it "reported," late events are unrecoverable.
+
+**Prevention:**
+
+- Store usage events locally first (`UsageRecord` model in your DB with `reported_to_provider: bool`).
+- A periodic Celery beat task aggregates and reports hourly, not per-event.
+- Keep unreported records for at least 36 days before cleanup.
+
+```python
+# Celery beat task — runs every hour
+@celery_app.task
+def report_metered_usage():
+    cutoff = timezone.now() - timedelta(hours=1)
+    unreported = UsageRecord.objects.filter(
+        reported_to_provider=False,
+        created_at__lte=cutoff,
+    ).values("subscription__provider_subscription_id").annotate(
+        total=models.Sum("quantity")
+    )
+    for row in unreported:
+        stripe.billing.MeterEvent.create(
+            event_name="api_calls",
+            payload={"value": str(row["total"]), "stripe_customer_id": ...},
+            timestamp=int(cutoff.timestamp()),
+        )
+        UsageRecord.objects.filter(...).update(reported_to_provider=True)
+```
+
+**Warning signs:**
+
+- Stripe rate limit errors (`429`) in billing-related API calls
+- Usage reports called synchronously in the API request handler
+- `UsageRecord` table with no `reported_to_provider` flag
+
+**Phase to address:** Billing Phase 3 (Plan management). Usage reporting architecture must be designed with the metered billing plan type.
+
+**Recovery cost:** MEDIUM — undercharging customers requires identifying affected billing periods and issuing manual adjustments. Stripe cannot backfill usage reports older than 35 days.
+
+**Confidence:** MEDIUM (Stripe Meter API documentation + community rate-limit reports)
+
+---
+
+### Pitfall 9: Frontend Billing UX — Missing Failure and 3DS Handling
+
+**What goes wrong:**
+Minimal implementations of the billing frontend miss three critical flows:
+
+1. **No handling for `requires_action` status (3DS/SCA).** Under PSD2 in Europe (and increasingly globally), many card payments require 3D Secure authentication. Stripe's Payment Element handles this automatically when you call `stripe.confirmPayment()`. If you navigate away from the payment page before the 3DS modal resolves, the payment is abandoned. Many React implementations use `router.push('/dashboard')` immediately after `confirmPayment()` resolves without checking the status, leaving users in a `requires_action` limbo.
+
+   ```typescript
+   // WRONG: Navigates away before checking 3DS result
+   await stripe.confirmPayment({ elements, confirmParams: { return_url: "..." } });
+   router.push("/dashboard");
+
+   // CORRECT: confirmPayment redirects automatically for 3DS;
+   // only run local code if the method does NOT require redirect
+   const { error } = await stripe.confirmPayment({
+     elements,
+     confirmParams: { return_url: `${window.location.origin}/billing/return` },
+     redirect: "if_required",
+   });
+   if (error) {
+     setErrorMessage(error.message ?? "Payment failed.");
+   } else {
+     // No redirect needed — payment succeeded without 3DS
+     router.push("/dashboard");
+   }
+   ```
+
+2. **No return URL handler for post-3DS redirect.** When `confirmPayment` redirects to the `return_url`, the user lands on your page with `?payment_intent=pi_xxx&payment_intent_client_secret=xxx&redirect_status=succeeded` in the URL. If the page has no handler for these query params, users land on a blank dashboard with no confirmation of whether payment succeeded.
+
+3. **No retry flow for failed payments.** `invoice.payment_failed` is sent by Stripe on subscription renewal failure. The default behavior sends Stripe's own dunning emails. If you override dunning, your app must surface a "Update payment method" flow. Many implementations show the error but don't link to a page where the customer can fix their card, so the subscription silently lapses.
+
+**Prevention:**
+
+- Always use `redirect: 'if_required'` in `confirmPayment` unless you explicitly want redirect-only behavior.
+- Create a `/billing/return` page that reads query params, calls your backend to verify payment status, and renders success/failure UI.
+- On `invoice.payment_failed`, set `subscription.payment_failed = True` in your model and surface a banner in the dashboard until the customer updates their payment method via a portal link.
+
+**Warning signs:**
+
+- No `/billing/return` route in the Next.js app
+- `stripe.confirmPayment` call not followed by `if (error)` check
+- Subscription status stuck in `past_due` with no visible UI affordance
+
+**Phase to address:** Billing Phase 3 (Frontend billing UI). Test with Stripe's 3DS test cards (`4000000000003063`) during development.
+
+**Recovery cost:** LOW — these are frontend-only changes, but users who encountered silent failures may have abandoned.
+
+**Confidence:** HIGH (Stripe documentation + Next.js GitHub discussions)
+
+---
+
+### Pitfall 10: Making the Billing Module Hard to Remove
+
+**What goes wrong:**
+The CLI scaffolder promises billing is removable. In practice, integration points accumulate:
+
+1. **Direct import of billing models in non-billing apps.**
+
+   ```python
+   # apps/accounts/services.py — WRONG
+   from apps.billing.models import Subscription
+   def is_user_subscribed(user): return Subscription.objects.filter(user=user).exists()
+   ```
+
+   When billing is removed, `accounts` breaks immediately.
+
+2. **URL patterns included unconditionally in `urls.py`.**
+
+   ```python
+   # config/urls.py — WRONG
+   from apps.billing.urls import router as billing_router  # ImportError if billing removed
+   ```
+
+3. **Django signals registered in `billing/apps.py` that modify non-billing models.** If the signal handler adds a `BillingProfile` on `User.post_save`, removing the billing app leaves a dangling signal registration reference that Django can't resolve.
+
+4. **Template tags or context processors from billing in base templates.** `{% load billing_tags %}` in `base.html` raises `TemplateSyntaxError` when billing is removed.
+
+5. **Settings that other apps depend on.** `settings.ACTIVE_PLAN_FEATURES` computed from billing models, read by the auth middleware for feature gating.
+
+**Prevention — architectural rules for clean removability:**
+
+- **No cross-app model imports.** All references from non-billing code to billing state must go through a service function or a `billing_enabled` check:
+
   ```python
-  HEADLESS_ONLY = True  # Disable Django's HTML auth views
-  HEADLESS_FRONTEND_URLS = {
-      "account_confirm_email": "https://app.example.com/auth/verify-email/{key}",
-      "account_reset_password_from_key": "https://app.example.com/auth/reset-password/{key}",
-  }
+  # apps/core/billing_utils.py — thin bridge, cleared when billing removed
+  def get_user_subscription_status(user) -> str | None:
+      if not apps.is_installed("apps.billing"):
+          return None
+      from apps.billing.services import get_subscription_status
+      return get_subscription_status(user)
   ```
-- **Separate auth clients:** Build the shared API client package with a `WebAuthProvider` (cookie-based) and `MobileAuthProvider` (token-based) that handle transport differences transparently
-- Configure `CSRF_TRUSTED_ORIGINS` explicitly for both dev and prod
-- Use a `.env`-driven `SESSION_COOKIE_DOMAIN` that changes between dev (not set / localhost) and prod (`.example.com`)
+
+- **Conditional URL registration:**
+
+  ```python
+  # config/urls.py
+  if apps.is_installed("apps.billing"):
+      from apps.billing.api import billing_router
+      api.add_router("/billing/", billing_router)
+  ```
+
+- **Billing signals registered only within billing's `AppConfig.ready()`**, never connecting to models in other apps via post-save signals that other apps rely on.
+
+- **Feature gating via a dedicated service, not billing models directly.** The feature gate service checks `BILLING_ENABLED` from settings first; if False, returns a no-op grant.
+
+- **CLI scaffolder test:** The test suite must include a step that removes billing from `INSTALLED_APPS`, runs `manage.py check`, and verifies zero errors.
 
 **Warning signs:**
-- 403 Forbidden errors on POST requests from Next.js (CSRF failure)
-- Auth works on web but not mobile, or vice versa
-- `CSRF_EXEMPT` decorators scattered across views
-- `SameSite=None` in production configuration
-- Login works in dev but breaks in staging/production
 
-**Phase to address:** Phase 2 (Auth Foundation). This is the single most complex integration in the entire template.
+- `from apps.billing.models import` in any file outside `apps/billing/`
+- `billing` in `INSTALLED_APPS` without a conditional check in `urls.py`
+- Django system check warnings about missing relations after billing is removed
 
-**Recovery cost:** HIGH -- auth touches every API endpoint, every frontend page, every mobile screen. Getting it wrong means rewriting auth providers, API client interceptors, and potentially cookie/session configuration across environments.
+**Phase to address:** Billing Phase 1 (Module design). Boundaries must be established before the first model is written.
 
-**Confidence:** MEDIUM -- Django Allauth headless mode specifics should be validated against current docs (especially `HEADLESS_FRONTEND_URLS` config keys).
+**Recovery cost:** HIGH — decoupling after tight integration requires touching every integration point individually and verifying system checks pass.
+
+**Confidence:** HIGH
 
 ---
 
-### Pitfall 3: React Native Web Component Sharing -- Overestimating What Works
+### Pitfall 11: Testing Strategy That Misses the Hard Parts
 
 **What goes wrong:**
-Developers assume React Native Web means "write once, run on web and mobile." In reality, about 60-70% of RN core components render on web, but:
+Billing tests are either too narrow (unit tests with everything mocked, no real Stripe interaction) or too broad (every test hits Stripe's test mode API, making the suite slow and flaky). Three specific gaps:
 
-1. **Navigation is completely different.** React Navigation (mobile) vs Next.js App Router (web) are incompatible paradigms. You cannot share navigation logic.
+1. **Webhook signature verification not tested.** Tests skip signature verification by mocking `stripe.Webhook.construct_event`. This means the actual signature checking path (the most likely place for a security regression) is never exercised.
 
-2. **Platform-specific APIs don't exist on web.** `Animated`, `PanResponder`, gesture handlers, `StatusBar`, `SafeAreaView`, camera, biometrics -- none of these have web equivalents through RN Web. Developers build a "shared" component using these APIs, then discover it crashes on web.
+2. **Idempotency guard not tested.** Tests don't simulate the same webhook being delivered twice. When a developer changes the idempotency guard, they have no regression test.
 
-3. **Styling edge cases.** RN Web translates `StyleSheet` to CSS, but not perfectly. `position: 'absolute'` behaves differently. `overflow: 'hidden'` doesn't clip the same way. Shadow properties map to `box-shadow` imperfectly. `zIndex` stacking contexts differ.
+3. **Status state machine not tested.** The transitions `pending → active → cancel_at_period_end → cancelled` are not tested as a sequence. Individual event handlers are tested in isolation. A developer changes the `cancelled` state handler and doesn't realize it needs a prior `cancel_at_period_end` state to be correct.
 
-4. **Third-party RN library web support is inconsistent.** Libraries like `react-native-reanimated`, `react-native-gesture-handler`, and `react-native-svg` have web support that ranges from "good" to "partially broken" to "nonexistent."
+**Prevention — testing strategy:**
 
-**Why it happens:**
-React Native Web's marketing suggests universal components. It works for simple cases (Text, View, Pressable, Image, ScrollView). Developers extrapolate from simple cases to complex ones.
+```
+Layer 1 — Unit tests (no Stripe, no DB):
+  - Test adapter's parse_webhook() mapping from Stripe event → WebhookEvent
+  - Test plan/status mapping functions
+  - Run fast, no mocks except for the adapter interface
 
-**How to avoid:**
-- **Shared package contains ONLY primitives:** `Text`, `View`, `Pressable`, `Image`, `TextInput`, `ScrollView`, `FlatList`, `ActivityIndicator`. Nothing else in the shared UI package.
-- **Use `.web.tsx` / `.native.tsx` file extensions** for platform-specific implementations. Metro and webpack both resolve these correctly.
-- **Never share navigation code.** Navigation is app-specific, not package-specific.
-- **Create a "compatibility matrix" doc** listing which components are shared vs. platform-specific. Update it as you add components.
-- **For animations:** Use `react-native-reanimated` for mobile and CSS transitions/Framer Motion for web. Do not try to share animation code.
-- **Use Shadcn/ui for web, build separate mobile components** that share the same design tokens (colors, spacing, typography) through a shared theme package, NOT shared component implementations.
+Layer 2 — Integration tests (real DB, mocked Stripe API):
+  - Use stripe-mock (official Stripe Docker image) for local + CI
+  - Test full webhook handler with real signature verification:
+    use stripe.WebhookSignature to sign your test payload with a known secret
+  - Test idempotency: POST the same event_id twice, assert second is a no-op
+  - Test status state machine as a sequence
+
+Layer 3 — Contract tests (Stripe test mode, CI only):
+  - Run against real Stripe test API monthly or on billing code changes
+  - Verify that your adapter's assumptions about Stripe's API are still correct
+  - Never run in the main fast test suite
+```
+
+**Signing test payloads correctly:**
+
+```python
+# tests/billing/conftest.py
+import time
+import stripe
+
+@pytest.fixture
+def signed_stripe_payload(settings):
+    settings.STRIPE_WEBHOOK_SECRET = "whsec_test_secret"
+    def _make_payload(event_type: str, data: dict) -> tuple[bytes, str]:
+        payload = json.dumps({"id": "evt_test", "type": event_type, "data": data}).encode()
+        timestamp = int(time.time())
+        signed_payload = f"{timestamp}.{payload.decode()}"
+        signature = hmac.new(
+            b"test_secret", signed_payload.encode(), hashlib.sha256
+        ).hexdigest()
+        sig_header = f"t={timestamp},v1={signature}"
+        return payload, sig_header
+    return _make_payload
+```
 
 **Warning signs:**
-- A "shared" component file that imports from `react-native-reanimated` or `react-native-gesture-handler`
-- Platform-specific crashes: "X is not a function" on web for RN APIs
-- CSS rendering glitches on web that don't appear on mobile
-- Increasing use of `Platform.OS === 'web'` conditionals inside shared components (if > 2 conditionals, the component should be split)
 
-**Phase to address:** Phase 3 (Shared Packages). Must establish the sharing boundary BEFORE building UI components.
+- Webhook tests that patch `stripe.Webhook.construct_event` to return a fixture
+- No test that submits the same event_id twice
+- Test suite passes with `STRIPE_WEBHOOK_SECRET` unset (should fail loudly)
 
-**Recovery cost:** HIGH -- if you build 50 "shared" components that don't actually work cross-platform, you're rewriting 50 components. Easier to be restrictive upfront and promote components to shared only when proven.
+**Phase to address:** Billing Phase 2 (Webhook infrastructure). Testing patterns must be established alongside the handlers.
 
-**Confidence:** HIGH -- React Native Web limitations are well-documented and stable.
+**Recovery cost:** LOW-MEDIUM — adding tests retroactively is possible but often reveals latent bugs.
+
+**Confidence:** HIGH (Simon Willison's TIL on pytest Stripe signature, dj-stripe test patterns)
 
 ---
 
-### Pitfall 4: OpenAPI-to-TypeScript Pipeline Becoming a Fragile Single Point of Failure
+## Minor Pitfalls
+
+Annoyances that are easy to fix but easy to overlook.
+
+---
+
+### Pitfall 12: Stripe Secret Key Leaking via OpenAPI Spec
 
 **What goes wrong:**
-The pipeline is: Django Ninja schemas -> OpenAPI JSON -> codegen tool -> TypeScript types/client. This breaks in several ways:
+Django Ninja Extra generates an OpenAPI spec served at `/api/openapi.json`. If any billing endpoint leaks `STRIPE_PUBLISHABLE_KEY` (or worse, `STRIPE_SECRET_KEY`) in a response schema or endpoint description, the spec becomes a security leak. Even the publishable key should not be in the spec — it should be an environment variable accessed client-side.
 
-1. **Schema drift:** Developer changes a Django Ninja schema but forgets to regenerate TypeScript. Frontend uses stale types. No error until runtime (or worse, silent data loss from missing fields).
+**Prevention:**
+Never embed Stripe keys in schema examples or response bodies. Serve `STRIPE_PUBLISHABLE_KEY` via a dedicated `/config` endpoint that requires authentication, or inject it via Next.js environment variables on the server side. Restrict OpenAPI spec access to non-production environments (see existing PITFALLS.md, Security Mistakes section).
 
-2. **Breaking changes in generated code:** The codegen tool (openapi-typescript, orval, etc.) updates its output format between versions. Generated code changes even though the API didn't. This breaks the frontend build.
-
-3. **Nullable/optional field confusion:** Django Ninja's `Optional[str]` can generate `string | null` or `string | undefined` depending on the codegen tool and OpenAPI version. Inconsistency causes TypeScript errors or silent null handling bugs.
-
-4. **Enum handling inconsistencies:** Python enums serialize differently than TypeScript expects. String enums work; integer enums cause type narrowing issues in generated code.
-
-5. **Circular reference handling:** Django Ninja models with self-referential relationships or deep nesting can generate OpenAPI specs that some codegen tools choke on.
-
-**Why it happens:**
-The pipeline has three moving parts (Django schema definition, OpenAPI spec generation, TypeScript codegen) maintained by three different open-source projects with independent release cycles. Changes in any one can ripple.
-
-**How to avoid:**
-- **CI gate:** Add a CI step that generates the OpenAPI spec from Django, runs codegen, and fails the build if the generated output differs from what's committed. This catches schema drift immediately.
-- **Pin codegen tool version** in `package.json` -- never use `latest`
-- **Use `openapi-typescript` for types-only generation** (not a full client). It's the most stable, least opinionated tool. Build the API client wrapper manually using the generated types.
-- **Snapshot the OpenAPI spec in CI:** Compare `python manage.py export_openapi_schema` output against `openapi.json` in the repo. Fail if different. This forces deliberate spec updates.
-- **Write a thin validation layer** that compares a sample of API responses against generated TypeScript types at test time (using Zod schemas generated from the same OpenAPI spec)
-- **Handle nullable explicitly in Django Ninja:** Use `Field(None, nullable=True)` vs `Optional` with clear conventions documented in the project
-
-**Warning signs:**
-- Frontend devs saying "the types don't match the API response"
-- `any` type casts appearing in frontend code to "fix" type errors
-- CI passing but runtime 500 errors from schema mismatches
-- Generated file diffs showing up in PRs that didn't touch the API
-
-**Phase to address:** Phase 2 (API Foundation) for pipeline setup, ongoing enforcement in CI from Phase 4 (CI/CD).
-
-**Recovery cost:** MEDIUM -- fixing the pipeline is straightforward; tracking down all the places where stale types caused bugs is the expensive part.
-
-**Confidence:** HIGH -- OpenAPI codegen pipelines are well-understood, and these failure modes are widely documented.
+**Confidence:** HIGH
 
 ---
 
-### Pitfall 5: PGVector Wrong Index Type Causing 10-100x Performance Degradation
+### Pitfall 13: Stripe Customer Portal vs. Custom Subscription Management UI
 
 **What goes wrong:**
-PGVector supports two index types for approximate nearest neighbor search:
+Teams build a full custom subscription management UI (plan selection, payment method update, invoice history) that partially replicates Stripe's hosted Customer Portal. The custom UI handles 80% of cases correctly and misses edge cases (coupon application, tax handling, multi-currency). Support tickets spike.
 
-1. **IVFFlat** -- older, simpler. Requires training on existing data. If you build an IVFFlat index on an empty or small table and then bulk-insert data, the index is trained on unrepresentative data and recall drops catastrophically (returning wrong results, not just slow results).
+**Prevention:**
+Use Stripe's hosted Customer Portal for subscription management (cancel, update payment method, view invoices). Only build custom UI for the initial checkout flow. Integrate the portal via:
 
-2. **HNSW** -- newer, recommended. No training needed, works with inserts. But wrong parameters (`m` and `ef_construction`) cause either massive memory usage (too high) or terrible recall (too low). Default parameters are often fine for < 100K vectors but need tuning beyond that.
+```python
+session = stripe.billing_portal.Session.create(
+    customer=billing_profile.provider_customer_id,
+    return_url=f"{settings.FRONTEND_URL}/billing",
+)
+return {"url": session.url}
+```
 
-Developers also make these mistakes:
+Then redirect the user to `session.url`. This is the 80/20 choice for a template — full custom UI is a product decision, not a template responsibility.
 
-3. **No index at all.** PGVector does exact nearest neighbor without an index. This is O(n) and works fine for 1,000 vectors. At 100,000 vectors, queries take seconds. At 1M, they time out.
-
-4. **Wrong distance function.** Using L2 distance index (`vector_l2_ops`) when the application uses cosine similarity (`vector_cosine_ops`), or vice versa. The index doesn't accelerate queries using a different operator.
-
-5. **Forgetting `SET ivfflat.probes` or `SET hnsw.ef_search`.** These runtime parameters control the speed/recall tradeoff at query time. Defaults are conservative (low recall for IVFFlat, reasonable for HNSW).
-
-**Why it happens:**
-Vector databases are relatively new to most web developers. The PGVector README is concise and doesn't emphasize production tuning. Developers copy a `CREATE INDEX` from a tutorial without understanding the implications.
-
-**How to avoid:**
-- **Use HNSW exclusively** in the template. It's strictly better than IVFFlat for this use case (incremental inserts, moderate scale, no pre-training needed)
-- **Default HNSW parameters:** `m=16, ef_construction=64` for tables under 1M vectors. Document when to change.
-- **Match the operator class to the distance function:**
-  ```sql
-  -- For cosine similarity (most common with OpenAI/Anthropic embeddings):
-  CREATE INDEX ON items USING hnsw (embedding vector_cosine_ops);
-
-  -- For L2 distance:
-  CREATE INDEX ON items USING hnsw (embedding vector_l2_ops);
-
-  -- For inner product:
-  CREATE INDEX ON items USING hnsw (embedding vector_ip_ops);
-  ```
-- **Set `hnsw.ef_search` at query time** for the right recall/speed tradeoff:
-  ```sql
-  SET hnsw.ef_search = 100;  -- Higher = better recall, slower
-  ```
-- **Use cosine distance by default** in the template since OpenAI, Anthropic, and most embedding models are trained for cosine similarity
-- **Add a Django migration** that creates the HNSW index with correct operator class. Don't leave index creation as a manual step.
-- **Document the vector dimension** in the model: `embedding = VectorField(dimensions=1536)` -- mismatched dimensions cause cryptic errors
-
-**Warning signs:**
-- Vector search queries taking > 100ms for < 100K vectors (likely no index)
-- Vector search returning irrelevant results despite good embeddings (wrong index type, wrong operator, or IVFFlat trained on bad data)
-- Memory usage spiking when building HNSW index (m too high)
-- `EXPLAIN ANALYZE` showing sequential scan instead of index scan
-
-**Phase to address:** Phase 5 (AI Module). Must get this right on first implementation -- changing index types on large tables requires full reindex which can take hours.
-
-**Recovery cost:** MEDIUM for index type change (reindex is slow but automated), HIGH if wrong distance function caused silent bad results that went undetected.
-
-**Confidence:** HIGH -- PGVector's behavior is well-documented in its README and the PostgreSQL community.
+**Confidence:** HIGH
 
 ---
 
-### Pitfall 6: Expo Monorepo Metro Bundler Misconfiguration
+### Pitfall 14: Hardcoded Currency Assumptions
 
 **What goes wrong:**
-Expo in a monorepo requires specific Metro bundler configuration to resolve packages from workspace root `node_modules` and sibling packages. Without it:
+`amount` stored as an integer (Stripe's format: cents/minor units) gets displayed directly as a dollar amount. `1099` is rendered as `$1099` instead of `$10.99`. International pricing in JPY (no minor units, `amount=1000` = ¥1000) is displayed as `¥10.00`.
 
-1. **"Unable to resolve module" errors** for shared packages. Metro's default resolver doesn't follow pnpm's symlinked `node_modules` structure.
+**Prevention:**
+Store `amount` and `currency` together. Use a `Money` type or at minimum a display formatter that is currency-aware:
 
-2. **Duplicate React instances.** Metro resolves a different copy of React from the mobile app's `node_modules` than what shared packages use. This causes "Invalid hook call" errors -- the most confusing React error because the code looks correct.
+```python
+def format_money(amount: int, currency: str) -> str:
+    zero_decimal_currencies = {"jpy", "krw", "vnd", "bif", "clp"}
+    if currency.lower() in zero_decimal_currencies:
+        return f"{amount} {currency.upper()}"
+    return f"{amount / 100:.2f} {currency.upper()}"
+```
 
-3. **Cannot resolve `.web.tsx` extensions.** Metro needs explicit configuration to resolve platform-specific file extensions from workspace packages.
-
-4. **Watchman file watching breaks** with pnpm's symlinked structure. File changes in shared packages don't trigger Metro hot reload.
-
-**Why it happens:**
-Metro bundler was designed for single-package React Native projects. Monorepo support requires explicit configuration that Expo's default setup doesn't provide. pnpm's symlink-based `node_modules` adds another layer of complexity vs npm/yarn's hoisted structure.
-
-**How to avoid:**
-- **Use Expo's monorepo guide explicitly.** Create `metro.config.js` that:
-  ```javascript
-  const { getDefaultConfig } = require('expo/metro-config');
-  const path = require('path');
-
-  const projectRoot = __dirname;
-  const monorepoRoot = path.resolve(projectRoot, '../..');
-
-  const config = getDefaultConfig(projectRoot);
-
-  // Watch all files in the monorepo
-  config.watchFolders = [monorepoRoot];
-
-  // Let Metro know where to resolve packages from
-  config.resolver.nodeModulesPaths = [
-    path.resolve(projectRoot, 'node_modules'),
-    path.resolve(monorepoRoot, 'node_modules'),
-  ];
-
-  // Force shared packages to use the app's React
-  config.resolver.disableHierarchicalLookup = true;
-
-  module.exports = config;
-  ```
-- **Set `"main"` field in shared package `package.json`** to point to the source (not built output) for development:
-  ```json
-  { "main": "src/index.ts" }
-  ```
-  Or use Expo's `expo-module-scripts` if shared packages need building.
-- **Add shared packages to `app.json` or `expo` config** under `experiments.tsconfigPaths` or configure `resolver.extraNodeModules` in Metro
-- **Verify single React instance:** In the Expo app, add a startup check: `console.log(require('react').version, require('react-native').version)` and verify shared packages log the same versions
-- **Use `.pnpmfile.cjs`** or pnpm's `shamefully-hoist=true` for the mobile app workspace if symlink resolution issues persist (this is a pragmatic workaround, not ideal but widely used)
-
-**Warning signs:**
-- "Invalid hook call" errors that appear only when importing from shared packages
-- Metro bundler errors mentioning "Unable to resolve" for `@repo/*` packages
-- Hot reload not working for changes in shared packages
-- Build succeeds on CI but fails locally (or vice versa) due to different `node_modules` structures
-
-**Phase to address:** Phase 1 (Monorepo Foundation). Metro config must be correct before ANY shared package work begins.
-
-**Recovery cost:** LOW-MEDIUM -- Metro config changes are localized, but debugging "Invalid hook call" without knowing the cause can waste days.
-
-**Confidence:** MEDIUM -- Expo monorepo configuration evolves with each SDK release. The patterns above are based on Expo SDK 50-52 documentation. Validate against Expo SDK 53+ docs, as `expo/metro-config` API may have changed.
+**Confidence:** HIGH
 
 ---
 
-### Pitfall 7: Docker Compose Hot Reload Silently Not Working
+## Phase-Specific Warnings
 
-**What goes wrong:**
-The template promises "one-command local dev" with `docker compose up` and hot reload. In practice:
-
-1. **File watching doesn't propagate into containers.** On macOS, Docker Desktop uses a Linux VM. The VM's filesystem notifications don't always propagate to the container. Django's `runserver` auto-reload works (it polls), but webpack/Next.js/Metro file watchers (which use `inotify`/`fsevents`) miss changes.
-
-2. **Volume mount performance on macOS.** Bind-mounting the entire monorepo into containers causes severe I/O performance degradation. `node_modules` inside containers gets overlaid with the host's `node_modules` (or vice versa), causing platform-specific binary mismatches (`esbuild-linux` vs `esbuild-darwin`).
-
-3. **pnpm store inside Docker.** If the pnpm store is on a volume mount, installs are extremely slow. If it's inside the container, it's lost on rebuild.
-
-4. **Port conflicts.** Next.js (3000), Django (8000), Expo DevTools (19000-19002), Metro (8081), Postgres (5432) -- five+ ports. Developers with other projects running hit conflicts.
-
-**Why it happens:**
-Docker is great for deployment but has fundamental friction with development workflows that need fast filesystem access. Every monorepo template hits this.
-
-**How to avoid:**
-- **For Next.js in Docker:** Set `WATCHPACK_POLLING=true` environment variable to enable filesystem polling (slower but reliable). Or better: run Next.js OUTSIDE Docker on the host and only containerize Django + Postgres.
-- **Hybrid dev approach (recommended for the template):**
-  - Docker Compose for infrastructure: Postgres, Redis (if needed), any other services
-  - Host machine for application code: Django (via `uv run`), Next.js (via `pnpm dev`), Expo (via `npx expo start`)
-  - Turborepo orchestrates all dev servers via `turbo run dev`
-  - Provide a `docker-compose.dev.yml` for infrastructure-only AND a `docker-compose.full.yml` for the "everything in Docker" purists
-- **If keeping everything in Docker:**
-  - Use named volumes for `node_modules` to avoid platform binary conflicts:
-    ```yaml
-    volumes:
-      - ./apps/web:/app/apps/web
-      - web_node_modules:/app/apps/web/node_modules  # Don't mount host node_modules
-    ```
-  - Use Docker Compose `develop.watch` (Compose Watch) for file sync instead of bind mounts -- this was introduced in Docker Compose v2.22+ and is purpose-built for dev hot reload
-  - Set `CHOKIDAR_USEPOLLING=1` for webpack-based watchers
-- **Configure non-conflicting ports** in `.env` with sensible defaults and document all ports in README
-
-**Warning signs:**
-- Developers saying "I have to restart the container to see changes"
-- `docker compose up` taking > 60 seconds for initial start
-- IDE autocomplete not working because `node_modules` are inside Docker
-- "File not found" errors after saving a file (stale cache)
-- `npm install` taking 5+ minutes inside Docker on macOS
-
-**Phase to address:** Phase 1 (Monorepo Foundation). The dev experience decision (hybrid vs full Docker) must be made upfront.
-
-**Recovery cost:** LOW -- switching from full-Docker to hybrid dev requires rewriting `docker-compose.yml` and updating dev scripts, but no application code changes.
-
-**Confidence:** HIGH -- Docker dev experience issues on macOS are extremely well-documented and consistent across projects.
+| Phase Topic            | Likely Pitfall                                              | Mitigation                                                              |
+| ---------------------- | ----------------------------------------------------------- | ----------------------------------------------------------------------- |
+| Adapter design         | Stripe concepts leaking into ABC (Pitfall 1)                | Define interface in domain terms first; write Stripe adapter second     |
+| Data model             | Provider-specific IDs hardcoded on Plan model (Pitfall 4)   | Use PlanProviderMapping table; no `stripe_*` fields outside billing app |
+| Webhook infrastructure | Duplicate processing on retry (Pitfall 2)                   | ProcessedWebhookEvent table with unique constraint before any handler   |
+| Webhook infrastructure | Wrong events mapped to business actions (Pitfall 3)         | Explicit event routing table; reviewed and documented                   |
+| Webhook infrastructure | Synchronous processing timing out (Pitfall 6)               | Return 200 immediately; dispatch to Celery                              |
+| Plan management        | Upgrade/downgrade proration errors (Pitfall 5)              | Decide on direct modify vs schedule; document the rule                  |
+| Plan management        | Usage-based reporting rate limits (Pitfall 8)               | Local `UsageRecord` table; hourly Celery beat job                       |
+| Invoice generation     | WeasyPrint memory leak (Pitfall 7)                          | Celery task; pin WeasyPrint version; install fonts in Dockerfile        |
+| Frontend billing UI    | Missing 3DS / return URL handler (Pitfall 9)                | Use `redirect: 'if_required'`; build `/billing/return` page             |
+| CLI scaffolder         | Tight coupling making removal hard (Pitfall 10)             | `apps.is_installed()` guards; no cross-app model imports                |
+| Testing                | Webhook tests that skip signature verification (Pitfall 11) | Sign test payloads using real HMAC; use stripe-mock in CI               |
 
 ---
 
-## Technical Debt Patterns
+## Billing-Specific "Looks Done But Isn't" Checklist
 
-Shortcuts that seem reasonable but create long-term problems.
+- [ ] **Webhook idempotency:** Does the handler check `ProcessedWebhookEvent` before processing? Does CI have a test that submits the same event ID twice?
+- [ ] **Stripe signature verification:** Is the signature verified on EVERY webhook request, not just in production?
+- [ ] **`cancel_at_period_end` tracked:** Is there a flag distinct from `status` to determine if a subscription is in a grace period?
+- [ ] **3DS handling:** Does `confirmPayment` use `redirect: 'if_required'`? Does the `/billing/return` page exist?
+- [ ] **PDF generation async:** Is invoice PDF generation dispatched to Celery, not run in the request cycle?
+- [ ] **System fonts in Docker:** Does the API Dockerfile install `fonts-liberation` or equivalent?
+- [ ] **Removability test:** Does `manage.py check` pass with billing removed from `INSTALLED_APPS`?
+- [ ] **No cross-app billing imports:** Does `grep -r "from apps.billing" apps/ --include="*.py" | grep -v "apps/billing/"` return zero results?
+- [ ] **Currency-aware amount display:** Is `amount` always paired with `currency` before display?
+- [ ] **Stripe keys not in OpenAPI spec:** Is `STRIPE_SECRET_KEY` absent from all schema examples and response bodies?
 
-| Shortcut | Immediate Benefit | Long-term Cost | When Acceptable |
-|----------|-------------------|----------------|-----------------|
-| Disabling CSRF for API endpoints | Fixes 403 errors quickly | Security vulnerability; must re-enable and fix all clients later | Never -- use proxy or proper CSRF token forwarding |
-| Using `any` types for generated API responses | Unblocks frontend dev when codegen is broken | Spreads through codebase; loses type safety benefit entirely | Only in initial prototype, must be resolved within same sprint |
-| Skipping OpenAPI spec snapshot in CI | Faster CI pipeline | Schema drift goes undetected; frontend/backend desync | Never -- this is a 5-minute CI setup |
-| `shamefully-hoist=true` in root `.npmrc` | Fixes "module not found" errors | Defeats pnpm's strict dependency isolation; hides missing `dependencies` declarations | Only as targeted override for specific Expo/RN compatibility, with a TODO to remove |
-| Hardcoding environment URLs | Works for single deployment | Breaks when adding staging, preview deployments | Never -- use env vars from day one |
-| Putting all shared code in one `@repo/shared` package | Simple, one package to maintain | Becomes a junk drawer; mobile app bundles web-only code and vice versa | Never -- split into `@repo/api-client`, `@repo/ui`, `@repo/schemas`, `@repo/utils` from the start |
-| Using Django's `User` model directly | Avoids custom user model complexity | Cannot add fields to User later without painful migration; Django docs explicitly warn against this | Never -- always create a custom user model inheriting `AbstractUser`, even if identical at first |
-| Committing `.env` to the repo | Easier onboarding | Secrets leak; different envs get wrong values | Never -- use `.env.example` with dummy values |
-
-## Integration Gotchas
-
-Common mistakes when connecting the stack's components.
-
-| Integration | Common Mistake | Correct Approach |
-|-------------|----------------|------------------|
-| Django Ninja + Next.js SSR | Calling Django API from Next.js server components without auth context (no cookies in server-side fetch) | Pass cookies explicitly from the request: `fetch(url, { headers: { cookie: request.headers.get('cookie') } })`. Or use Next.js middleware to inject auth. |
-| Django Allauth + Expo | Using session cookies on mobile (don't persist across app restarts reliably) | Use Allauth's token-based headless auth for mobile; store tokens in `expo-secure-store` |
-| PGVector + Django ORM | Using Django's ORM `filter()` for vector similarity search (no ORM support for `<->` operator) | Use `pgvector-django` package which adds `CosineDistance`, `L2Distance` lookups, or raw SQL for complex queries |
-| Turborepo + GitHub Actions | Caching `node_modules` instead of Turborepo's cache | Cache `~/.turbo` directory and use `turbo run --filter` for affected packages. Don't cache `node_modules` -- cache pnpm store instead |
-| Next.js App Router + Django API | Fetching user data in every server component (N+1 to the API) | Use React `cache()` function to deduplicate fetch calls within a single request, or fetch in layout and pass down |
-| LangGraph + Postgres persistence | Using LangGraph's in-memory checkpointer in production | Use `langgraph-checkpoint-postgres` for durable state. Set up connection pooling (PgBouncer or Django's `CONN_MAX_AGE`) to avoid exhausting connections |
-| Zod schemas + Django Ninja schemas | Manually keeping Zod schemas in sync with Django Ninja (they drift) | Generate Zod schemas from the same OpenAPI spec used for TypeScript types. Use a tool like `openapi-zod-client` or derive Zod schemas from the generated TypeScript types |
-| Expo + React Native Web | Importing `expo-*` packages in shared code | `expo-*` packages are mobile-only. Shared UI primitives must use only `react-native` core components. Use `.native.tsx`/`.web.tsx` splits for any platform-specific code |
-
-## Performance Traps
-
-Patterns that work at small scale but fail as usage grows.
-
-| Trap | Symptoms | Prevention | When It Breaks |
-|------|----------|------------|----------------|
-| PGVector without index | Queries < 50ms at 1K vectors | Add HNSW index at table creation, not "when it gets slow" | > 10K vectors: queries > 500ms; > 100K: queries > 5s |
-| Django `DEBUG=True` in staging | Works fine, nice error pages | Never deploy with `DEBUG=True`; it leaks settings, accumulates SQL queries in memory, serves static files through Django | Any sustained traffic -- memory grows unbounded |
-| Next.js fetching Django API without caching | Works at low traffic | Use Next.js `fetch` cache options and ISR/SSG where possible; configure proper `Cache-Control` headers from Django | > 100 concurrent users: Django becomes bottleneck for static-ish data |
-| Embedding generation in request cycle | User waits 200-500ms for embedding | Generate embeddings async (Celery task, background job) or batch on write | Any endpoint that embeds text: adds 200-500ms latency per request |
-| Unbounded `FlatList` in Expo | Smooth with 50 items | Use `FlatList` (not `ScrollView`) with `getItemLayout`, `windowSize`, and `maxToRenderPerBatch` props | > 500 items: jank, memory pressure, crashes on low-end devices |
-| Django N+1 queries from Ninja serializers | Fast with 10 records | Use `select_related` / `prefetch_related` in querysets backing Ninja endpoints; add `django-silk` or `django-debug-toolbar` to catch N+1s in dev | > 50 records per page: response time scales linearly with count |
-
-## Security Mistakes
-
-Domain-specific security issues beyond generic web security.
-
-| Mistake | Risk | Prevention |
-|---------|------|------------|
-| Disabling CSRF for "API convenience" | Cross-site request forgery attacks on web app | Use Next.js API proxy (same-origin) or properly forward CSRF tokens; keep CSRF enabled |
-| Storing auth tokens in AsyncStorage (Expo) | Tokens readable by any app with root/jailbreak access | Use `expo-secure-store` for token storage on mobile; it uses Keychain (iOS) / Keystore (Android) |
-| OpenAPI spec publicly accessible in production | Attackers get full API documentation including internal endpoints | Conditionally serve OpenAPI spec: only in dev/staging, or behind authentication in production |
-| Django `SECRET_KEY` shared across template instances | If one project is compromised, all projects using the same key are compromised | CLI scaffolder MUST generate a unique `SECRET_KEY` for each new project. Template should never have a real key committed |
-| Not validating vector search input dimensions | Crafted inputs could cause Postgres errors or unexpected results | Validate that embedding vectors match the expected dimension before querying PGVector |
-| CORS `allow_all_origins` in production | Any website can make authenticated requests to the API | Explicitly list allowed origins; use environment variable for origin configuration |
-
-## UX Pitfalls
-
-Common user experience mistakes in this domain (for template consumers, not end users).
-
-| Pitfall | User Impact | Better Approach |
-|---------|-------------|-----------------|
-| Template requires 15+ manual configuration steps after clone | Developer abandons template; faster to start from scratch | CLI scaffolder handles all configuration; `docker compose up` works immediately after scaffold |
-| No clear documentation of what each shared package does | Developer puts code in wrong package, or duplicates code | Each package has a one-line description in root README and a `README.md` inside with scope + examples |
-| Template includes AI module by default with no way to remove | Non-AI projects carry unnecessary dependencies and complexity | CLI scaffolder asks "Include AI module?" and excludes LangGraph, PGVector, embedding pipeline if "no" |
-| Auth flow requires reading Django + Allauth + Ninja docs to understand | Developer wastes hours understanding auth plumbing | Template includes an `AUTH.md` that documents the exact auth flow with sequence diagrams for web and mobile |
-| Error messages from misconfigured monorepo are cryptic | "Module not found" could be Metro, pnpm, Turborepo, or Expo | Add a `troubleshooting.md` covering top 10 errors and their fixes |
-
-## "Looks Done But Isn't" Checklist
-
-Things that appear complete but are missing critical pieces.
-
-- [ ] **Authentication:** Often missing email verification flow -- signup works but emails don't send, verify link goes nowhere
-- [ ] **Authentication:** Often missing password reset flow -- login page has "Forgot password?" link that 404s
-- [ ] **Authentication:** Often missing auth state persistence on mobile -- works until app is killed, then user is logged out
-- [ ] **OpenAPI codegen:** Often missing CI enforcement -- types generate locally but CI doesn't verify they're up to date
-- [ ] **Docker dev setup:** Often missing volume mount for Python hot reload -- Django restarts but code changes inside container don't reflect
-- [ ] **Shared packages:** Often missing proper TypeScript `exports` field in `package.json` -- works in dev (bundler resolves `src/`) but fails in production build
-- [ ] **PGVector:** Often missing migration for index creation -- `CREATE EXTENSION vector` is there but `CREATE INDEX` on the embedding column is not
-- [ ] **Expo app:** Often missing deep linking configuration -- push notifications or email links can't open the app to a specific screen
-- [ ] **CI pipeline:** Often missing Python linting/testing -- Turborepo runs JS tasks but Python tasks need separate `uv run` commands
-- [ ] **Template scaffolder:** Often missing file content replacement -- project name in `package.json` but not in `docker-compose.yml`, Django `settings.py`, or `app.json`
-
-## Recovery Strategies
-
-When pitfalls occur despite prevention, how to recover.
-
-| Pitfall | Recovery Cost | Recovery Steps |
-|---------|---------------|----------------|
-| Turborepo Python caching broken | LOW | Rewrite `turbo.json` task inputs/outputs for Python tasks; no code changes needed |
-| Auth strategy wrong (sessions everywhere or tokens everywhere) | HIGH | Implement dual auth strategy; rewrite API client auth interceptors; update all authenticated endpoints; re-test every auth-dependent screen |
-| React Native Web shared component overreach | HIGH | Audit all shared components; split into `.web.tsx`/`.native.tsx` variants; update imports in both apps; extensive manual testing |
-| OpenAPI pipeline drift | MEDIUM | Regenerate types; fix TypeScript errors across frontend; add CI gate to prevent recurrence |
-| PGVector wrong index type | MEDIUM | Drop old index; create new HNSW index with correct operator class; reindex (takes minutes to hours depending on data size) |
-| Expo Metro bundler misconfigured | LOW-MEDIUM | Update `metro.config.js`; clear Metro cache (`npx expo start --clear`); verify shared package resolution |
-| Docker hot reload not working | LOW | Switch to hybrid dev approach or add polling-based file watchers; update `docker-compose.yml` |
-| Custom user model not created initially | HIGH | Extremely painful migration if existing data exists; requires faking migrations and potentially dumping/reloading data. Django docs explicitly say "do this at the start of the project" |
-| LangGraph checkpointer data loss | MEDIUM-HIGH | Switch from memory to Postgres checkpointer; existing conversation state is lost; users must restart conversations |
-
-## Pitfall-to-Phase Mapping
-
-How roadmap phases should address these pitfalls.
-
-| Pitfall | Prevention Phase | Verification |
-|---------|------------------|--------------|
-| Turborepo Python integration | Phase 1: Monorepo Foundation | `turbo run lint test` caches correctly for Python changes; cache hit on re-run with no changes |
-| Auth cross-platform misconfiguration | Phase 2: Auth Foundation | Login/logout works on web (cookie) AND mobile (token) in same test run; CSRF enabled |
-| React Native Web overreach | Phase 3: Shared Packages | Shared UI package imports ONLY from `react-native` core; no `expo-*` imports; renders on web without errors |
-| OpenAPI pipeline fragility | Phase 2: API Foundation + Phase 4: CI/CD | CI fails if OpenAPI spec is stale; generated types match API responses in integration tests |
-| PGVector wrong index | Phase 5: AI Module | `EXPLAIN ANALYZE` on vector search shows HNSW index scan; query < 50ms for 10K vectors |
-| Expo Metro bundler | Phase 1: Monorepo Foundation | Expo app starts, imports from `@repo/*` packages, hot reload works for shared package changes |
-| Docker hot reload broken | Phase 1: Monorepo Foundation | File change in any app triggers reload within 2 seconds; documented dev workflow |
-| Custom user model missing | Phase 2: Auth Foundation | `AUTH_USER_MODEL` points to custom model; migration 0001 creates custom User table |
-| Template hard to customize | Phase 6: CLI Scaffolder | Scaffolder replaces all project-name references; removable modules (AI) fully excisable without errors |
-| LangGraph checkpointer | Phase 5: AI Module | Conversation state persists across server restarts; checkpointer uses `langgraph-checkpoint-postgres` |
-| Monorepo CI/CD caching | Phase 4: CI/CD | CI completes < 5 min for no-change re-run; Python and JS tasks both cache correctly |
-| Schema sync (Zod + Django Ninja) | Phase 3: Shared Packages | Zod schemas generated from OpenAPI spec; validation test compares Zod output to Django Ninja output for sample data |
+---
 
 ## Sources
 
-- Training data knowledge of Turborepo, Django, Next.js, Expo, PGVector, LangGraph, Docker (confidence: MEDIUM -- training data up to May 2025)
-- PGVector README patterns for indexing strategies (confidence: HIGH -- stable documentation)
-- React Native Web component compatibility (confidence: HIGH -- well-documented limitations)
-- Django documentation on custom user models (confidence: HIGH -- stable, longstanding recommendation)
-- Expo monorepo guide patterns (confidence: MEDIUM -- evolves with SDK releases; validate against Expo SDK 53+ docs)
-- Django Allauth headless mode (confidence: MEDIUM -- feature is relatively new; validate config keys against current docs)
-- LangGraph checkpoint persistence (confidence: MEDIUM -- verify `langgraph-checkpoint-postgres` package name and API against current docs)
-- Docker Compose Watch / `develop.watch` (confidence: MEDIUM -- introduced in Compose v2.22+; verify current syntax)
-
-**Note:** WebSearch and WebFetch were unavailable during this research session. All findings are based on training data (cutoff: May 2025). Items marked MEDIUM confidence should be validated against current official documentation before implementation, particularly:
-1. Expo SDK 53+ monorepo configuration (may have simplified since SDK 52)
-2. Django Allauth headless mode configuration keys
-3. LangGraph checkpoint-postgres package API
-4. Turborepo `inputs`/`outputs` syntax for the current version
-5. Docker Compose `develop.watch` configuration syntax
+- Stripe documentation — webhook idempotency, event types, subscription lifecycle, meter events, Customer Portal API (confidence: HIGH — stable official docs, current as of 2026)
+- [Stripe Webhooks: Solving Race Conditions](https://www.pedroalonso.net/blog/stripe-webhooks-solving-race-conditions/) — Pedro Alonso (confidence: MEDIUM)
+- [Medium — Integrating Stripe Billing with Django 6.0](https://medium.com/django-journal/integrating-stripe-billing-with-django-6-0-333aa65cf1e6) (confidence: MEDIUM)
+- WeasyPrint GitHub — [Memory leak issue #34356 (Django ticket)](https://code.djangoproject.com/ticket/34356), WeasyPrint Celery threading issues (confidence: HIGH — confirmed issues)
+- [WeasyPrint v53 pydyf migration](https://doc.courtbouillon.org/weasyprint/stable/common_use_cases.html) — official docs (confidence: HIGH)
+- [Mocking Stripe signature in pytest — Simon Willison's TIL](https://til.simonwillison.net/pytest/pytest-stripe-signature) (confidence: HIGH)
+- [stripe-mock official GitHub](https://github.com/stripe/stripe-mock) — mock Stripe API server (confidence: HIGH)
+- [Mastering Stripe Subscription Upgrades — Engineering Journal](https://engineeringjournal.substack.com/p/mastering-stripe-subscription-upgrades) (confidence: MEDIUM)
+- [Modeling SaaS subscriptions in Postgres — Axel Larsson](https://axellarsson.com/blog/modeling-saas-subscriptions-in-postgres/) (confidence: MEDIUM)
+- [dj-stripe — Django Stripe integration library](https://dj-stripe.dev/) — reference for webhook handling patterns (confidence: HIGH)
+- [SaaS Pegasus guide — Django Stripe integration](https://www.saaspegasus.com/guides/django-stripe-integrate/) (confidence: MEDIUM)
+- Training data — adapter pattern, leaky abstractions, Django modular architecture (confidence: MEDIUM — corroborated by search results)
 
 ---
-*Pitfalls research for: Foundation Template (Django Ninja Extra + Next.js 15 + Expo + Turborepo)*
-*Researched: 2026-02-08*
+
+_Pitfalls research for: Billing & Payments Module (Django Ninja Extra + Next.js 15 + Stripe adapter pattern)_
+_Researched: 2026-03-07_
+_Supersedes: Foundation template PITFALLS.md (2026-02-08) for billing-specific concerns only. Foundation pitfalls remain valid for non-billing phases._
