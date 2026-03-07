@@ -33,6 +33,7 @@ INSTALLED_APPS = [
     "apps.accounts",
     "apps.core",
     "apps.ai",
+    "apps.billing",  # BILLING MODULE — remove this line to exclude billing
 ]
 
 MIDDLEWARE = [
@@ -174,6 +175,42 @@ HEADLESS_JWT_ACCESS_TOKEN_EXPIRES_IN = 900
 HEADLESS_JWT_ROTATE_REFRESH_TOKEN = True
 HEADLESS_JWT_STATEFUL_VALIDATION_ENABLED = True
 
+# ---------------------------------------------------------------------------
+# BILLING MODULE
+# ---------------------------------------------------------------------------
+STRIPE_SECRET_KEY: str = env("STRIPE_SECRET_KEY", default="")
+STRIPE_PUBLISHABLE_KEY: str = env("STRIPE_PUBLISHABLE_KEY", default="")
+STRIPE_WEBHOOK_SECRET: str = env("STRIPE_WEBHOOK_SECRET", default="")
+
+BILLING_ADAPTER: str = "apps.billing.adapters.StripeAdapter"
+
+BILLING_PLANS: dict = {
+    "free": {
+        "name": "Free",
+        "stripe_price_id_monthly": "",
+        "stripe_price_id_annual": "",
+        "trial_days": 0,
+        "features": ["Up to 3 projects", "Community support"],
+    },
+    "pro": {
+        "name": "Pro",
+        "stripe_price_id_monthly": env("STRIPE_PRICE_PRO_MONTHLY", default=""),
+        "stripe_price_id_annual": env("STRIPE_PRICE_PRO_ANNUAL", default=""),
+        "trial_days": 14,
+        "features": ["Unlimited projects", "Priority support", "API access"],
+    },
+    "enterprise": {
+        "name": "Enterprise",
+        "stripe_price_id_monthly": env("STRIPE_PRICE_ENTERPRISE_MONTHLY", default=""),
+        "stripe_price_id_annual": env("STRIPE_PRICE_ENTERPRISE_ANNUAL", default=""),
+        "trial_days": 0,
+        "features": ["Everything in Pro", "Dedicated support", "Custom contracts", "SLA"],
+    },
+}
+# ---------------------------------------------------------------------------
+# END BILLING MODULE
+# ---------------------------------------------------------------------------
+
 # --------------------------------------------------------------------------
 # Environment Variable Validation
 # --------------------------------------------------------------------------
@@ -200,20 +237,14 @@ if os.environ.get("DJANGO_SETTINGS_MODULE", "").endswith("production") and not D
         import sys
 
         print(
-            "\n"
-            + "=" * 60
-            + "\n"
+            "\n" + "=" * 60 + "\n"
             "MISSING REQUIRED ENVIRONMENT VARIABLES\n"
             + "=" * 60
             + "\n"
             + "\n".join(f"  - {var}" for var in _missing)
             + "\n\n"
             "Set these in your .env file or environment.\n"
-            "See apps/api/.env.example for reference.\n"
-            + "=" * 60
-            + "\n",
+            "See apps/api/.env.example for reference.\n" + "=" * 60 + "\n",
             file=sys.stderr,
         )
-        raise ImproperlyConfigured(
-            f"Missing required environment variables: {', '.join(_missing)}"
-        )
+        raise ImproperlyConfigured(f"Missing required environment variables: {', '.join(_missing)}")
