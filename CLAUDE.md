@@ -316,6 +316,7 @@ If 2 or fewer → proceed using established design tokens and existing component
 - For quick fixes: `/gsd:quick "description"`
 - Each plan has a maximum of 3 tasks — keep plans atomic
 - Each task runs in a fresh subagent with clean 200k token context
+- **Full end-to-end workflow for adding any new feature:** see `ADDING_A_FEATURE.md` at the repo root
 
 ## OpenSpec Rules
 
@@ -406,3 +407,4 @@ When you need context, read these files:
 | What's being built right now | `.planning/ROADMAP.md` + `.planning/STATE.md`    |
 | Current codebase state       | `.planning/codebase/` (if brownfield)            |
 | GSD research findings        | `.planning/research/` or `.planning/foundation/` |
+| How to add a new feature     | `ADDING_A_FEATURE.md`                            |
