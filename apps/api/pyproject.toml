@@ -35,6 +35,9 @@ dev = [
     "pytest-cov>=5.0",
     "pre-commit>=4.0",
 ]
+billing = [
+    "stripe>=14.4,<15",
+]
 
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "config.settings.development"
