@@ -32,13 +32,20 @@ A new SaaS product goes from zero to running full-stack app (web + mobile + API 
 - ✓ Docker-first deployment: Docker Compose for local, Dockerfiles ready for any cloud provider — v1.0
 - ✓ User management: basic user model, profile, account settings pages — v1.0
 
-### Active (v1.1+)
+### Active (v1.1)
 
-(None defined yet — run `/gsd:new-milestone` to define next milestone requirements)
+- [ ] Billing & Payments optional module — adapter pattern, Stripe default, swappable per project
+- [ ] Subscription lifecycle: create, upgrade, downgrade, cancel
+- [ ] One-time charge support
+- [ ] Usage-based (metered) billing support
+- [ ] Webhook receiver + event processors (payment failed, renewal, invoice events)
+- [ ] Server-side PDF invoice generation
+- [ ] Minimal frontend: plan display, payment history, upgrade/downgrade, cancel flow
+- [ ] CLI scaffolder integration — included by default, removable
 
 ### Out of Scope
 
-- Billing/payments — too product-specific, each project adds its own
+- Billing/payments as product-specific logic — the v1.1 module provides infrastructure and adapter pattern; each project configures plans, pricing, and provider credentials
 - Multi-tenancy — each project decides its own tenancy model
 - Product-specific business logic — template provides infrastructure, not features
 - Specific cloud provider lock-in — Docker-first, deploy anywhere
@@ -84,6 +91,18 @@ A new SaaS product goes from zero to running full-stack app (web + mobile + API 
 | Tailwind CSS 3.4 (not 4)        | Tailwind 4 preview crashes Next.js PostCSS pipeline                           | ⚠️ Revisit — upgrade to Tailwind 4 when stable release ships                               |
 | HS256 JWT (not RSA)             | Avoids RSA key provisioning complexity in template scaffolding                | ✓ Good — appropriate for template; each product can upgrade                                |
 
+## Current Milestone: v1.1 Billing & Payments Module
+
+**Goal:** Add an optional, adapter-based billing and payments module that ships with every new project by default but can be excluded via the CLI scaffolder.
+
+**Target features:**
+
+- PaymentAdapter ABC with Stripe as default implementation
+- Subscription, one-time, and usage-based payment support
+- Webhook processing, server-side PDF invoices
+- Minimal billing frontend (plan display, history, upgrade/downgrade, cancel)
+- CLI scaffolder opt-out (removes module cleanly)
+
 ## Current State (v1.0)
 
 - **Version shipped:** v1.0 (2026-03-07)
@@ -94,4 +113,4 @@ A new SaaS product goes from zero to running full-stack app (web + mobile + API 
 
 ---
 
-_Last updated: 2026-03-07 after v1.0 milestone_
+_Last updated: 2026-03-07 — Milestone v1.1 started_
