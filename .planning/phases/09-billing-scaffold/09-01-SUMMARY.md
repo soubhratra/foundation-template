@@ -132,3 +132,14 @@ None - no external service configuration required.
 
 _Phase: 09-billing-scaffold_
 _Completed: 2026-03-07_
+
+## Self-Check: PASSED
+
+- apps/api/tests/billing/**init**.py: FOUND
+- apps/api/tests/billing/conftest.py: FOUND
+- apps/api/tests/billing/test_adapters.py: FOUND
+- apps/api/tests/billing/test_models.py: FOUND
+- apps/api/tests/billing/test_signals.py: FOUND
+- .planning/phases/09-billing-scaffold/09-01-SUMMARY.md: FOUND
+- Commit 9dbd19e (Task 1): FOUND
+- Commit 203b317 (Task 2): FOUND
