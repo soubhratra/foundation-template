@@ -113,50 +113,50 @@ Which phases cover which requirements. Populated during roadmap creation.
 
 | Requirement | Phase | Status  |
 | ----------- | ----- | ------- |
-| ADPTR-01    | —     | Pending |
-| ADPTR-02    | —     | Pending |
-| ADPTR-03    | —     | Pending |
-| ADPTR-04    | —     | Pending |
-| ADPTR-05    | —     | Pending |
-| CUST-01     | —     | Pending |
-| CUST-02     | —     | Pending |
-| CUST-03     | —     | Pending |
-| SUB-01      | —     | Pending |
-| SUB-02      | —     | Pending |
-| SUB-03      | —     | Pending |
-| SUB-04      | —     | Pending |
-| SUB-05      | —     | Pending |
-| SUB-06      | —     | Pending |
-| PAY-01      | —     | Pending |
-| PAY-02      | —     | Pending |
-| USAGE-01    | —     | Pending |
-| USAGE-02    | —     | Pending |
-| HOOK-01     | —     | Pending |
-| HOOK-02     | —     | Pending |
-| HOOK-03     | —     | Pending |
-| HOOK-04     | —     | Pending |
-| INV-01      | —     | Pending |
-| INV-02      | —     | Pending |
-| INV-03      | —     | Pending |
-| BILL-01     | —     | Pending |
-| BILL-02     | —     | Pending |
-| BILL-03     | —     | Pending |
-| BILL-04     | —     | Pending |
-| BILL-05     | —     | Pending |
-| BILL-06     | —     | Pending |
-| BILL-07     | —     | Pending |
-| SCAFF-01    | —     | Pending |
-| SCAFF-02    | —     | Pending |
-| SCAFF-03    | —     | Pending |
-| SCAFF-04    | —     | Pending |
+| ADPTR-01    | 9     | Pending |
+| ADPTR-02    | 9     | Pending |
+| ADPTR-03    | 9     | Pending |
+| ADPTR-04    | 9     | Pending |
+| ADPTR-05    | 9     | Pending |
+| CUST-01     | 9     | Pending |
+| CUST-02     | 9     | Pending |
+| SUB-06      | 9     | Pending |
+| PAY-02      | 9     | Pending |
+| HOOK-01     | 10    | Pending |
+| HOOK-02     | 10    | Pending |
+| HOOK-03     | 10    | Pending |
+| HOOK-04     | 10    | Pending |
+| SUB-01      | 10    | Pending |
+| SUB-02      | 10    | Pending |
+| SUB-03      | 10    | Pending |
+| SUB-04      | 10    | Pending |
+| SUB-05      | 10    | Pending |
+| PAY-01      | 10    | Pending |
+| USAGE-01    | 10    | Pending |
+| USAGE-02    | 10    | Pending |
+| CUST-03     | 10    | Pending |
+| INV-01      | 11    | Pending |
+| BILL-01     | 11    | Pending |
+| BILL-02     | 11    | Pending |
+| BILL-03     | 11    | Pending |
+| BILL-04     | 11    | Pending |
+| BILL-05     | 11    | Pending |
+| BILL-06     | 11    | Pending |
+| BILL-07     | 11    | Pending |
+| INV-02      | 12    | Pending |
+| INV-03      | 12    | Pending |
+| SCAFF-01    | 12    | Pending |
+| SCAFF-02    | 12    | Pending |
+| SCAFF-03    | 12    | Pending |
+| SCAFF-04    | 12    | Pending |
 
 **Coverage:**
 
 - v1.1 requirements: 36 total
-- Mapped to phases: 0 (pending roadmap)
-- Unmapped: 36 ⚠️
+- Mapped to phases: 36
+- Unmapped: 0 ✓
 
 ---
 
 _Requirements defined: 2026-03-07_
-_Last updated: 2026-03-07 after initial definition_
+_Last updated: 2026-03-07 — traceability populated after roadmap creation_
