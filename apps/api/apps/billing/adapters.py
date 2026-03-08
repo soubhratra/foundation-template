@@ -135,6 +135,45 @@ class PaymentAdapter(abc.ABC):
         {"invoice_id": str, "amount": int, "currency": str, "status": str, "created": int}
         """
 
+    @abc.abstractmethod
+    def preview_proration(
+        self,
+        subscription_id: str,
+        new_price_id: str,
+        proration_date: int | None = None,
+    ) -> dict[str, Any]:
+        """Preview proration amounts for a subscription change.
+
+        Args:
+            subscription_id: Provider subscription ID
+            new_price_id: Target price ID to switch to
+            proration_date: Unix timestamp to use for proration calculation (default: now)
+
+        Returns: {
+            "amount_due_now": int,       # cents owed immediately
+            "next_invoice_total": int,   # cents on next renewal
+            "proration_date": int,       # unix timestamp used for calculation
+            "currency": str,
+        }
+        """
+
+    @abc.abstractmethod
+    def get_usage_summary(
+        self,
+        subscription_item_id: str,
+    ) -> dict[str, Any]:
+        """Retrieve aggregated usage for the current billing period.
+
+        Args:
+            subscription_item_id: Provider subscription item ID (e.g. "si_xxx")
+
+        Returns: {
+            "total_usage": int,
+            "period_start": int,   # unix timestamp
+            "period_end": int,     # unix timestamp
+        }
+        """
+
 
 class StripeAdapter(PaymentAdapter):
     """Stripe implementation of PaymentAdapter using Stripe Python SDK v14.
@@ -284,3 +323,60 @@ class StripeAdapter(PaymentAdapter):
             }
             for inv in response.data
         ]
+
+    def preview_proration(
+        self,
+        subscription_id: str,
+        new_price_id: str,
+        proration_date: int | None = None,
+    ) -> dict[str, Any]:
+        """Preview proration amounts by creating an invoice preview via Stripe."""
+        import time
+
+        effective_proration_date = proration_date or int(time.time())
+
+        # Retrieve the current subscription to find the item ID.
+        subscription = self._client.subscriptions.retrieve(subscription_id)
+        item_id = subscription.items.data[0].id
+
+        preview = self._client.invoices.create_preview(
+            params={
+                "customer": subscription.customer,
+                "subscription": subscription_id,
+                "subscription_details": {
+                    "items": [{"id": item_id, "price": new_price_id}],
+                    "proration_behavior": "create_prorations",
+                },
+                "subscription_proration_date": effective_proration_date,
+            }
+        )
+
+        # Sum proration line items for "amount_due_now".
+        proration_lines = [line for line in preview.lines.data if getattr(line, "proration", False)]
+        amount_due_now = sum(line.amount for line in proration_lines)
+
+        return {
+            "amount_due_now": amount_due_now,
+            "next_invoice_total": preview.total,
+            "proration_date": effective_proration_date,
+            "currency": preview.currency,
+        }
+
+    def get_usage_summary(
+        self,
+        subscription_item_id: str,
+    ) -> dict[str, Any]:
+        """Retrieve aggregated usage for a metered subscription item."""
+        response = self._client.subscription_items.list_usage_record_summaries(
+            subscription_item_id,
+            params={"limit": 1},
+        )
+        if not response.data:
+            return {"total_usage": 0, "period_start": 0, "period_end": 0}
+
+        summary = response.data[0]
+        return {
+            "total_usage": summary.total_usage,
+            "period_start": summary.period.start,
+            "period_end": summary.period.end,
+        }

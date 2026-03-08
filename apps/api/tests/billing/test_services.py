@@ -30,20 +30,26 @@ class TestCreateCheckoutSession:
         assert result["price_id"] == "price_pro_monthly"
         assert result["mode"] == "subscription"
 
-    def test_missing_customer_raises(self, billing_service, user):
-        """User with no Customer record raises ServiceError."""
+    def test_missing_price_mapping_raises(self, billing_service, user):
+        """User with no PlanProviderMapping raises ServiceError.
+
+        Note: Every user auto-gets a Customer via post_save signal, so
+        'no_customer' is not a reachable error in normal flow. Testing
+        the next error in the chain: missing price mapping.
+        """
         from apps.core.exceptions import ServiceError
 
+        # No plan_mapping fixture → PlanProviderMapping does not exist for "unknown_plan"
         with pytest.raises(ServiceError) as exc_info:
             billing_service.create_checkout_session(
                 user=user,
-                plan_id="pro",
+                plan_id="unknown_plan",
                 billing_period="monthly",
                 success_url="https://example.com/success",
                 cancel_url="https://example.com/cancel",
             )
-        assert exc_info.value.status_code == 404
-        assert exc_info.value.code == "no_customer"
+        assert exc_info.value.status_code == 400
+        assert exc_info.value.code == "no_price_mapping"
 
 
 class TestUpgradeSubscription:
