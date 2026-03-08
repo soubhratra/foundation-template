@@ -120,7 +120,7 @@ def plan_mapping(db):
         plan_id="pro",
         provider="stub",
         billing_period="monthly",
-        defaults={"price_id": "price_pro_monthly", "is_active": True},
+        defaults={"price_id": "price_stub_pro_monthly", "is_active": True},
     )
     return mapping
 
@@ -153,7 +153,7 @@ def subscription(db, user):
         plan_id="pro",
         provider="stub",
         billing_period="monthly",
-        defaults={"price_id": "price_pro_monthly", "is_active": True},
+        defaults={"price_id": "price_stub_pro_monthly", "is_active": True},
     )
     return sub
 
