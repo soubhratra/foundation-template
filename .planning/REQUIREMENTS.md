@@ -23,22 +23,22 @@ Requirements for the Billing & Payments Module milestone. Each maps to roadmap p
 
 ### Subscriptions (SUB)
 
-- [ ] **SUB-01**: User can start a subscription via Stripe Checkout session
-- [ ] **SUB-02**: User can upgrade their subscription plan (with proration preview before confirming)
-- [ ] **SUB-03**: User can downgrade their subscription plan
-- [ ] **SUB-04**: User can cancel their subscription (cancels at period end, not immediately)
-- [ ] **SUB-05**: User can reactivate a cancelled subscription before period end
+- [x] **SUB-01**: User can start a subscription via Stripe Checkout session
+- [x] **SUB-02**: User can upgrade their subscription plan (with proration preview before confirming)
+- [x] **SUB-03**: User can downgrade their subscription plan
+- [x] **SUB-04**: User can cancel their subscription (cancels at period end, not immediately)
+- [x] **SUB-05**: User can reactivate a cancelled subscription before period end
 - [x] **SUB-06**: `Subscription` model uses internal `SubscriptionStatus` enum (not raw Stripe status strings), includes `cancel_at_period_end` and timestamp audit fields
 
 ### One-Time Payments (PAY)
 
-- [ ] **PAY-01**: User can complete a one-time payment via Stripe Checkout session
+- [x] **PAY-01**: User can complete a one-time payment via Stripe Checkout session
 - [x] **PAY-02**: One-time payment is recorded as a `Payment` model entry with status and amount
 
 ### Usage-Based Billing (USAGE)
 
-- [ ] **USAGE-01**: API endpoint to record usage events via Stripe Meter Events v2 API
-- [ ] **USAGE-02**: API endpoint to retrieve current metered usage for the billing period
+- [x] **USAGE-01**: API endpoint to record usage events via Stripe Meter Events v2 API
+- [x] **USAGE-02**: API endpoint to retrieve current metered usage for the billing period
 
 ### Webhook Infrastructure (HOOK)
 
@@ -126,14 +126,14 @@ Which phases cover which requirements. Populated during roadmap creation.
 | HOOK-02     | 10    | Pending  |
 | HOOK-03     | 10    | Pending  |
 | HOOK-04     | 10    | Pending  |
-| SUB-01      | 10    | Pending  |
-| SUB-02      | 10    | Pending  |
-| SUB-03      | 10    | Pending  |
-| SUB-04      | 10    | Pending  |
-| SUB-05      | 10    | Pending  |
-| PAY-01      | 10    | Pending  |
-| USAGE-01    | 10    | Pending  |
-| USAGE-02    | 10    | Pending  |
+| SUB-01      | 10    | Complete |
+| SUB-02      | 10    | Complete |
+| SUB-03      | 10    | Complete |
+| SUB-04      | 10    | Complete |
+| SUB-05      | 10    | Complete |
+| PAY-01      | 10    | Complete |
+| USAGE-01    | 10    | Complete |
+| USAGE-02    | 10    | Complete |
 | CUST-03     | 10    | Pending  |
 | INV-01      | 11    | Pending  |
 | BILL-01     | 11    | Pending  |

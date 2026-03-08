@@ -125,6 +125,6 @@ Plans:
 | 7. DevEx + CI/CD             | v1.0      | 4/4            | Complete    | 2026-02-17 |
 | 8. CLI Scaffolder            | v1.0      | 3/3            | Complete    | 2026-02-17 |
 | 9. Billing Scaffold          | v1.1      | 3/3            | Complete    | 2026-03-07 |
-| 10. Webhook Infra + Service  | v1.1      | 0/3            | Not started | -          |
+| 10. Webhook Infra + Service  | 1/3       | In Progress    |             | -          |
 | 11. API Endpoints + Frontend | v1.1      | 0/TBD          | Not started | -          |
 | 12. Invoice PDF + CLI        | v1.1      | 0/TBD          | Not started | -          |
