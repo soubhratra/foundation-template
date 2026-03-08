@@ -5,12 +5,12 @@ milestone_name: Billing & Payments Module
 current_phase: 10-webhook-infrastructure-service-layer
 current_plan: 10-03 (completed)
 status: planning
-last_updated: "2026-03-08T11:40:07.534Z"
+last_updated: "2026-03-08T11:41:38.546Z"
 progress:
   total_phases: 4
   completed_phases: 2
   total_plans: 11
-  completed_plans: 7
+  completed_plans: 8
 ---
 
 # Session State
@@ -39,6 +39,7 @@ See: .planning/PROJECT.md
 | 10           | 02   | 441          | 2       | 6     |
 | 10           | 03   | 158          | 2       | 3     |
 | Phase 11 P03 | 154  | 2 tasks      | 4 files |
+| Phase 11 P01 | 233  | 1 tasks      | 3 files |
 
 ## Decisions
 
@@ -52,6 +53,8 @@ See: .planning/PROJECT.md
 - [Phase 10]: raise PermissionDenied from None used in except clauses to suppress exception chain (ruff B904 compliance)
 - [Phase 11]: AnyApiClient (any-typed) cast for POST mutation paths in billing-actions.ts until turbo run generate:types regenerates @repo/api-client types
 - [Phase 11]: billing.config.ts placed at apps/web root for clean import path; config-driven UI with no React Context
+- [Phase 11]: reactivate_subscription takes no payload — reactivation restores subscription as-is, no PlanChangeIn needed
+- [Phase 11]: test_controllers.py local authenticated_client fixture uses subscription.customer.user to ensure test user owns the subscription (avoids root conftest user mismatch)
 
 ## Stopped At
 
