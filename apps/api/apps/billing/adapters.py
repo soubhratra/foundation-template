@@ -174,6 +174,32 @@ class PaymentAdapter(abc.ABC):
         }
         """
 
+    @abc.abstractmethod
+    def retrieve_subscription(
+        self,
+        subscription_id: str,
+    ) -> dict[str, Any]:
+        """Retrieve a subscription from the payment provider.
+
+        Args:
+            subscription_id: Provider subscription ID (e.g. "sub_xxx")
+
+        Returns a dict with at minimum: {"current_price_id": str}
+        """
+
+    @abc.abstractmethod
+    def reactivate_subscription(
+        self,
+        subscription_id: str,
+    ) -> dict[str, Any]:
+        """Undo a pending cancellation by setting cancel_at_period_end=False.
+
+        Call this when a user had previously requested cancellation at period
+        end and now wants to keep their subscription. No plan change occurs.
+
+        Returns a dict with updated subscription state.
+        """
+
 
 class StripeAdapter(PaymentAdapter):
     """Stripe implementation of PaymentAdapter using Stripe Python SDK v14.
@@ -360,6 +386,33 @@ class StripeAdapter(PaymentAdapter):
             "next_invoice_total": preview.total,
             "proration_date": effective_proration_date,
             "currency": preview.currency,
+        }
+
+    def retrieve_subscription(
+        self,
+        subscription_id: str,
+    ) -> dict[str, Any]:
+        """Retrieve a Stripe subscription and return the current price ID."""
+        subscription = self._client.subscriptions.retrieve(subscription_id)
+        try:
+            current_price_id = subscription.items.data[0].price.id
+        except (IndexError, AttributeError):
+            current_price_id = None
+        return {"current_price_id": current_price_id}
+
+    def reactivate_subscription(
+        self,
+        subscription_id: str,
+    ) -> dict[str, Any]:
+        """Undo pending cancellation by setting cancel_at_period_end=False."""
+        subscription = self._client.subscriptions.update(
+            subscription_id,
+            params={"cancel_at_period_end": False},
+        )
+        return {
+            "subscription_id": subscription.id,
+            "status": subscription.status,
+            "cancel_at_period_end": subscription.cancel_at_period_end,
         }
 
     def get_usage_summary(

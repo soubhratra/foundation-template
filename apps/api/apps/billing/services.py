@@ -69,6 +69,75 @@ class BillingService:
             ) from exc
 
     # ------------------------------------------------------------------
+    # Read methods — used by controller GET endpoints
+    # ------------------------------------------------------------------
+
+    def get_status(self, user: Any) -> dict[str, Any]:
+        """Return lightweight subscription status for the dashboard banner.
+
+        Returns all-None sentinel when the user has no subscription rather
+        than raising ServiceError — the dashboard must render for users on
+        free tier who have no subscription record yet.
+        """
+        customer = self._get_customer(user)
+        try:
+            sub = Subscription.objects.get(customer=customer)
+            return {
+                "status": sub.status,
+                "cancel_at_period_end": sub.cancel_at_period_end,
+                "current_period_end": sub.current_period_end,
+            }
+        except Subscription.DoesNotExist:
+            return {
+                "status": None,
+                "cancel_at_period_end": False,
+                "current_period_end": None,
+            }
+
+    def get_subscription_detail(self, user: Any) -> dict[str, Any]:
+        """Return full subscription detail with plan_id resolved from PlanProviderMapping.
+
+        plan_id resolution is non-fatal: if the adapter call or mapping lookup
+        fails, plan_id and billing_period are returned as None.
+        """
+        customer = self._get_customer(user)
+        try:
+            sub = Subscription.objects.select_related("customer").get(customer=customer)
+        except Subscription.DoesNotExist as exc:
+            raise ServiceError(
+                code="no_subscription",
+                message="No active subscription found.",
+                status_code=404,
+            ) from exc
+
+        plan_id: str | None = None
+        billing_period: str | None = None
+        try:
+            provider_name = self._get_provider_name()
+            stripe_sub = self._adapter.retrieve_subscription(sub.stripe_subscription_id)
+            current_price_id = stripe_sub.get("current_price_id") or stripe_sub.get("price_id")
+            if current_price_id:
+                mapping = PlanProviderMapping.objects.filter(
+                    provider=provider_name,
+                    price_id=current_price_id,
+                ).first()
+                if mapping:
+                    plan_id = mapping.plan_id
+                    billing_period = mapping.billing_period
+        except Exception:
+            pass  # plan_id resolution failure is non-fatal — return None
+
+        return {
+            "status": sub.status,
+            "cancel_at_period_end": sub.cancel_at_period_end,
+            "current_period_start": sub.current_period_start,
+            "current_period_end": sub.current_period_end,
+            "plan_id": plan_id,
+            "billing_period": billing_period,
+            "stripe_subscription_id": sub.stripe_subscription_id,
+        }
+
+    # ------------------------------------------------------------------
     # Subscription lifecycle
     # ------------------------------------------------------------------
 
@@ -148,18 +217,20 @@ class BillingService:
     def reactivate_subscription(
         self,
         user: Any,
-        plan_id: str,
-        billing_period: str = "monthly",
     ) -> dict[str, Any]:
-        """Reactivate a canceled subscription by restoring an active price."""
+        """Undo a pending cancellation by setting cancel_at_period_end=False.
+
+        No plan change occurs — the subscription continues on its current price.
+        This is the inverse of cancel_subscription(cancel_at_period_end=True).
+        """
         customer = self._get_customer(user)
         sub: Subscription = customer.subscription
-        new_price_id = self._resolve_price_id(plan_id, billing_period)
-        return self._adapter.modify_subscription(
+        result = self._adapter.reactivate_subscription(
             subscription_id=sub.stripe_subscription_id,
-            new_price_id=new_price_id,
-            proration_behavior="create_prorations",
         )
+        sub.cancel_at_period_end = False
+        sub.save(update_fields=["cancel_at_period_end", "updated_at"])
+        return result
 
     def preview_proration(
         self,
@@ -234,9 +305,14 @@ class BillingService:
     def create_portal_session(
         self,
         user: Any,
-        return_url: str,
+        return_url: str = "",
     ) -> dict[str, Any]:
-        """Create a self-service billing portal session."""
+        """Create a self-service billing portal session.
+
+        return_url defaults to empty string — the adapter/Stripe accepts this and
+        uses the portal's configured default return URL. Controllers may pass an
+        explicit URL when the frontend provides one.
+        """
         customer = self._get_customer(user)
         return self._adapter.create_portal_session(
             customer_id=customer.stripe_customer_id,
