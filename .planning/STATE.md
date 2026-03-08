@@ -5,12 +5,12 @@ milestone_name: Billing & Payments Module
 current_phase: 10-webhook-infrastructure-service-layer
 current_plan: 10-03 (completed)
 status: planning
-last_updated: "2026-03-08T11:41:38.546Z"
+last_updated: "2026-03-08T11:46:23.310Z"
 progress:
   total_phases: 4
   completed_phases: 2
   total_plans: 11
-  completed_plans: 8
+  completed_plans: 9
 ---
 
 # Session State
@@ -40,6 +40,7 @@ See: .planning/PROJECT.md
 | 10           | 03   | 158          | 2       | 3     |
 | Phase 11 P03 | 154  | 2 tasks      | 4 files |
 | Phase 11 P01 | 233  | 1 tasks      | 3 files |
+| Phase 11 P04 | 151  | 2 tasks      | 5 files |
 
 ## Decisions
 
@@ -55,6 +56,8 @@ See: .planning/PROJECT.md
 - [Phase 11]: billing.config.ts placed at apps/web root for clean import path; config-driven UI with no React Context
 - [Phase 11]: reactivate_subscription takes no payload — reactivation restores subscription as-is, no PlanChangeIn needed
 - [Phase 11]: test_controllers.py local authenticated_client fixture uses subscription.customer.user to ensure test user owns the subscription (avoids root conftest user mismatch)
+- [Phase 11]: billing.config imported as 'billing.config' (baseUrl-relative) not '@/billing.config' — tsconfig @/_ alias maps to ./src/_ only, billing.config.ts lives at web root
+- [Phase 11]: BillingPage passes server actions as props to BillingClient — stable TypeScript-safe pattern for server-to-client action delegation
 
 ## Stopped At
 

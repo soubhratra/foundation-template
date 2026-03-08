@@ -49,17 +49,17 @@ Requirements for the Billing & Payments Module milestone. Each maps to roadmap p
 
 ### Invoice & PDF (INV)
 
-- [ ] **INV-01**: API endpoint returns paginated list of invoices for the authenticated user
+- [x] **INV-01**: API endpoint returns paginated list of invoices for the authenticated user
 - [ ] **INV-02**: User can download an invoice as a server-generated PDF (WeasyPrint + Jinja2 template)
 - [ ] **INV-03**: PDF generation runs as an async Celery task (never in the request cycle)
 
 ### Billing Frontend (BILL)
 
-- [ ] **BILL-01**: `/billing` page displays current plan, billing period, and next renewal date
-- [ ] **BILL-02**: `/billing` page displays payment history table with status and invoice download links
+- [x] **BILL-01**: `/billing` page displays current plan, billing period, and next renewal date
+- [x] **BILL-02**: `/billing` page displays payment history table with status and invoice download links
 - [x] **BILL-03**: User can initiate plan upgrade/downgrade from the billing page (with proration preview modal)
 - [x] **BILL-04**: User can cancel their subscription from the billing page
-- [ ] **BILL-05**: `/billing/return` page handles post-Stripe-Checkout redirect (including 3DS/SCA result)
+- [x] **BILL-05**: `/billing/return` page handles post-Stripe-Checkout redirect (including 3DS/SCA result)
 - [x] **BILL-06**: Stripe Customer Portal redirect available for payment method management
 - [x] **BILL-07**: `past_due` subscription banner displayed in dashboard when payment fails
 
@@ -135,12 +135,12 @@ Which phases cover which requirements. Populated during roadmap creation.
 | USAGE-01    | 10    | Complete |
 | USAGE-02    | 10    | Complete |
 | CUST-03     | 10    | Complete |
-| INV-01      | 11    | Pending  |
-| BILL-01     | 11    | Pending  |
-| BILL-02     | 11    | Pending  |
+| INV-01      | 11    | Complete |
+| BILL-01     | 11    | Complete |
+| BILL-02     | 11    | Complete |
 | BILL-03     | 11    | Complete |
 | BILL-04     | 11    | Complete |
-| BILL-05     | 11    | Pending  |
+| BILL-05     | 11    | Complete |
 | BILL-06     | 11    | Complete |
 | BILL-07     | 11    | Complete |
 | INV-02      | 12    | Pending  |
