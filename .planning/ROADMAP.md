@@ -59,6 +59,7 @@ Full archive: `.planning/milestones/v1.0-ROADMAP.md`
 **Goal**: Billing business logic is fully testable via a stub adapter, the webhook receiver handles all Tier-1 Stripe events idempotently with async dispatch, and the complete subscription lifecycle is implemented in the service layer
 **Depends on**: Phase 9
 **Requirements**: HOOK-01, HOOK-02, HOOK-03, HOOK-04, SUB-01, SUB-02, SUB-03, SUB-04, SUB-05, PAY-01, USAGE-01, USAGE-02, CUST-03
+**Plans**: 3 plans
 **Success Criteria** (what must be TRUE):
 
 1. A POST to the Stripe webhook endpoint with a valid HMAC signature returns HTTP 200 immediately — processing is dispatched to an async task queue, not executed in the request cycle
@@ -66,13 +67,12 @@ Full archive: `.planning/milestones/v1.0-ROADMAP.md`
 3. All 6 Tier-1 events (`checkout.session.completed`, `customer.subscription.created/updated/deleted`, `invoice.payment_succeeded/failed`) update `Subscription` and `Payment` model state correctly
 4. `BillingService` can be unit-tested with a stubbed adapter — no HTTP calls to Stripe are required to verify subscription create/upgrade/downgrade/cancel/reactivate logic
 5. API endpoints exist to record a metered usage event and retrieve current period usage, both delegating to the adapter
-   **Plans**: TBD
 
 Plans:
 
-- [ ] 10-01: TBD
-- [ ] 10-02: TBD
-- [ ] 10-03: TBD
+- [ ] 10-01-PLAN.md — Webhook receiver (plain Django view), Celery dispatch task, Tier-1 event handlers, URL registration
+- [ ] 10-02-PLAN.md — PaymentAdapter ABC extension (preview_proration, get_usage_summary), BillingService with full subscription lifecycle
+- [ ] 10-03-PLAN.md — @require_active_subscription decorator, conftest fixtures expansion
 
 ### Phase 11: API Endpoints + Billing Frontend
 
@@ -124,7 +124,7 @@ Plans:
 | 6. AI Module                 | v1.0      | 5/5            | Complete    | 2026-02-17 |
 | 7. DevEx + CI/CD             | v1.0      | 4/4            | Complete    | 2026-02-17 |
 | 8. CLI Scaffolder            | v1.0      | 3/3            | Complete    | 2026-02-17 |
-| 9. Billing Scaffold          | 3/3       | Complete       | 2026-03-07  | -          |
-| 10. Webhook Infra + Service  | v1.1      | 0/TBD          | Not started | -          |
+| 9. Billing Scaffold          | v1.1      | 3/3            | Complete    | 2026-03-07 |
+| 10. Webhook Infra + Service  | v1.1      | 0/3            | Not started | -          |
 | 11. API Endpoints + Frontend | v1.1      | 0/TBD          | Not started | -          |
 | 12. Invoice PDF + CLI        | v1.1      | 0/TBD          | Not started | -          |
