@@ -32,6 +32,8 @@ class TestPaymentAdapterContract:
             "construct_webhook_event",
             "record_usage",
             "list_invoices",
+            "preview_proration",
+            "get_usage_summary",
         }
         abstract_methods = getattr(PaymentAdapter, "__abstractmethods__", set())
         assert expected == abstract_methods, (
@@ -76,6 +78,32 @@ class TestStripeAdapterImplementation:
             pytest.skip("STRIPE_SECRET_KEY not set — skipping instantiation test")
         adapter = StripeAdapter()
         assert isinstance(adapter, PaymentAdapter)
+
+
+class TestPaymentAdapterAbstractMethods:
+    """HOOK-05: PaymentAdapter defines abstract methods needed for Plan 10-02."""
+
+    def test_abstract_preview_proration_exists(self):
+        """PaymentAdapter must declare preview_proration as an abstract method."""
+        import inspect
+
+        assert "preview_proration" in PaymentAdapter.__abstractmethods__, (
+            "PaymentAdapter is missing abstract method 'preview_proration'"
+        )
+        method = getattr(PaymentAdapter, "preview_proration", None)
+        assert method is not None
+        assert inspect.isfunction(method) or callable(method)
+
+    def test_abstract_get_usage_summary_exists(self):
+        """PaymentAdapter must declare get_usage_summary as an abstract method."""
+        import inspect
+
+        assert "get_usage_summary" in PaymentAdapter.__abstractmethods__, (
+            "PaymentAdapter is missing abstract method 'get_usage_summary'"
+        )
+        method = getattr(PaymentAdapter, "get_usage_summary", None)
+        assert method is not None
+        assert inspect.isfunction(method) or callable(method)
 
 
 class TestAdapterResolution:
