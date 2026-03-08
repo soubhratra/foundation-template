@@ -40,7 +40,13 @@ export type SubscriptionState =
  * Action buttons that can be shown on the billing page.
  * Which actions appear depends on the current SubscriptionState (see BillingConfig.actions).
  */
-export type BillingActionType = "upgrade" | "downgrade" | "cancel" | "reactivate" | "portal";
+export type BillingActionType =
+  | "upgrade"
+  | "downgrade"
+  | "cancel"
+  | "reactivate"
+  | "portal"
+  | "subscribe";
 
 export interface BillingSection {
   /** Section identifier used in component logic to look up config */
@@ -137,7 +143,7 @@ export const billingConfig: BillingConfig = {
     past_due: ["portal"],
     canceled: [],
     cancel_at_period_end: ["reactivate", "portal"],
-    no_subscription: [],
+    no_subscription: ["subscribe"],
   },
 
   copy: {
