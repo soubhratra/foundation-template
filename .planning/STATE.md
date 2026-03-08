@@ -5,12 +5,12 @@ milestone_name: Billing & Payments Module
 current_phase: 10-webhook-infrastructure-service-layer
 current_plan: 10-03 (completed)
 status: planning
-last_updated: "2026-03-08T11:46:23.310Z"
+last_updated: "2026-03-08T11:52:24.951Z"
 progress:
   total_phases: 4
   completed_phases: 2
   total_plans: 11
-  completed_plans: 9
+  completed_plans: 10
 ---
 
 # Session State
@@ -41,6 +41,7 @@ See: .planning/PROJECT.md
 | Phase 11 P03 | 154  | 2 tasks      | 4 files |
 | Phase 11 P01 | 233  | 1 tasks      | 3 files |
 | Phase 11 P04 | 151  | 2 tasks      | 5 files |
+| Phase 11 P02 | 435  | 2 tasks      | 7 files |
 
 ## Decisions
 
@@ -58,6 +59,9 @@ See: .planning/PROJECT.md
 - [Phase 11]: test_controllers.py local authenticated_client fixture uses subscription.customer.user to ensure test user owns the subscription (avoids root conftest user mismatch)
 - [Phase 11]: billing.config imported as 'billing.config' (baseUrl-relative) not '@/billing.config' — tsconfig @/_ alias maps to ./src/_ only, billing.config.ts lives at web root
 - [Phase 11]: BillingPage passes server actions as props to BillingClient — stable TypeScript-safe pattern for server-to-client action delegation
+- [Phase 11]: StubAdapter promoted to proper module and configured in development.py — controller tests use it automatically without per-test monkeypatching
+- [Phase 11]: reactivate_subscription() takes no plan_id — reactivation undoes cancel_at_period_end via adapter.reactivate_subscription(), not modify_subscription()
+- [Phase 11]: get_status() returns all-None sentinel (no ServiceError) for no-subscription case so dashboard renders for free-tier users
 
 ## Stopped At
 
