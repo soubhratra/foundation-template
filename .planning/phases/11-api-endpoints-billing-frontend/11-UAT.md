@@ -1,12 +1,12 @@
 ---
-status: complete
+status: resolved
 phase: 11-api-endpoints-billing-frontend
 source:
   - 11-02-SUMMARY.md
   - 11-03-SUMMARY.md
   - 11-04-SUMMARY.md
 started: "2026-03-08T12:30:00.000Z"
-updated: "2026-03-08T14:10:00.000Z"
+updated: "2026-03-08T18:00:00.000Z"
 ---
 
 ## Current Test
@@ -73,31 +73,48 @@ skipped: 1
 ## Gaps
 
 - truth: "Plan cards show action buttons (Upgrade/Select) and current plan designation"
-  status: failed
+  status: resolved
   reason: "User reported: I see the cards but there is no actions or buttons on them. There is no current plan designation on screen"
   severity: major
   test: 3
-  root_cause: ""
-  artifacts: []
-  missing: []
-  debug_session: ""
+  root_cause: "billing.config.ts has no_subscription:[] (no actions defined for free-tier), so canUpgrade=false and showButton=false for all cards. Additionally isCurrent never matches because subscription is undefined for free users."
+  artifacts:
+  - path: "apps/web/billing.config.ts"
+    issue: "no_subscription: [] — no upgrade/subscribe actions defined, gates button rendering to false"
+  - path: "apps/web/app/(dashboard)/billing/billing-client.tsx"
+    issue: "isCurrent and showButton logic assumes non-null plan_id; no free-tier fallback to mark the free plan as current"
+  - path: "apps/web/app/(dashboard)/billing/page.tsx"
+    issue: ".catch(() => undefined) swallows 404, subscription=undefined propagates with no free-tier fallback"
+  - path: "apps/api/apps/billing/services.py"
+    issue: "PlanProviderMapping miss silently returns plan_id=None — no PlanProviderMapping seed data in dev"
+    missing:
+  - "Add subscribe/upgrade action to no_subscription in billing.config.ts"
+  - "Add free-plan isCurrent fallback in billing-client.tsx for no_subscription state"
+  - "Add PlanProviderMapping seed/fixture rows for stub adapter price IDs"
+    debug_session: ""
 
 - truth: "Clicking Upgrade/Select opens a proration preview Sheet with Confirm and Cancel buttons"
-  status: failed
+  status: resolved
   reason: "User reported: I see the cards but there is no actions or buttons on them. There is no current plan designation on screen"
   severity: major
   test: 4
-  root_cause: ""
-  artifacts: []
-  missing: []
-  debug_session: ""
+  root_cause: "Blocked by same root cause as test 3 — no buttons render so Sheet cannot be triggered"
+  artifacts:
+  - path: "apps/web/billing.config.ts"
+    issue: "no_subscription: [] blocks all button rendering"
+    missing:
+  - "Fix plan card buttons (same fix as test 3 gap)"
+    debug_session: ""
 
 - truth: "Current plan section displays plan name and subscription status clearly; Cancel button visible when subscribed"
-  status: failed
+  status: resolved
   reason: "User reported: Current plan at the top of the billing screen says 'No Plan No active subscription'"
   severity: minor
   test: 5
-  root_cause: ""
-  artifacts: []
-  missing: []
-  debug_session: ""
+  root_cause: "CardTitle always renders getPlanName() which returns 'No plan' when subscription is undefined, then CardContent renders 'No active subscription.' below it with no separator — two orphaned fragments read as one run-on label"
+  artifacts:
+  - path: "apps/web/app/(dashboard)/billing/billing-client.tsx"
+    issue: "Line 191: getPlanName() renders unconditionally even when subscription is undefined. Lines 217-219: 'No active subscription.' in CardContent has no separator from CardTitle, creating run-on text"
+    missing:
+  - "Suppress CardTitle or replace with unified empty-state when subscription is undefined (e.g. 'No active plan' as single coherent phrase)"
+    debug_session: ""
