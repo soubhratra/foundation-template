@@ -27,7 +27,7 @@ class TestCreateCheckoutSession:
         assert result["checkout_url"] == "https://checkout.example.com"
         assert result["session_id"] == "cs_test_stub"
         # Verify the price_id was resolved from PlanProviderMapping, not hardcoded
-        assert result["price_id"] == "price_pro_monthly"
+        assert result["price_id"] == "price_stub_pro_monthly"
         assert result["mode"] == "subscription"
 
     def test_missing_price_mapping_raises(self, billing_service, user):
@@ -63,7 +63,7 @@ class TestUpgradeSubscription:
             billing_period="monthly",
         )
         assert result["proration_behavior"] == "create_prorations"
-        assert result["new_price_id"] == "price_pro_monthly"
+        assert result["new_price_id"] == "price_stub_pro_monthly"
         assert result["subscription_id"] == "sub_stub"
 
 
@@ -78,7 +78,7 @@ class TestDowngradeSubscription:
             billing_period="monthly",
         )
         assert result["proration_behavior"] == "always_invoice"
-        assert result["new_price_id"] == "price_pro_monthly"
+        assert result["new_price_id"] == "price_stub_pro_monthly"
 
 
 class TestCancelSubscription:
