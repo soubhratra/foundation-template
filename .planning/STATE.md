@@ -5,12 +5,12 @@ milestone_name: Billing & Payments Module
 current_phase: 10-webhook-infrastructure-service-layer
 current_plan: 10-03 (completed)
 status: planning
-last_updated: "2026-03-08T17:32:46.024Z"
+last_updated: "2026-03-08T17:37:32.955Z"
 progress:
   total_phases: 4
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 13
-  completed_plans: 12
+  completed_plans: 13
 ---
 
 # Session State
@@ -44,6 +44,7 @@ See: .planning/PROJECT.md
 | Phase 11 P02 | 435  | 2 tasks      | 7 files |
 | Phase 11 P05 | 66   | 1 tasks      | 1 files |
 | Phase 11 P06 | 214  | 3 tasks      | 4 files |
+| Phase 11 P07 | 127  | 2 tasks      | 3 files |
 
 ## Decisions
 
@@ -67,6 +68,8 @@ See: .planning/PROJECT.md
 - [Phase 11]: subscribe endpoint separate from change: create_checkout_session needs only Customer (auto-created), upgrade_subscription needs active subscription
 - [Phase 11]: PlanProviderMapping rows seeded via data migration 0002 for stub adapter dev/test environments
 - [Phase 11]: createCheckoutSessionAction derives origin from next/headers host header — no NEXT_PUBLIC_APP_URL env var needed
+- [Phase 11]: subscribe action type signals free-tier checkout (createCheckoutSessionAction) distinct from upgrade (changePlanAction); no_subscription: ['subscribe'] in config
+- [Phase 11]: Free-tier isCurrent fallback: (!subscription && plan.id === 'free') marks Free plan card as current without active subscription
 
 ## Stopped At
 
