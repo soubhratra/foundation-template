@@ -94,6 +94,16 @@ class StubAdapter(PaymentAdapter):
             "period_end": 1702678400,
         }
 
+    def retrieve_subscription(self, subscription_id) -> dict:
+        return {"current_price_id": "price_stub_monthly"}
+
+    def reactivate_subscription(self, subscription_id) -> dict:
+        return {
+            "subscription_id": subscription_id,
+            "status": "active",
+            "cancel_at_period_end": False,
+        }
+
 
 @pytest.fixture
 def stub_adapter():
@@ -117,8 +127,12 @@ def plan_mapping(db):
 
 @pytest.fixture
 def subscription(db, user):
-    """A Customer + active Subscription for the test user."""
-    from apps.billing.models import Customer, Subscription, SubscriptionStatus
+    """A Customer + active Subscription + PlanProviderMapping for the test user.
+
+    Includes a PlanProviderMapping for plan_id='pro', provider='stub', period='monthly'
+    so that controller tests calling upgrade_subscription can resolve price IDs.
+    """
+    from apps.billing.models import Customer, PlanProviderMapping, Subscription, SubscriptionStatus
 
     cust, _ = Customer.objects.get_or_create(
         user=user,
@@ -131,6 +145,15 @@ def subscription(db, user):
             "status": SubscriptionStatus.ACTIVE,
             "cancel_at_period_end": False,
         },
+    )
+    # Ensure a price mapping exists for the StubAdapter provider so that
+    # upgrade_subscription can call _resolve_price_id without raising ServiceError.
+    # Uses the same price_id as the plan_mapping fixture to avoid collisions.
+    PlanProviderMapping.objects.get_or_create(
+        plan_id="pro",
+        provider="stub",
+        billing_period="monthly",
+        defaults={"price_id": "price_pro_monthly", "is_active": True},
     )
     return sub
 

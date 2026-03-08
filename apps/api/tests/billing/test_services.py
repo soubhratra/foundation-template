@@ -95,22 +95,24 @@ class TestCancelSubscription:
 
 
 class TestReactivateSubscription:
-    """SUB-05: reactivate_subscription calls modify_subscription."""
+    """SUB-05: reactivate_subscription undoes cancel_at_period_end (no plan change)."""
 
-    def test_reactivate_subscription(self, billing_service, subscription, plan_mapping):
+    def test_reactivate_subscription(self, billing_service, subscription):
         from apps.billing.models import SubscriptionStatus
 
-        subscription.status = SubscriptionStatus.CANCELED
+        # Set up subscription in a pending-cancellation state.
+        subscription.status = SubscriptionStatus.ACTIVE
+        subscription.cancel_at_period_end = True
         subscription.save()
 
         user = subscription.customer.user
-        result = billing_service.reactivate_subscription(
-            user=user,
-            plan_id="pro",
-            billing_period="monthly",
-        )
+        result = billing_service.reactivate_subscription(user=user)
         assert result["subscription_id"] == "sub_stub"
-        assert result["new_price_id"] == "price_pro_monthly"
+        assert result["cancel_at_period_end"] is False
+
+        # Verify the local DB record was updated.
+        subscription.refresh_from_db()
+        assert subscription.cancel_at_period_end is False
 
 
 class TestOneTimePayment:

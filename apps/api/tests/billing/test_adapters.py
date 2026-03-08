@@ -34,6 +34,8 @@ class TestPaymentAdapterContract:
             "list_invoices",
             "preview_proration",
             "get_usage_summary",
+            "retrieve_subscription",
+            "reactivate_subscription",
         }
         abstract_methods = getattr(PaymentAdapter, "__abstractmethods__", set())
         assert expected == abstract_methods, (
