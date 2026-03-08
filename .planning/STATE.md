@@ -3,13 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Billing & Payments Module
 current_phase: 10-webhook-infrastructure-service-layer
-status: In Progress
-last_updated: "2026-03-08T02:48:50Z"
+current_plan: 10-02 (completed)
+status: executing
+last_updated: "2026-03-08T02:51:08.944Z"
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 6
-  completed_plans: 4
+  completed_plans: 5
 ---
 
 # Session State
@@ -41,6 +42,9 @@ See: .planning/PROJECT.md
 - (Phase 10) BillingService uses DI pattern (adapter= arg) for testability; lazy-imports get_adapter() only when adapter is None
 - (Phase 10) Provider name derived from adapter class name at runtime (StripeAdapter->stripe); no explicit configuration required
 - (Phase 10) Auto-Customer post_save signal creates Customer for every new User; no-customer ServiceError is unreachable in normal flow
+- [Phase 10-01]: Plain Django view for webhook endpoint: raw body bytes required for Stripe HMAC, Ninja may buffer/parse body
+- [Phase 10-01]: get_or_create idempotency guard for ProcessedWebhookEvent using UNIQUE constraint
+- [Phase 10-01]: get_adapter() in utils.py (not **init**) to avoid circular imports between webhooks.py and tasks.py
 
 ## Stopped At
 
