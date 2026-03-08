@@ -5,12 +5,12 @@ milestone_name: Billing & Payments Module
 current_phase: 10-webhook-infrastructure-service-layer
 current_plan: 10-03 (completed)
 status: planning
-last_updated: "2026-03-08T11:55:16.528Z"
+last_updated: "2026-03-08T17:32:46.024Z"
 progress:
   total_phases: 4
-  completed_phases: 3
-  total_plans: 11
-  completed_plans: 11
+  completed_phases: 2
+  total_plans: 13
+  completed_plans: 12
 ---
 
 # Session State
@@ -43,6 +43,7 @@ See: .planning/PROJECT.md
 | Phase 11 P04 | 151  | 2 tasks      | 5 files |
 | Phase 11 P02 | 435  | 2 tasks      | 7 files |
 | Phase 11 P05 | 66   | 1 tasks      | 1 files |
+| Phase 11 P06 | 214  | 3 tasks      | 4 files |
 
 ## Decisions
 
@@ -63,6 +64,9 @@ See: .planning/PROJECT.md
 - [Phase 11]: StubAdapter promoted to proper module and configured in development.py — controller tests use it automatically without per-test monkeypatching
 - [Phase 11]: reactivate_subscription() takes no plan_id — reactivation undoes cancel_at_period_end via adapter.reactivate_subscription(), not modify_subscription()
 - [Phase 11]: get_status() returns all-None sentinel (no ServiceError) for no-subscription case so dashboard renders for free-tier users
+- [Phase 11]: subscribe endpoint separate from change: create_checkout_session needs only Customer (auto-created), upgrade_subscription needs active subscription
+- [Phase 11]: PlanProviderMapping rows seeded via data migration 0002 for stub adapter dev/test environments
+- [Phase 11]: createCheckoutSessionAction derives origin from next/headers host header — no NEXT_PUBLIC_APP_URL env var needed
 
 ## Stopped At
 
