@@ -5,6 +5,7 @@ import {
   reactivateSubscriptionAction,
   createPortalSessionAction,
   previewProrationAction,
+  createCheckoutSessionAction,
 } from "@/actions/billing-actions";
 import { BillingClient } from "./billing-client";
 
@@ -24,6 +25,7 @@ export default async function BillingPage() {
       reactivateSubscriptionAction={reactivateSubscriptionAction}
       createPortalSessionAction={createPortalSessionAction}
       previewProrationAction={previewProrationAction}
+      createCheckoutSessionAction={createCheckoutSessionAction}
     />
   );
 }

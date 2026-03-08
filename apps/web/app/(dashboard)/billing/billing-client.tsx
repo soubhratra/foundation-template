@@ -35,6 +35,10 @@ interface BillingClientProps {
     planId: string,
     billingPeriod: string,
   ) => Promise<ActionResponse & { preview?: ProrationPreviewOut }>;
+  createCheckoutSessionAction: (
+    planId: string,
+    billingPeriod: string,
+  ) => Promise<ActionResponse & { checkout_url?: string }>;
 }
 
 type SheetMode = "proration" | "cancel" | null;
@@ -92,6 +96,7 @@ export function BillingClient({
   reactivateSubscriptionAction,
   createPortalSessionAction,
   previewProrationAction,
+  createCheckoutSessionAction,
 }: BillingClientProps) {
   const [sheetMode, setSheetMode] = useState<SheetMode>(null);
   const [selectedPlan, setSelectedPlan] = useState<{ id: string; period: string } | null>(null);
@@ -169,6 +174,17 @@ export function BillingClient({
     }
   }
 
+  async function handleSubscribe(planId: string, period: string) {
+    setIsPending(true);
+    const result = await createCheckoutSessionAction(planId, period);
+    setIsPending(false);
+    if (result.status === "success" && result.checkout_url) {
+      window.location.href = result.checkout_url;
+    } else {
+      toast.error(result.message || "Unable to start checkout.");
+    }
+  }
+
   // -------------------------------------------------------------------------
   // Sections
   // -------------------------------------------------------------------------
@@ -188,7 +204,9 @@ export function BillingClient({
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between gap-4">
-                <CardTitle>{getPlanName(subscription?.plan_id)}</CardTitle>
+                <CardTitle>
+                  {subscription ? getPlanName(subscription.plan_id) : "Free plan"}
+                </CardTitle>
                 <div className="flex items-center gap-2">
                   {subscription?.status && (
                     <Badge variant={subscription.status === "active" ? "default" : "secondary"}>
@@ -215,7 +233,9 @@ export function BillingClient({
                 </p>
               )}
               {!subscription && (
-                <p className="text-sm text-muted-foreground">No active subscription.</p>
+                <p className="text-sm text-muted-foreground">
+                  No active subscription. Upgrade to a paid plan below.
+                </p>
               )}
               {/* Action buttons for current plan overview */}
               {allowedActions.length > 0 && (
@@ -260,10 +280,12 @@ export function BillingClient({
           <h2 className="mb-4 text-xl font-semibold">{planSelectionSection.heading}</h2>
           <div className="grid gap-4 sm:grid-cols-1 md:grid-cols-2">
             {billingConfig.plans.map((plan) => {
-              const isCurrent = plan.id === subscription?.plan_id;
+              const isCurrent =
+                plan.id === subscription?.plan_id || (!subscription && plan.id === "free"); // free-tier fallback
               const canUpgrade = allowedActions.includes("upgrade");
               const canDowngrade = allowedActions.includes("downgrade");
-              const showButton = !isCurrent && (canUpgrade || canDowngrade);
+              const canSubscribe = allowedActions.includes("subscribe");
+              const showButton = !isCurrent && (canUpgrade || canDowngrade || canSubscribe);
               const billingPeriod = subscription?.billing_period ?? "monthly";
 
               return (
@@ -294,10 +316,14 @@ export function BillingClient({
                       <Button
                         variant="default"
                         size="sm"
-                        onClick={() => handlePlanSelect(plan.id, billingPeriod)}
+                        onClick={() =>
+                          canSubscribe
+                            ? handleSubscribe(plan.id, billingPeriod)
+                            : handlePlanSelect(plan.id, billingPeriod)
+                        }
                         disabled={isPending}
                       >
-                        Select {plan.name}
+                        {canSubscribe ? `Subscribe to ${plan.name}` : `Select ${plan.name}`}
                       </Button>
                     ) : null}
                   </CardContent>
