@@ -14,6 +14,8 @@ from apps.billing.services import BillingService
 
 from .schemas import (
     BillingStatusOut,
+    CheckoutSessionIn,
+    CheckoutSessionOut,
     InvoiceListOut,
     InvoiceOut,
     PlanChangeIn,
@@ -109,6 +111,30 @@ class BillingController(ControllerBase):
         """Create a Stripe Customer Portal session and return the redirect URL."""
         result = self.service.create_portal_session(request.user)
         return PortalSessionOut(portal_url=result["portal_url"])
+
+    @route.post(
+        "/subscription/subscribe",
+        response=CheckoutSessionOut,
+        url_name="billing-subscribe",
+    )
+    def subscribe_plan(self, request, payload: CheckoutSessionIn):
+        """Create a Stripe Checkout session for a new subscription (free-tier users).
+
+        Unlike /subscription/change which requires an active subscription, this
+        endpoint calls create_checkout_session which only needs the Customer record.
+        The Customer record is guaranteed to exist via the post_save auto-create signal.
+        """
+        result = self.service.create_checkout_session(
+            user=request.user,
+            plan_id=payload.plan_id,
+            billing_period=payload.billing_period,
+            success_url=payload.success_url,
+            cancel_url=payload.cancel_url,
+        )
+        return CheckoutSessionOut(
+            checkout_url=result["checkout_url"],
+            session_id=result.get("session_id", ""),
+        )
 
     @route.post(
         "/proration-preview",

@@ -74,3 +74,19 @@ class PortalSessionOut(Schema):
     """Response containing the Stripe Customer Portal redirect URL."""
 
     portal_url: str
+
+
+class CheckoutSessionIn(Schema):
+    """Request body for initiating a Stripe Checkout session (free-tier users)."""
+
+    plan_id: str
+    billing_period: str = "monthly"
+    success_url: str
+    cancel_url: str
+
+
+class CheckoutSessionOut(Schema):
+    """Response containing the Stripe Checkout session redirect URL."""
+
+    checkout_url: str
+    session_id: str
