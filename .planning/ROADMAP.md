@@ -79,6 +79,7 @@ Plans:
 **Goal**: Developers scaffolding a new project have a working billing UI out of the box — the /billing page displays current plan and payment history, and users can upgrade, downgrade, cancel, and manage payment methods without any custom backend code
 **Depends on**: Phase 10
 **Requirements**: INV-01, BILL-01, BILL-02, BILL-03, BILL-04, BILL-05, BILL-06, BILL-07
+**Plans**: 5 plans
 **Success Criteria** (what must be TRUE):
 
 1. The `/billing` page shows the authenticated user's current plan name, billing period, and next renewal date pulled from the `Subscription` model
@@ -86,13 +87,14 @@ Plans:
 3. A user can initiate a plan upgrade or downgrade from the billing page — a proration preview modal appears before the change is confirmed
 4. A user can cancel their subscription from the billing page — the subscription transitions to `cancel_at_period_end=True`, not immediate deletion
 5. A `past_due` banner is visible in the dashboard when the authenticated user's subscription payment has failed
-   **Plans**: TBD
 
 Plans:
 
-- [ ] 11-01: TBD
-- [ ] 11-02: TBD
-- [ ] 11-03: TBD
+- [ ] 11-01-PLAN.md — TDD scaffold: Ninja schemas, controller skeleton (RED), test_controllers.py with 8 failing tests
+- [ ] 11-02-PLAN.md — Controller implementation: all 8 routes GREEN, BillingService.get_subscription_detail()
+- [ ] 11-03-PLAN.md — Frontend data layer: billing.config.ts, getServerApi() billing methods, server actions, sidebar nav
+- [ ] 11-04-PLAN.md — Billing UI: /billing page, billing-client.tsx, past-due banner, layout wiring, /billing/return
+- [ ] 11-05-PLAN.md — Verification: automated test sweep + human smoke test checkpoint
 
 ### Phase 12: Invoice PDF + CLI Scaffolder Integration
 
@@ -125,6 +127,6 @@ Plans:
 | 7. DevEx + CI/CD             | v1.0      | 4/4            | Complete    | 2026-02-17 |
 | 8. CLI Scaffolder            | v1.0      | 3/3            | Complete    | 2026-02-17 |
 | 9. Billing Scaffold          | v1.1      | 3/3            | Complete    | 2026-03-07 |
-| 10. Webhook Infra + Service  | 3/3       | Complete       | 2026-03-08  | -          |
-| 11. API Endpoints + Frontend | v1.1      | 0/TBD          | Not started | -          |
+| 10. Webhook Infra + Service  | v1.1      | 3/3            | Complete    | 2026-03-08 |
+| 11. API Endpoints + Frontend | v1.1      | 0/5            | Not started | -          |
 | 12. Invoice PDF + CLI        | v1.1      | 0/TBD          | Not started | -          |
