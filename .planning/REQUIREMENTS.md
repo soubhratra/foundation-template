@@ -57,11 +57,11 @@ Requirements for the Billing & Payments Module milestone. Each maps to roadmap p
 
 - [ ] **BILL-01**: `/billing` page displays current plan, billing period, and next renewal date
 - [ ] **BILL-02**: `/billing` page displays payment history table with status and invoice download links
-- [ ] **BILL-03**: User can initiate plan upgrade/downgrade from the billing page (with proration preview modal)
-- [ ] **BILL-04**: User can cancel their subscription from the billing page
+- [x] **BILL-03**: User can initiate plan upgrade/downgrade from the billing page (with proration preview modal)
+- [x] **BILL-04**: User can cancel their subscription from the billing page
 - [ ] **BILL-05**: `/billing/return` page handles post-Stripe-Checkout redirect (including 3DS/SCA result)
-- [ ] **BILL-06**: Stripe Customer Portal redirect available for payment method management
-- [ ] **BILL-07**: `past_due` subscription banner displayed in dashboard when payment fails
+- [x] **BILL-06**: Stripe Customer Portal redirect available for payment method management
+- [x] **BILL-07**: `past_due` subscription banner displayed in dashboard when payment fails
 
 ### CLI Scaffolder Integration (SCAFF)
 
@@ -138,11 +138,11 @@ Which phases cover which requirements. Populated during roadmap creation.
 | INV-01      | 11    | Pending  |
 | BILL-01     | 11    | Pending  |
 | BILL-02     | 11    | Pending  |
-| BILL-03     | 11    | Pending  |
-| BILL-04     | 11    | Pending  |
+| BILL-03     | 11    | Complete |
+| BILL-04     | 11    | Complete |
 | BILL-05     | 11    | Pending  |
-| BILL-06     | 11    | Pending  |
-| BILL-07     | 11    | Pending  |
+| BILL-06     | 11    | Complete |
+| BILL-07     | 11    | Complete |
 | INV-02      | 12    | Pending  |
 | INV-03      | 12    | Pending  |
 | SCAFF-01    | 12    | Pending  |

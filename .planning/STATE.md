@@ -5,12 +5,12 @@ milestone_name: Billing & Payments Module
 current_phase: 10-webhook-infrastructure-service-layer
 current_plan: 10-03 (completed)
 status: planning
-last_updated: "2026-03-08T03:00:15.824Z"
+last_updated: "2026-03-08T11:40:07.534Z"
 progress:
   total_phases: 4
   completed_phases: 2
-  total_plans: 6
-  completed_plans: 6
+  total_plans: 11
+  completed_plans: 7
 ---
 
 # Session State
@@ -34,10 +34,11 @@ See: .planning/PROJECT.md
 
 ## Performance Metrics
 
-| Phase | Plan | Duration (s) | Tasks | Files |
-| ----- | ---- | ------------ | ----- | ----- |
-| 10    | 02   | 441          | 2     | 6     |
-| 10    | 03   | 158          | 2     | 3     |
+| Phase        | Plan | Duration (s) | Tasks   | Files |
+| ------------ | ---- | ------------ | ------- | ----- |
+| 10           | 02   | 441          | 2       | 6     |
+| 10           | 03   | 158          | 2       | 3     |
+| Phase 11 P03 | 154  | 2 tasks      | 4 files |
 
 ## Decisions
 
@@ -49,6 +50,8 @@ See: .planning/PROJECT.md
 - [Phase 10-01]: get_adapter() in utils.py (not **init**) to avoid circular imports between webhooks.py and tasks.py
 - [Phase 10]: cancel_at_period_end=True passes gate because subscription status is still ACTIVE; CANCELED status is only set by webhook handler when period ends
 - [Phase 10]: raise PermissionDenied from None used in except clauses to suppress exception chain (ruff B904 compliance)
+- [Phase 11]: AnyApiClient (any-typed) cast for POST mutation paths in billing-actions.ts until turbo run generate:types regenerates @repo/api-client types
+- [Phase 11]: billing.config.ts placed at apps/web root for clean import path; config-driven UI with no React Context
 
 ## Stopped At
 

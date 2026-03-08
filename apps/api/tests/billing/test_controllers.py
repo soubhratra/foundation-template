@@ -39,7 +39,7 @@ def authenticated_client(db, subscription):
 
 @pytest.mark.django_db
 def test_get_status(authenticated_client, subscription):
-    """GET /api/v1/billing/status returns 200 with status fields."""
+    """GET /api/v1/billing/status returns 200 with status, cancel_at_period_end, period_end."""
     response = authenticated_client.get("/api/v1/billing/status")
     assert response.status_code == 200
     data = json.loads(response.content)
