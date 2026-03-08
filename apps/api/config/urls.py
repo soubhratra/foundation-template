@@ -13,6 +13,7 @@ from ninja_extra import NinjaExtraAPI
 from pydantic import ValidationError as PydanticValidationError
 
 from apps.accounts.sessions import HeadlessSessionView
+from apps.billing import webhooks as billing_views
 from apps.core.exceptions import ServiceError
 
 
@@ -180,7 +181,6 @@ urlpatterns = [
     path("api/", include((get_openapi_urls(api), "api-docs"))),
     path("api/v1/", api.urls),
     # BILLING_START
-    # Billing webhook and redirect URLs are registered in Phase 10.
-    # This block is managed by the CLI scaffolder — do not remove these comment markers.
+    path("api/v1/billing/webhooks/", billing_views.stripe_webhook, name="stripe-webhook"),
     # BILLING_END
 ]

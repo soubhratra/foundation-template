@@ -1,0 +1,283 @@
+"""
+Celery tasks for billing event processing.
+
+process_stripe_event:
+- Idempotency guard: ProcessedWebhookEvent.get_or_create prevents duplicate processing.
+- Tier-1 handlers: 6 event types that update Subscription/Payment model state.
+- Unknown events: silently acknowledged at DEBUG level.
+- Retry: autoretry_for=(Exception,) with exponential backoff (2^retries seconds).
+- Dead-letter: after max_retries exceeded, logs at CRITICAL level.
+"""
+
+import datetime
+import logging
+import random
+from typing import Any
+
+from celery import shared_task
+
+logger = logging.getLogger(__name__)
+
+
+def _unix_to_datetime(ts: int | None) -> datetime.datetime | None:
+    """Convert a Unix timestamp (int) to a timezone-aware datetime, or None."""
+    if ts is None:
+        return None
+    return datetime.datetime.fromtimestamp(ts, tz=datetime.UTC)
+
+
+def _handle_checkout_session_completed(event_data: dict[str, Any]) -> None:
+    """checkout.session.completed → create/update Subscription with ACTIVE status."""
+    from apps.billing.models import Customer, Subscription, SubscriptionStatus
+
+    stripe_customer_id: str = event_data.get("customer", "")
+    stripe_subscription_id: str = event_data.get("subscription", "")
+
+    try:
+        customer = Customer.objects.get(stripe_customer_id=stripe_customer_id)
+    except Customer.DoesNotExist:
+        logger.warning(
+            "checkout.session.completed: no Customer for stripe_customer_id=%s",
+            stripe_customer_id,
+        )
+        return
+
+    Subscription.objects.update_or_create(
+        customer=customer,
+        defaults={
+            "status": SubscriptionStatus.ACTIVE,
+            "stripe_subscription_id": stripe_subscription_id,
+        },
+    )
+
+
+def _handle_subscription_created(event_data: dict[str, Any]) -> None:
+    """customer.subscription.created → create/update Subscription with all fields."""
+    from apps.billing.models import Customer, Subscription
+
+    stripe_customer_id: str = event_data.get("customer", "")
+    stripe_subscription_id: str = event_data.get("id", "")
+
+    try:
+        customer = Customer.objects.get(stripe_customer_id=stripe_customer_id)
+    except Customer.DoesNotExist:
+        logger.warning(
+            "customer.subscription.created: no Customer for stripe_customer_id=%s",
+            stripe_customer_id,
+        )
+        return
+
+    Subscription.objects.update_or_create(
+        customer=customer,
+        defaults={
+            "stripe_subscription_id": stripe_subscription_id,
+            "status": event_data.get("status", "incomplete"),
+            "cancel_at_period_end": event_data.get("cancel_at_period_end", False),
+            "current_period_start": _unix_to_datetime(event_data.get("current_period_start")),
+            "current_period_end": _unix_to_datetime(event_data.get("current_period_end")),
+        },
+    )
+
+
+def _handle_subscription_updated(event_data: dict[str, Any]) -> None:
+    """customer.subscription.updated → update status, cancel_at_period_end, period dates."""
+    from apps.billing.models import Customer, Subscription
+
+    stripe_customer_id: str = event_data.get("customer", "")
+
+    try:
+        customer = Customer.objects.get(stripe_customer_id=stripe_customer_id)
+    except Customer.DoesNotExist:
+        logger.warning(
+            "customer.subscription.updated: no Customer for stripe_customer_id=%s",
+            stripe_customer_id,
+        )
+        return
+
+    try:
+        subscription = Subscription.objects.get(customer=customer)
+    except Subscription.DoesNotExist:
+        logger.warning(
+            "customer.subscription.updated: no Subscription for customer=%s",
+            customer.pk,
+        )
+        return
+
+    subscription.status = event_data.get("status", subscription.status)
+    subscription.cancel_at_period_end = event_data.get(
+        "cancel_at_period_end", subscription.cancel_at_period_end
+    )
+    period_start = event_data.get("current_period_start")
+    period_end = event_data.get("current_period_end")
+    if period_start is not None:
+        subscription.current_period_start = _unix_to_datetime(period_start)
+    if period_end is not None:
+        subscription.current_period_end = _unix_to_datetime(period_end)
+    subscription.save()
+
+
+def _handle_subscription_deleted(event_data: dict[str, Any]) -> None:
+    """customer.subscription.deleted → set Subscription.status = CANCELED."""
+    from apps.billing.models import Customer, Subscription, SubscriptionStatus
+
+    stripe_customer_id: str = event_data.get("customer", "")
+
+    try:
+        customer = Customer.objects.get(stripe_customer_id=stripe_customer_id)
+    except Customer.DoesNotExist:
+        logger.warning(
+            "customer.subscription.deleted: no Customer for stripe_customer_id=%s",
+            stripe_customer_id,
+        )
+        return
+
+    Subscription.objects.filter(customer=customer).update(status=SubscriptionStatus.CANCELED)
+
+
+def _handle_invoice_payment_succeeded(event_data: dict[str, Any]) -> None:
+    """invoice.payment_succeeded → create Payment with status 'succeeded'."""
+    from apps.billing.models import Customer, Payment
+
+    stripe_customer_id: str = event_data.get("customer", "")
+    payment_intent_id: str = event_data.get("payment_intent") or ""
+    # Stripe sends amount_paid in cents; store as decimal (divide by 100)
+    amount_cents: int = event_data.get("amount_paid", 0) or 0
+    currency: str = event_data.get("currency", "usd")
+
+    try:
+        customer = Customer.objects.get(stripe_customer_id=stripe_customer_id)
+    except Customer.DoesNotExist:
+        logger.warning(
+            "invoice.payment_succeeded: no Customer for stripe_customer_id=%s",
+            stripe_customer_id,
+        )
+        return
+
+    Payment.objects.create(
+        customer=customer,
+        stripe_payment_intent_id=payment_intent_id,
+        amount=amount_cents / 100,
+        currency=currency,
+        status="succeeded",
+    )
+
+
+def _handle_invoice_payment_failed(event_data: dict[str, Any]) -> None:
+    """invoice.payment_failed → create Payment('failed') + set Subscription to PAST_DUE."""
+    from apps.billing.models import Customer, Payment, Subscription, SubscriptionStatus
+
+    stripe_customer_id: str = event_data.get("customer", "")
+    payment_intent_id: str = event_data.get("payment_intent") or ""
+    # Stripe sends amount_due in cents
+    amount_cents: int = event_data.get("amount_due", 0) or 0
+    currency: str = event_data.get("currency", "usd")
+
+    try:
+        customer = Customer.objects.get(stripe_customer_id=stripe_customer_id)
+    except Customer.DoesNotExist:
+        logger.warning(
+            "invoice.payment_failed: no Customer for stripe_customer_id=%s",
+            stripe_customer_id,
+        )
+        return
+
+    Payment.objects.create(
+        customer=customer,
+        stripe_payment_intent_id=payment_intent_id,
+        amount=amount_cents / 100,
+        currency=currency,
+        status="failed",
+    )
+
+    Subscription.objects.filter(customer=customer).update(status=SubscriptionStatus.PAST_DUE)
+
+
+# Mapping of Stripe event types to handler functions
+_TIER1_HANDLERS = {
+    "checkout.session.completed": _handle_checkout_session_completed,
+    "customer.subscription.created": _handle_subscription_created,
+    "customer.subscription.updated": _handle_subscription_updated,
+    "customer.subscription.deleted": _handle_subscription_deleted,
+    "invoice.payment_succeeded": _handle_invoice_payment_succeeded,
+    "invoice.payment_failed": _handle_invoice_payment_failed,
+}
+
+
+@shared_task(
+    bind=True,
+    max_retries=3,
+    autoretry_for=(Exception,),
+    default_retry_delay=2,
+)
+def process_stripe_event(
+    self,
+    event_id: str,
+    event_type: str,
+    event_data: dict[str, Any],
+) -> None:
+    """Process a Stripe webhook event asynchronously.
+
+    Idempotency: Uses ProcessedWebhookEvent.get_or_create to ensure each
+    event_id is only processed once, even if Stripe delivers it multiple times.
+
+    Retry: On failure, retries with exponential backoff (2^retries ± jitter).
+    After max_retries, logs at CRITICAL level for alerting.
+
+    Args:
+        event_id: Stripe event ID (e.g. "evt_xxx")
+        event_type: Stripe event type (e.g. "customer.subscription.updated")
+        event_data: The event's data.object dict from the Stripe payload
+    """
+    from apps.billing.models import ProcessedWebhookEvent
+
+    # Idempotency guard — get_or_create is atomic via UNIQUE constraint
+    _, created = ProcessedWebhookEvent.objects.get_or_create(
+        provider="stripe",
+        event_id=event_id,
+    )
+
+    if not created:
+        logger.debug(
+            "Skipping already-processed event: provider=stripe event_id=%s type=%s",
+            event_id,
+            event_type,
+        )
+        return
+
+    handler = _TIER1_HANDLERS.get(event_type)
+
+    if handler is None:
+        logger.debug(
+            "Unrecognized Stripe event type — silently acknowledged: %s (event_id=%s)",
+            event_type,
+            event_id,
+        )
+        return
+
+    try:
+        handler(event_data)
+    except Exception as exc:
+        # Determine retry countdown with exponential backoff + jitter
+        retries = self.request.retries
+        countdown = (2**retries) + random.uniform(-1, 1)  # noqa: S311
+
+        if retries >= self.max_retries:
+            logger.critical(
+                "Stripe event processing failed after max retries: "
+                "event_id=%s event_type=%s error=%s",
+                event_id,
+                event_type,
+                exc,
+                exc_info=True,
+            )
+            return
+
+        logger.warning(
+            "Retrying Stripe event (attempt %d/%d): event_id=%s event_type=%s error=%s",
+            retries + 1,
+            self.max_retries,
+            event_id,
+            event_type,
+            exc,
+        )
+        raise self.retry(exc=exc, countdown=countdown) from exc
