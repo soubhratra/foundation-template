@@ -19,7 +19,7 @@ Requirements for the Billing & Payments Module milestone. Each maps to roadmap p
 
 - [x] **CUST-01**: `Customer` model with OneToOne link to User, `stripe_customer_id` populated lazily on first billing interaction
 - [x] **CUST-02**: Customer auto-created via `post_save` signal when a User is created
-- [ ] **CUST-03**: `@require_active_subscription` access-gating decorator checks subscription status and `cancel_at_period_end`
+- [x] **CUST-03**: `@require_active_subscription` access-gating decorator checks subscription status and `cancel_at_period_end`
 
 ### Subscriptions (SUB)
 
@@ -42,10 +42,10 @@ Requirements for the Billing & Payments Module milestone. Each maps to roadmap p
 
 ### Webhook Infrastructure (HOOK)
 
-- [ ] **HOOK-01**: Plain Django view (not Ninja controller) receives Stripe webhook events with raw body for HMAC signature verification
-- [ ] **HOOK-02**: Webhook view returns HTTP 200 immediately after signature verification; processing dispatched to async task queue
-- [ ] **HOOK-03**: `ProcessedWebhookEvent` table with `unique_together(provider, event_id)` prevents duplicate processing
-- [ ] **HOOK-04**: Tier-1 event handlers implemented: `checkout.session.completed`, `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.payment_succeeded`, `invoice.payment_failed`
+- [x] **HOOK-01**: Plain Django view (not Ninja controller) receives Stripe webhook events with raw body for HMAC signature verification
+- [x] **HOOK-02**: Webhook view returns HTTP 200 immediately after signature verification; processing dispatched to async task queue
+- [x] **HOOK-03**: `ProcessedWebhookEvent` table with `unique_together(provider, event_id)` prevents duplicate processing
+- [x] **HOOK-04**: Tier-1 event handlers implemented: `checkout.session.completed`, `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.payment_succeeded`, `invoice.payment_failed`
 
 ### Invoice & PDF (INV)
 
@@ -122,10 +122,10 @@ Which phases cover which requirements. Populated during roadmap creation.
 | CUST-02     | 9     | Complete |
 | SUB-06      | 9     | Complete |
 | PAY-02      | 9     | Complete |
-| HOOK-01     | 10    | Pending  |
-| HOOK-02     | 10    | Pending  |
-| HOOK-03     | 10    | Pending  |
-| HOOK-04     | 10    | Pending  |
+| HOOK-01     | 10    | Complete |
+| HOOK-02     | 10    | Complete |
+| HOOK-03     | 10    | Complete |
+| HOOK-04     | 10    | Complete |
 | SUB-01      | 10    | Complete |
 | SUB-02      | 10    | Complete |
 | SUB-03      | 10    | Complete |
@@ -134,7 +134,7 @@ Which phases cover which requirements. Populated during roadmap creation.
 | PAY-01      | 10    | Complete |
 | USAGE-01    | 10    | Complete |
 | USAGE-02    | 10    | Complete |
-| CUST-03     | 10    | Pending  |
+| CUST-03     | 10    | Complete |
 | INV-01      | 11    | Pending  |
 | BILL-01     | 11    | Pending  |
 | BILL-02     | 11    | Pending  |
