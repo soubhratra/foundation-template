@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Activity, LayoutDashboard, Menu, Settings, UserRound } from "lucide-react";
+import { Activity, CreditCard, LayoutDashboard, Menu, Settings, UserRound } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -65,6 +65,12 @@ export const dashboardNavItems: DashboardNavItem[] = [
     icon: Activity,
     badge: "Live",
   },
+  {
+    title: "Billing",
+    href: "/billing",
+    icon: CreditCard,
+    description: "Plan and payment history",
+  },
 ];
 
 export function DashboardSidebar() {
@@ -73,13 +79,9 @@ export function DashboardSidebar() {
   return (
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
       <SidebarHeader className="gap-1 border-b border-sidebar-border pb-4">
-        <p className="text-xs uppercase tracking-widest text-muted-foreground">
-          Foundation
-        </p>
+        <p className="text-xs uppercase tracking-widest text-muted-foreground">Foundation</p>
         <h2 className="text-lg font-semibold text-foreground">Control Center</h2>
-        <p className="text-xs text-muted-foreground">
-          Monitor your SaaS backbone in real time.
-        </p>
+        <p className="text-xs text-muted-foreground">Monitor your SaaS backbone in real time.</p>
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
@@ -116,15 +118,16 @@ export function DashboardSidebar() {
       <SidebarSeparator />
       <SidebarFooter className="gap-3 border-t border-sidebar-border pt-4">
         <div className="w-full rounded-xl border border-dashed bg-sidebar-accent/20 p-4">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">
-            Workspace status
-          </p>
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">Workspace status</p>
           <div className="mt-2 flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-foreground">Launch window</p>
               <p className="text-xs text-muted-foreground">All systems nominal</p>
             </div>
-            <Badge variant="outline" className="border-emerald-400 text-emerald-600 dark:text-emerald-300">
+            <Badge
+              variant="outline"
+              className="border-emerald-400 text-emerald-600 dark:text-emerald-300"
+            >
               Healthy
             </Badge>
           </div>

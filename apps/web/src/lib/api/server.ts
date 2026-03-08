@@ -14,14 +14,74 @@ const API_ORIGIN = env.NEXT_PUBLIC_API_URL.replace(/\/$/, "");
 const PASSWORD_CHANGE_PATH = "/api/v1/auth/password/change/";
 const CSRF_COOKIE_NAME = "csrftoken";
 
-export type CurrentUser = paths["/api/v1/users/me"]["get"]["responses"][200]["content"]["application/json"];
+export type CurrentUser =
+  paths["/api/v1/users/me"]["get"]["responses"][200]["content"]["application/json"];
 export type UpdateCurrentUserInput = components["schemas"]["UserUpdateIn"];
+
+// ---------------------------------------------------------------------------
+// Billing types
+// TODO: replace with generated @repo/api-client types after `turbo run generate:types`
+// ---------------------------------------------------------------------------
+
+export interface BillingStatusOut {
+  /** Subscription status value (e.g. "active", "past_due") or null when no subscription */
+  status: string | null;
+  cancel_at_period_end: boolean;
+  /** ISO 8601 datetime string from JSON serialisation */
+  current_period_end: string | null;
+}
+
+export interface SubscriptionDetailOut {
+  status: string;
+  cancel_at_period_end: boolean;
+  current_period_start: string | null;
+  current_period_end: string | null;
+  plan_id: string | null;
+  billing_period: string | null;
+  stripe_subscription_id: string;
+}
+
+export interface InvoiceOut {
+  invoice_id: string;
+  /** Amount in cents */
+  amount: number;
+  currency: string;
+  status: string;
+  /** Unix timestamp */
+  created: number;
+  invoice_url: string | null;
+}
+
+export interface InvoiceListOut {
+  invoices: InvoiceOut[];
+  total: number;
+}
+
+export interface ProrationPreviewOut {
+  /** Amount due now, in cents */
+  amount_due_now: number;
+  /** Next invoice total, in cents */
+  next_invoice_total: number;
+  /** Unix timestamp of proration date */
+  proration_date: number;
+  currency: string;
+}
+
+// ---------------------------------------------------------------------------
 
 export interface ServerApi {
   readonly client: ApiClient;
   readonly getCurrentUser: () => Promise<CurrentUser | undefined>;
   readonly updateCurrentUser: (input: UpdateCurrentUserInput) => Promise<CurrentUser | undefined>;
   readonly requestPasswordChange: (input: PasswordChangeInput) => Promise<void>;
+  // Billing read methods
+  readonly getBillingStatus: () => Promise<BillingStatusOut | null>;
+  readonly getBillingSubscription: () => Promise<SubscriptionDetailOut | undefined>;
+  readonly listBillingInvoices: (limit?: number) => Promise<InvoiceListOut | undefined>;
+  readonly previewBillingProration: (
+    planId: string,
+    billingPeriod: string,
+  ) => Promise<ProrationPreviewOut | undefined>;
 }
 
 const fetchCurrentUser = cache(async (cookieHeader: string | null, csrfToken: string | null) => {
@@ -59,6 +119,32 @@ export async function getServerApi(): Promise<ServerApi> {
         },
       });
     },
+    // Billing read methods
+    // TODO: replace with generated @repo/api-client types after `turbo run generate:types`
+    getBillingStatus: async () => {
+      try {
+        const response = await upstreamFetch("/api/v1/billing/status");
+        return response.json() as Promise<BillingStatusOut>;
+      } catch {
+        return null;
+      }
+    },
+    getBillingSubscription: async () => {
+      const response = await upstreamFetch("/api/v1/billing/subscription");
+      return response.json() as Promise<SubscriptionDetailOut>;
+    },
+    listBillingInvoices: async (limit = 10) => {
+      const response = await upstreamFetch(`/api/v1/billing/invoices?limit=${limit}`);
+      return response.json() as Promise<InvoiceListOut>;
+    },
+    previewBillingProration: async (planId, billingPeriod) => {
+      const response = await upstreamFetch("/api/v1/billing/proration-preview", {
+        method: "POST",
+        body: JSON.stringify({ plan_id: planId, billing_period: billingPeriod }),
+        headers: { "Content-Type": "application/json" },
+      });
+      return response.json() as Promise<ProrationPreviewOut>;
+    },
   } satisfies ServerApi;
 }
 
@@ -77,7 +163,10 @@ function serializeCookies(store: CookieStore): string | null {
   return serialized.length > 0 ? serialized : null;
 }
 
-function buildDefaultHeaders(cookieHeader: string | null, csrfToken: string | null): HeadersInit | undefined {
+function buildDefaultHeaders(
+  cookieHeader: string | null,
+  csrfToken: string | null,
+): HeadersInit | undefined {
   const headers: Record<string, string> = {};
   if (cookieHeader) {
     headers.cookie = cookieHeader;
