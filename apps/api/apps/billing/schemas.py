@@ -90,3 +90,10 @@ class CheckoutSessionOut(Schema):
 
     checkout_url: str
     session_id: str
+
+
+class PdfTaskOut(Schema):
+    """Response for async PDF generation — contains task ID for polling."""
+
+    task_id: str
+    status: str  # always "pending" on initial response

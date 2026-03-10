@@ -11,7 +11,7 @@ Usage:
 import logging
 from typing import Any
 
-from apps.billing.models import Customer, PlanProviderMapping, Subscription
+from apps.billing.models import Customer, Payment, PlanProviderMapping, Subscription
 from apps.core.exceptions import ServiceError
 
 logger = logging.getLogger(__name__)
@@ -330,3 +330,26 @@ class BillingService:
             customer_id=customer.stripe_customer_id,
             limit=limit,
         )
+
+    def get_payment_for_pdf(self, user: Any, payment_id: int) -> dict[str, Any]:
+        """Build invoice_data dict for PDF rendering from a user-owned Payment record.
+
+        Raises ServiceError(404) if the payment does not exist or belongs to another customer.
+        """
+        customer = self._get_customer(user)
+        try:
+            payment = customer.payments.get(pk=payment_id)
+        except Payment.DoesNotExist as exc:
+            raise ServiceError(
+                code="not_found",
+                message="Payment not found.",
+                status_code=404,
+            ) from exc
+        return {
+            "reference": f"PAY-{payment.pk}",
+            "date": payment.created_at.strftime("%Y-%m-%d"),
+            "customer_email": user.email,
+            "description": "Subscription Payment",
+            "amount": float(payment.amount),
+            "currency": payment.currency,
+        }

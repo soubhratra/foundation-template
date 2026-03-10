@@ -85,8 +85,20 @@ def authenticated_client(db, subscription):
 
 
 @pytest.mark.django_db
-def test_request_invoice_pdf_returns_task_id(authenticated_client, payment):
-    """POST /billing/invoices/{payment_id}/pdf returns 200 with task_id and status=pending."""
+def test_request_invoice_pdf_returns_task_id(authenticated_client, payment, monkeypatch):
+    """POST /billing/invoices/{payment_id}/pdf returns 200 with task_id and status=pending.
+
+    generate_invoice_pdf.delay is mocked to avoid needing a running Redis broker
+    in the test environment — this test verifies the controller wiring only.
+    """
+    from unittest.mock import MagicMock
+
+    import apps.billing.tasks as billing_tasks
+
+    mock_task_result = MagicMock()
+    mock_task_result.id = "fake-task-uuid-1234"
+    monkeypatch.setattr(billing_tasks.generate_invoice_pdf, "delay", lambda data: mock_task_result)
+
     response = authenticated_client.post(f"/api/v1/billing/invoices/{payment.pk}/pdf")
     assert response.status_code == 200
     data = json.loads(response.content)

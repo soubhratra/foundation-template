@@ -209,6 +209,29 @@ _TIER1_HANDLERS = {
     autoretry_for=(Exception,),
     default_retry_delay=2,
 )
+def generate_invoice_pdf(self, invoice_data: dict) -> bytes:
+    """Generate invoice PDF bytes asynchronously.
+
+    Returns raw bytes stored via django-celery-results backend.
+    Client polls GET /billing/invoices/pdf-status/{task_id} until state=SUCCESS.
+
+    NOTE: PDF bytes stored in django_celery_results_taskresult TEXT column.
+    Bounded by MAX_PDF_BYTES guard in render_invoice_pdf (512KB max).
+
+    Lazy import avoids importing render_invoice_pdf (and weasyprint) at module
+    load time — required to prevent Celery fork deadlocks (WeasyPrint issue #684).
+    """
+    from apps.billing.pdf import render_invoice_pdf  # lazy import avoids circular
+
+    return render_invoice_pdf(invoice_data)
+
+
+@shared_task(
+    bind=True,
+    max_retries=3,
+    autoretry_for=(Exception,),
+    default_retry_delay=2,
+)
 def process_stripe_event(
     self,
     event_id: str,

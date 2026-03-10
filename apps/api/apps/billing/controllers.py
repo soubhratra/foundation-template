@@ -11,6 +11,7 @@ from ninja_extra import ControllerBase, api_controller, route
 from ninja_extra.permissions import IsAuthenticated
 
 from apps.billing.services import BillingService
+from apps.billing.tasks import generate_invoice_pdf
 
 from .schemas import (
     BillingStatusOut,
@@ -18,6 +19,7 @@ from .schemas import (
     CheckoutSessionOut,
     InvoiceListOut,
     InvoiceOut,
+    PdfTaskOut,
     PlanChangeIn,
     PortalSessionOut,
     ProrationPreviewIn,
@@ -147,3 +149,37 @@ class BillingController(ControllerBase):
             request.user, payload.plan_id, payload.billing_period
         )
         return ProrationPreviewOut(**result)
+
+    @route.post(
+        "/invoices/{payment_id}/pdf",
+        response=PdfTaskOut,
+        url_name="billing-invoice-pdf",
+    )
+    def request_invoice_pdf(self, request, payment_id: int):
+        """Enqueue PDF generation. Returns task_id for polling. Never blocks."""
+        invoice_data = self.service.get_payment_for_pdf(request.user, payment_id)
+        task = generate_invoice_pdf.delay(invoice_data)
+        return PdfTaskOut(task_id=task.id, status="pending")
+
+    @route.get(
+        "/invoices/pdf-status/{task_id}",
+        url_name="billing-pdf-status",
+    )
+    def get_pdf_status(self, request, task_id: str):
+        """Poll PDF generation status.
+
+        When status=success, returns base64-encoded PDF bytes in pdf_base64 field.
+        The response shape varies by state so no typed `response=` schema is used —
+        Django Ninja serializes plain dicts as JSON.
+        """
+        import base64
+
+        from celery.result import AsyncResult
+
+        result = AsyncResult(task_id)
+        if result.state == "SUCCESS":
+            pdf_bytes = result.result
+            return {"status": "success", "pdf_base64": base64.b64encode(pdf_bytes).decode()}
+        if result.state == "FAILURE":
+            return self.create_response(request, {"status": "failed"}, status_code=500)
+        return {"status": result.state.lower()}
