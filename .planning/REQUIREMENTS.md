@@ -65,10 +65,10 @@ Requirements for the Billing & Payments Module milestone. Each maps to roadmap p
 
 ### CLI Scaffolder Integration (SCAFF)
 
-- [ ] **SCAFF-01**: Billing module included by default when creating a new project with `create-foundation-app`
-- [ ] **SCAFF-02**: User can exclude billing module via `--without billing` flag (or interactive prompt) in the scaffolder
-- [ ] **SCAFF-03**: Billing removal deletes `apps/api/apps/billing/`, frontend billing pages, billing deps, and comment-delimited config blocks
-- [ ] **SCAFF-04**: CI test verifies `manage.py check` passes with billing removed from `INSTALLED_APPS`
+- [x] **SCAFF-01**: Billing module included by default when creating a new project with `create-foundation-app`
+- [x] **SCAFF-02**: User can exclude billing module via `--without billing` flag (or interactive prompt) in the scaffolder
+- [x] **SCAFF-03**: Billing removal deletes `apps/api/apps/billing/`, frontend billing pages, billing deps, and comment-delimited config blocks
+- [x] **SCAFF-04**: CI test verifies `manage.py check` passes with billing removed from `INSTALLED_APPS`
 
 ## v2 Requirements
 
@@ -145,10 +145,10 @@ Which phases cover which requirements. Populated during roadmap creation.
 | BILL-07     | 11    | Complete |
 | INV-02      | 12    | Complete |
 | INV-03      | 12    | Complete |
-| SCAFF-01    | 12    | Pending  |
-| SCAFF-02    | 12    | Pending  |
-| SCAFF-03    | 12    | Pending  |
-| SCAFF-04    | 12    | Pending  |
+| SCAFF-01    | 12    | Complete |
+| SCAFF-02    | 12    | Complete |
+| SCAFF-03    | 12    | Complete |
+| SCAFF-04    | 12    | Complete |
 
 **Coverage:**
 

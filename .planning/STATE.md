@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Billing & Payments Module
 current_phase: 12-invoice-pdf-cli-scaffolder-integration
-current_plan: 12-01 (completed)
-status: in_progress
-last_updated: "2026-03-10T13:22:00.000Z"
+current_plan: 12-02 (completed)
+status: executing
+last_updated: "2026-03-10T13:06:41.788Z"
 progress:
   total_phases: 4
   completed_phases: 3
-  total_plans: 15
-  completed_plans: 15
+  total_plans: 17
+  completed_plans: 16
 ---
 
 # Session State
@@ -23,7 +23,7 @@ See: .planning/PROJECT.md
 
 **Milestone:** v1.1 Billing & Payments Module
 **Current phase:** 12-invoice-pdf-cli-scaffolder-integration
-**Current plan:** 12-01 (completed)
+**Current plan:** 12-02 (completed)
 **Status:** In progress
 
 ## Session Log
@@ -32,6 +32,7 @@ See: .planning/PROJECT.md
 - 2026-03-08: Completed 10-02 — BillingService + extended PaymentAdapter ABCs
 - 2026-03-08: Completed 10-03 — @require_active_subscription decorator, 9 TDD tests green
 - 2026-03-10: Completed 12-01 — WeasyPrint + Jinja2 invoice PDF generation, Celery task, two new billing API endpoints
+- 2026-03-10: Completed 12-02 — removeBillingModule() CLI scaffolder, vitest TDD suite (7 tests GREEN), billing prompt + --without billing flag
 
 ## Performance Metrics
 
@@ -48,6 +49,7 @@ See: .planning/PROJECT.md
 | Phase 11 P07 | 127  | 2 tasks      | 3 files  |
 | Phase 11 P08 | 109  | 2 tasks      | 2 files  |
 | Phase 12 P01 | 505  | 2 tasks      | 10 files |
+| Phase 12 P02 | 246  | 3 tasks      | 7 files  |
 
 ## Decisions
 
@@ -79,7 +81,9 @@ See: .planning/PROJECT.md
 - [Phase 12-01]: MAX_PDF_BYTES = 512KB guard in pdf.py prevents runaway WeasyPrint output from exhausting django-celery-results TEXT column
 - [Phase 12-01]: get_pdf_status uses untyped dict response (no response= schema) because shape varies by task state (adds pdf_base64 on SUCCESS only)
 - [Phase 12-01]: apps/api/conftest.py sets DYLD_LIBRARY_PATH=/usr/local/lib on macOS so WeasyPrint cffi bindings find Homebrew-installed pango/glib dylibs
+- [Phase 12-02]: BILLING MODULE block regex uses dash-delimited comment markers not line-count heuristics for robustness
+- [Phase 12-02]: --without billing flag filters billing post-prompt via feature array filter, supporting both space-separated and hyphenated forms
 
 ## Stopped At
 
-Completed 12-01-PLAN.md
+Completed 12-02-PLAN.md

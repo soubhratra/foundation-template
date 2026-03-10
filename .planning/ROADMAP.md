@@ -130,4 +130,4 @@ Plans:
 | 9. Billing Scaffold          | v1.1      | 3/3            | Complete | 2026-03-07 |
 | 10. Webhook Infra + Service  | v1.1      | 3/3            | Complete | 2026-03-08 |
 | 11. API Endpoints + Frontend | v1.1      | 8/8            | Complete | 2026-03-10 |
-| 12. Invoice PDF + CLI        | 1/3       | In Progress    |          | -          |
+| 12. Invoice PDF + CLI        | 2/3       | In Progress    |          | -          |
