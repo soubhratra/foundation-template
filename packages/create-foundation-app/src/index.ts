@@ -10,7 +10,13 @@ import {
 import { copyTemplate, getTemplateDir } from "./copy.js";
 import { replaceInFiles, getReplacementMap } from "./transform.js";
 import { writeEnvFile } from "./secrets.js";
-import { removeAIModule, removeMobileApp, removeLandingApp, removeWebApp } from "./remove.js";
+import {
+  removeAIModule,
+  removeMobileApp,
+  removeLandingApp,
+  removeWebApp,
+  removeBillingModule,
+} from "./remove.js";
 import { runValidation } from "./validation-runner.js";
 import { rollbackGeneration } from "./rollback.js";
 
@@ -31,6 +37,13 @@ export async function main() {
   // Parse CLI flags
   const skipValidation = process.argv.includes("--skip-validation");
 
+  // Parse --without billing / --without-billing flag
+  const withoutArgs = process.argv.slice(2);
+  const withoutIdx = withoutArgs.indexOf("--without");
+  const withoutBillingFlag =
+    (withoutIdx !== -1 && withoutArgs[withoutIdx + 1] === "billing") ||
+    withoutArgs.includes("--without-billing");
+
   // Track output directory for rollback
   let outputDir = "";
 
@@ -43,7 +56,9 @@ export async function main() {
 
     // Collect configuration via interactive prompts
     const projectName = await promptProjectName();
-    const features = await promptFeatures();
+    const rawFeatures = await promptFeatures();
+    // If --without billing flag was passed, remove billing from selected features
+    const features = withoutBillingFlag ? rawFeatures.filter((f) => f !== "billing") : rawFeatures;
     outputDir = await promptOutputDir();
 
     // Build configuration object
@@ -94,6 +109,9 @@ export async function main() {
     }
     if (!config.features.includes("web")) {
       await removeWebApp(config.outputDir);
+    }
+    if (!config.features.includes("billing")) {
+      await removeBillingModule(config.outputDir);
     }
     s4.stop(pc.green("✓ Features configured"));
 
