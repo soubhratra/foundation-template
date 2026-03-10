@@ -217,3 +217,130 @@ export async function removeWebApp(outputDir: string): Promise<void> {
 
   logger.info("✓ Web app removed successfully");
 }
+
+/**
+ * Remove billing module from generated project
+ *
+ * Steps:
+ * 1. Delete apps/api/apps/billing/ directory
+ * 2. Remove "apps.billing" from INSTALLED_APPS in base.py
+ * 3. Remove BILLING MODULE settings block from base.py
+ * 4. Remove BILLING_ADAPTER line from development.py
+ * 5. Remove BILLING_START/BILLING_END URL block from urls.py
+ * 6. Remove billing import line from urls.py
+ * 7. Delete apps/web/app/(dashboard)/billing/ directory
+ * 8. Delete apps/web/billing.config.ts
+ * 9. Remove stripe/weasyprint deps from pyproject.toml
+ */
+export async function removeBillingModule(outputDir: string): Promise<void> {
+  logger.info("Removing billing module...");
+
+  // 1. Delete apps/api/apps/billing/ directory
+  const billingApiDir = join(outputDir, "apps/api/apps/billing");
+  try {
+    await remove(billingApiDir);
+    logger.info(`  ✓ Deleted ${billingApiDir}`);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+      throw new Error(`Failed to delete billing API directory: ${error}`);
+    }
+    logger.warning(`  ⚠ Billing API directory not found (already removed)`);
+  }
+
+  // 2 & 3. Modify base.py: remove INSTALLED_APPS line and BILLING MODULE block
+  const basePyPath = join(outputDir, "apps/api/config/settings/base.py");
+  try {
+    let basePyContent = await readFile(basePyPath, "utf-8");
+
+    // Remove "apps.billing" line from INSTALLED_APPS
+    basePyContent = basePyContent.replace(/\s*"apps\.billing",[^\n]*\n/g, "");
+
+    // Remove the BILLING MODULE settings block (delimited by dash comment lines)
+    basePyContent = basePyContent.replace(
+      /\n# -{10,}\n# BILLING MODULE\n# -{10,}[\s\S]*?# -{10,}\n# END BILLING MODULE\n# -{10,}/,
+      "",
+    );
+
+    await writeFile(basePyPath, basePyContent, "utf-8");
+    logger.info(`  ✓ Removed billing entries from base.py`);
+  } catch (error) {
+    throw new Error(`Failed to modify settings/base.py: ${error}`);
+  }
+
+  // 4. Remove BILLING_ADAPTER line from development.py only
+  const devPyPath = join(outputDir, "apps/api/config/settings/development.py");
+  try {
+    let devPyContent = await readFile(devPyPath, "utf-8");
+
+    // Remove only the BILLING_ADAPTER line
+    devPyContent = devPyContent.replace(/^BILLING_ADAPTER\s*=.*$\n?/m, "");
+
+    await writeFile(devPyPath, devPyContent, "utf-8");
+    logger.info(`  ✓ Removed BILLING_ADAPTER from development.py`);
+  } catch (error) {
+    throw new Error(`Failed to modify settings/development.py: ${error}`);
+  }
+
+  // 5 & 6. Modify urls.py: remove BILLING block and billing import
+  const urlsPyPath = join(outputDir, "apps/api/config/urls.py");
+  try {
+    let urlsContent = await readFile(urlsPyPath, "utf-8");
+
+    // Remove the BILLING_START / BILLING_END block (including surrounding whitespace)
+    urlsContent = urlsContent.replace(/[ \t]*# BILLING_START\n[\s\S]*?# BILLING_END\n?/, "");
+
+    // Remove the billing import line
+    urlsContent = urlsContent.replace(/^from apps\.billing[^\n]*\n/m, "");
+
+    await writeFile(urlsPyPath, urlsContent, "utf-8");
+    logger.info(`  ✓ Removed billing URL block and import from urls.py`);
+  } catch (error) {
+    throw new Error(`Failed to modify urls.py: ${error}`);
+  }
+
+  // 7. Delete apps/web/app/(dashboard)/billing/ directory
+  const billingWebDir = join(outputDir, "apps/web/app/(dashboard)/billing");
+  try {
+    await remove(billingWebDir);
+    logger.info(`  ✓ Deleted ${billingWebDir}`);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+      throw new Error(`Failed to delete billing web directory: ${error}`);
+    }
+    logger.warning(`  ⚠ Billing web directory not found (already removed)`);
+  }
+
+  // 8. Delete apps/web/billing.config.ts
+  const billingConfigPath = join(outputDir, "apps/web/billing.config.ts");
+  try {
+    await remove(billingConfigPath);
+    logger.info(`  ✓ Deleted ${billingConfigPath}`);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+      throw new Error(`Failed to delete billing.config.ts: ${error}`);
+    }
+    logger.warning(`  ⚠ billing.config.ts not found (already removed)`);
+  }
+
+  // 9. Remove stripe and weasyprint deps from pyproject.toml
+  const pyprojectPath = join(outputDir, "apps/api/pyproject.toml");
+  try {
+    let pyprojectContent = await readFile(pyprojectPath, "utf-8");
+
+    const billingDeps = ["stripe", "weasyprint"];
+    for (const dep of billingDeps) {
+      const depRegex = new RegExp(`^\\s*"${dep}[^"]*",?\\s*$`, "gm");
+      pyprojectContent = pyprojectContent.replace(depRegex, "");
+    }
+
+    await writeFile(pyprojectPath, pyprojectContent, "utf-8");
+    logger.info(`  ✓ Removed stripe/weasyprint from pyproject.toml`);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+      throw new Error(`Failed to modify pyproject.toml: ${error}`);
+    }
+    logger.warning(`  ⚠ pyproject.toml not found (skipping dep removal)`);
+  }
+
+  logger.info("✓ Billing module removed successfully");
+}
