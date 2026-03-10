@@ -32,7 +32,7 @@ Full archive: `.planning/milestones/v1.0-ROADMAP.md`
 - [x] **Phase 9: Billing Scaffold** — Data models, PaymentAdapter interface, StripeAdapter, settings configuration, and module isolation markers (completed 2026-03-07)
 - [x] **Phase 10: Webhook Infrastructure + Service Layer** — BillingService business logic, Stripe webhook receiver, Tier-1 event handlers, async dispatch, subscription lifecycle, metered billing (completed 2026-03-08)
 - [x] **Phase 11: API Endpoints + Billing Frontend** — Ninja Extra billing controller, invoice list endpoint, Next.js /billing page with plan display, history, upgrade/downgrade/cancel flows (completed 2026-03-08)
-- [ ] **Phase 12: Invoice PDF + CLI Scaffolder Integration** — Async PDF generation via WeasyPrint + Celery, invoice download endpoint, CLI scaffolder opt-out, removal verification test
+- [x] **Phase 12: Invoice PDF + CLI Scaffolder Integration** — Async PDF generation via WeasyPrint + Celery, invoice download endpoint, CLI scaffolder opt-out, removal verification test (completed 2026-03-10)
 
 ## Phase Details
 
@@ -117,17 +117,17 @@ Plans:
 
 ## Progress
 
-| Phase                        | Milestone | Plans Complete | Status   | Completed  |
-| ---------------------------- | --------- | -------------- | -------- | ---------- |
-| 1. Monorepo Foundation       | v1.0      | 4/4            | Complete | 2026-02-17 |
-| 2. API Core + Auth Backend   | v1.0      | 5/5            | Complete | 2026-02-17 |
-| 3. Shared Packages + Types   | v1.0      | 6/6            | Complete | 2026-02-17 |
-| 4. Web Application           | v1.0      | 5/5            | Complete | 2026-02-17 |
-| 5. Mobile Application        | v1.0      | 4/4            | Complete | 2026-02-17 |
-| 6. AI Module                 | v1.0      | 5/5            | Complete | 2026-02-17 |
-| 7. DevEx + CI/CD             | v1.0      | 4/4            | Complete | 2026-02-17 |
-| 8. CLI Scaffolder            | v1.0      | 3/3            | Complete | 2026-02-17 |
-| 9. Billing Scaffold          | v1.1      | 3/3            | Complete | 2026-03-07 |
-| 10. Webhook Infra + Service  | v1.1      | 3/3            | Complete | 2026-03-08 |
-| 11. API Endpoints + Frontend | v1.1      | 8/8            | Complete | 2026-03-10 |
-| 12. Invoice PDF + CLI        | 2/3       | In Progress    |          | -          |
+| Phase                        | Milestone | Plans Complete | Status     | Completed  |
+| ---------------------------- | --------- | -------------- | ---------- | ---------- |
+| 1. Monorepo Foundation       | v1.0      | 4/4            | Complete   | 2026-02-17 |
+| 2. API Core + Auth Backend   | v1.0      | 5/5            | Complete   | 2026-02-17 |
+| 3. Shared Packages + Types   | v1.0      | 6/6            | Complete   | 2026-02-17 |
+| 4. Web Application           | v1.0      | 5/5            | Complete   | 2026-02-17 |
+| 5. Mobile Application        | v1.0      | 4/4            | Complete   | 2026-02-17 |
+| 6. AI Module                 | v1.0      | 5/5            | Complete   | 2026-02-17 |
+| 7. DevEx + CI/CD             | v1.0      | 4/4            | Complete   | 2026-02-17 |
+| 8. CLI Scaffolder            | v1.0      | 3/3            | Complete   | 2026-02-17 |
+| 9. Billing Scaffold          | v1.1      | 3/3            | Complete   | 2026-03-07 |
+| 10. Webhook Infra + Service  | v1.1      | 3/3            | Complete   | 2026-03-08 |
+| 11. API Endpoints + Frontend | v1.1      | 8/8            | Complete   | 2026-03-10 |
+| 12. Invoice PDF + CLI        | 3/3       | Complete       | 2026-03-10 | -          |

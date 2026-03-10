@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Billing & Payments Module
 current_phase: 12-invoice-pdf-cli-scaffolder-integration
-current_plan: 12-02 (completed)
+current_plan: 12-03 (checkpoint — awaiting human-verify)
 status: executing
-last_updated: "2026-03-10T13:06:41.788Z"
+last_updated: "2026-03-10T13:13:36.256Z"
 progress:
   total_phases: 4
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 17
-  completed_plans: 16
+  completed_plans: 17
 ---
 
 # Session State
@@ -23,8 +23,8 @@ See: .planning/PROJECT.md
 
 **Milestone:** v1.1 Billing & Payments Module
 **Current phase:** 12-invoice-pdf-cli-scaffolder-integration
-**Current plan:** 12-02 (completed)
-**Status:** In progress
+**Current plan:** 12-03 (checkpoint — awaiting human-verify Task 2)
+**Status:** Blocked — human verification required
 
 ## Session Log
 
@@ -33,6 +33,7 @@ See: .planning/PROJECT.md
 - 2026-03-08: Completed 10-03 — @require_active_subscription decorator, 9 TDD tests green
 - 2026-03-10: Completed 12-01 — WeasyPrint + Jinja2 invoice PDF generation, Celery task, two new billing API endpoints
 - 2026-03-10: Completed 12-02 — removeBillingModule() CLI scaffolder, vitest TDD suite (7 tests GREEN), billing prompt + --without billing flag
+- 2026-03-10: Checkpoint 12-03 Task 2 — SCAFF-04 pytest test GREEN (subprocess CLI invocation), fixed fs-extra Node v24 ESM bug; awaiting human PDF + scaffolder smoke test
 
 ## Performance Metrics
 
@@ -50,6 +51,7 @@ See: .planning/PROJECT.md
 | Phase 11 P08 | 109  | 2 tasks      | 2 files  |
 | Phase 12 P01 | 505  | 2 tasks      | 10 files |
 | Phase 12 P02 | 246  | 3 tasks      | 7 files  |
+| Phase 12 P03 | 480  | 1 tasks      | 4 files  |
 
 ## Decisions
 
@@ -83,7 +85,9 @@ See: .planning/PROJECT.md
 - [Phase 12-01]: apps/api/conftest.py sets DYLD_LIBRARY_PATH=/usr/local/lib on macOS so WeasyPrint cffi bindings find Homebrew-installed pango/glib dylibs
 - [Phase 12-02]: BILLING MODULE block regex uses dash-delimited comment markers not line-count heuristics for robustness
 - [Phase 12-02]: --without billing flag filters billing post-prompt via feature array filter, supporting both space-separated and hyphenated forms
+- [Phase 12]: CLI invoked via node --input-type=module inline script (not dist/index.js) for SCAFF-04 pytest test — dist/index.js requires interactive TTY, direct dist/remove.js invocation still exercises compiled TypeScript
+- [Phase 12]: fs-extra default import + destructuring (import fse from 'fs-extra'; const { readFile } = fse;) fixes Node.js v24 ESM/CJS named-export incompatibility in CLI source files
 
 ## Stopped At
 
-Completed 12-02-PLAN.md
+Checkpoint: 12-03 Task 2 (human-verify) — PDF download flow + scaffolder billing opt-out smoke test
