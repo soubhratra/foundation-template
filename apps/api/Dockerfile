@@ -29,8 +29,15 @@ FROM python:3.12-slim
 WORKDIR /app
 
 # Install runtime dependencies only (postgres client, not build tools)
+# WeasyPrint system deps: pango (font/text rendering), gdk-pixbuf (image support),
+# libffi (cffi bindings), shared-mime-info (MIME type detection)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq5 \
+    libpango-1.0-0 \
+    libpangoft2-1.0-0 \
+    libgdk-pixbuf2.0-0 \
+    libffi8 \
+    shared-mime-info \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy virtual environment from builder
