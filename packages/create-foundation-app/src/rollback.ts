@@ -1,4 +1,5 @@
-import { remove, pathExists } from "fs-extra";
+import fse from "fs-extra";
+const { remove, pathExists } = fse;
 import { logger } from "./utils.js";
 
 /**

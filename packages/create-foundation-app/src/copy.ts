@@ -1,4 +1,5 @@
-import * as fs from "fs-extra";
+import fse from "fs-extra";
+const fs = fse;
 import * as path from "path";
 import { fileURLToPath } from "url";
 import ignore, { Ignore } from "ignore";

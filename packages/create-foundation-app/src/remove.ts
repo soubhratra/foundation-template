@@ -1,4 +1,5 @@
-import { readFile, writeFile, remove } from "fs-extra";
+import fse from "fs-extra";
+const { readFile, writeFile, remove } = fse;
 import { join } from "node:path";
 import { logger } from "./utils.js";
 
