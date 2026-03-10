@@ -117,17 +117,17 @@ Plans:
 
 ## Progress
 
-| Phase                        | Milestone | Plans Complete | Status      | Completed  |
-| ---------------------------- | --------- | -------------- | ----------- | ---------- |
-| 1. Monorepo Foundation       | v1.0      | 4/4            | Complete    | 2026-02-17 |
-| 2. API Core + Auth Backend   | v1.0      | 5/5            | Complete    | 2026-02-17 |
-| 3. Shared Packages + Types   | v1.0      | 6/6            | Complete    | 2026-02-17 |
-| 4. Web Application           | v1.0      | 5/5            | Complete    | 2026-02-17 |
-| 5. Mobile Application        | v1.0      | 4/4            | Complete    | 2026-02-17 |
-| 6. AI Module                 | v1.0      | 5/5            | Complete    | 2026-02-17 |
-| 7. DevEx + CI/CD             | v1.0      | 4/4            | Complete    | 2026-02-17 |
-| 8. CLI Scaffolder            | v1.0      | 3/3            | Complete    | 2026-02-17 |
-| 9. Billing Scaffold          | v1.1      | 3/3            | Complete    | 2026-03-07 |
-| 10. Webhook Infra + Service  | v1.1      | 3/3            | Complete    | 2026-03-08 |
-| 11. API Endpoints + Frontend | v1.1      | 8/8            | Complete    | 2026-03-10 |
-| 12. Invoice PDF + CLI        | v1.1      | 0/3            | Not started | -          |
+| Phase                        | Milestone | Plans Complete | Status   | Completed  |
+| ---------------------------- | --------- | -------------- | -------- | ---------- |
+| 1. Monorepo Foundation       | v1.0      | 4/4            | Complete | 2026-02-17 |
+| 2. API Core + Auth Backend   | v1.0      | 5/5            | Complete | 2026-02-17 |
+| 3. Shared Packages + Types   | v1.0      | 6/6            | Complete | 2026-02-17 |
+| 4. Web Application           | v1.0      | 5/5            | Complete | 2026-02-17 |
+| 5. Mobile Application        | v1.0      | 4/4            | Complete | 2026-02-17 |
+| 6. AI Module                 | v1.0      | 5/5            | Complete | 2026-02-17 |
+| 7. DevEx + CI/CD             | v1.0      | 4/4            | Complete | 2026-02-17 |
+| 8. CLI Scaffolder            | v1.0      | 3/3            | Complete | 2026-02-17 |
+| 9. Billing Scaffold          | v1.1      | 3/3            | Complete | 2026-03-07 |
+| 10. Webhook Infra + Service  | v1.1      | 3/3            | Complete | 2026-03-08 |
+| 11. API Endpoints + Frontend | v1.1      | 8/8            | Complete | 2026-03-10 |
+| 12. Invoice PDF + CLI        | 1/3       | In Progress    |          | -          |

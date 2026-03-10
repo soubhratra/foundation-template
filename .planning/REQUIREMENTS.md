@@ -50,8 +50,8 @@ Requirements for the Billing & Payments Module milestone. Each maps to roadmap p
 ### Invoice & PDF (INV)
 
 - [x] **INV-01**: API endpoint returns paginated list of invoices for the authenticated user
-- [ ] **INV-02**: User can download an invoice as a server-generated PDF (WeasyPrint + Jinja2 template)
-- [ ] **INV-03**: PDF generation runs as an async Celery task (never in the request cycle)
+- [x] **INV-02**: User can download an invoice as a server-generated PDF (WeasyPrint + Jinja2 template)
+- [x] **INV-03**: PDF generation runs as an async Celery task (never in the request cycle)
 
 ### Billing Frontend (BILL)
 
@@ -143,8 +143,8 @@ Which phases cover which requirements. Populated during roadmap creation.
 | BILL-05     | 11    | Complete |
 | BILL-06     | 11    | Complete |
 | BILL-07     | 11    | Complete |
-| INV-02      | 12    | Pending  |
-| INV-03      | 12    | Pending  |
+| INV-02      | 12    | Complete |
+| INV-03      | 12    | Complete |
 | SCAFF-01    | 12    | Pending  |
 | SCAFF-02    | 12    | Pending  |
 | SCAFF-03    | 12    | Pending  |
