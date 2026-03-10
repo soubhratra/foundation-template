@@ -20,6 +20,11 @@
     "generate:api-types": "node ./scripts/generate-api-types.mjs",
     "generate:types": "turbo run generate:api-types --filter=@repo/api"
   },
+  "pnpm": {
+    "overrides": {
+      "@tanstack/react-query-devtools": "5.91.3"
+    }
+  },
   "devDependencies": {
     "@repo/config-eslint": "workspace:*",
     "@repo/config-ts": "workspace:*",
