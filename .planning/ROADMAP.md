@@ -101,18 +101,19 @@ Plans:
 **Goal**: Invoice PDFs are server-generated and downloadable on demand without blocking the request cycle, and the billing module can be excluded cleanly from any new project via a single scaffolder flag
 **Depends on**: Phase 11
 **Requirements**: INV-02, INV-03, SCAFF-01, SCAFF-02, SCAFF-03, SCAFF-04
+**Plans**: 3 plans
 **Success Criteria** (what must be TRUE):
 
 1. A user can download any invoice as a PDF — the PDF is generated server-side by WeasyPrint using a Jinja2 template, not a Stripe-hosted link
 2. PDF generation never blocks an HTTP request — it runs as an async Celery task; the API returns a task ID or polling URL immediately
 3. Running `create-foundation-app --without billing` produces a project where `manage.py check` passes with no billing app errors and no billing files present
 4. The billing module is included by default when no exclusion flag is provided — new projects are billing-ready without any manual steps
-   **Plans**: TBD
 
 Plans:
 
-- [ ] 12-01: TBD
-- [ ] 12-02: TBD
+- [ ] 12-01-PLAN.md — TDD: pdf.py (WeasyPrint + Jinja2), generate_invoice_pdf Celery task, PDF controller endpoints (INV-02, INV-03)
+- [ ] 12-02-PLAN.md — CLI scaffolder: removeBillingModule(), billing prompt option, index.ts wiring (SCAFF-01–04)
+- [ ] 12-03-PLAN.md — Verification: SCAFF-04 pytest test + human smoke test checkpoint
 
 ## Progress
 
@@ -128,5 +129,5 @@ Plans:
 | 8. CLI Scaffolder            | v1.0      | 3/3            | Complete    | 2026-02-17 |
 | 9. Billing Scaffold          | v1.1      | 3/3            | Complete    | 2026-03-07 |
 | 10. Webhook Infra + Service  | v1.1      | 3/3            | Complete    | 2026-03-08 |
-| 11. API Endpoints + Frontend | 8/8       | Complete       | 2026-03-10  | -          |
-| 12. Invoice PDF + CLI        | v1.1      | 0/TBD          | Not started | -          |
+| 11. API Endpoints + Frontend | v1.1      | 8/8            | Complete    | 2026-03-10 |
+| 12. Invoice PDF + CLI        | v1.1      | 0/3            | Not started | -          |
