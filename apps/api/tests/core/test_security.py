@@ -6,7 +6,6 @@ SEC-02: Security headers (Django + Next.js) — turned GREEN by Plan 16-03
 SEC-03: Redis cache + session backend
 """
 
-import pytest
 from django.test import override_settings
 
 # --- SEC-01: Rate Limiting ---
@@ -63,22 +62,47 @@ def test_rate_limit_uses_redis_cache():
 
 def test_csp_header_present(client):
     """Every Django response includes a Content-Security-Policy header."""
-    pytest.fail("RED: CSPMiddleware not yet installed (Plan 16-03)")
+    response = client.get("/api/health/live")  # health endpoint — no auth needed
+    assert "Content-Security-Policy" in response, (
+        "Content-Security-Policy header missing — is csp.middleware.CSPMiddleware in MIDDLEWARE?"
+    )
+    assert "default-src" in response["Content-Security-Policy"]
 
 
 def test_hsts_header_production(client):
     """Production settings include Strict-Transport-Security header."""
-    pytest.fail("RED: SECURE_HSTS_SECONDS not yet set in production.py (Plan 16-03)")
+    # HSTS is in production.py only. Simulate production by overriding settings.
+    # secure=True: test client sends HTTPS — SecurityMiddleware only sets HSTS on secure requests.
+    # SECURE_SSL_REDIRECT=False: prevents redirect loop (test client uses HTTP internally).
+    # ALLOWED_HOSTS=['testserver']: test client HOST header is 'testserver' by default.
+    with override_settings(
+        SECURE_HSTS_SECONDS=31536000,
+        SECURE_HSTS_INCLUDE_SUBDOMAINS=True,
+        SECURE_SSL_REDIRECT=False,
+        ALLOWED_HOSTS=["testserver"],
+    ):
+        response = client.get("/api/health/live", secure=True)
+    assert "Strict-Transport-Security" in response, (
+        "Strict-Transport-Security header missing — is SECURE_HSTS_SECONDS set in production.py?"
+    )
+    assert "max-age=31536000" in response["Strict-Transport-Security"]
+    assert "includeSubDomains" in response["Strict-Transport-Security"]
 
 
 def test_x_frame_options_header(client):
     """Every Django response includes X-Frame-Options: DENY."""
-    pytest.fail("RED: X_FRAME_OPTIONS not yet explicitly set (Plan 16-03)")
+    response = client.get("/api/health/live")
+    assert response.get("X-Frame-Options") == "DENY", (
+        f"Expected X-Frame-Options: DENY, got: {response.get('X-Frame-Options')!r}"
+    )
 
 
 def test_referrer_policy_header(client):
     """Every Django response includes Referrer-Policy: strict-origin-when-cross-origin."""
-    pytest.fail("RED: SECURE_REFERRER_POLICY not yet set (Plan 16-03)")
+    response = client.get("/api/health/live")
+    expected = "strict-origin-when-cross-origin"
+    actual = response.get("Referrer-Policy")
+    assert actual == expected, f"Expected Referrer-Policy: {expected!r}, got: {actual!r}"
 
 
 # --- SEC-03: Redis Cache + Session Backend ---
