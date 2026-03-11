@@ -15,6 +15,70 @@ SECRET_KEY = env("SECRET_KEY", default="django-insecure-change-me-in-production"
 DEBUG = env.bool("DEBUG", default=False)
 ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["localhost", "127.0.0.1"])
 
+# --------------------------------------------------------------------------
+# Observability: Structured Logging (structlog) — Phase 13
+# --------------------------------------------------------------------------
+import structlog as _structlog  # noqa: E402
+
+_log_renderer = "plain_console" if DEBUG else "json_formatter"
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "json_formatter": {
+            "()": _structlog.stdlib.ProcessorFormatter,
+            "processor": _structlog.processors.JSONRenderer(),
+            "foreign_pre_chain": [
+                _structlog.contextvars.merge_contextvars,
+                _structlog.processors.TimeStamper(fmt="iso"),
+                _structlog.stdlib.add_logger_name,
+                _structlog.stdlib.add_log_level,
+                _structlog.stdlib.PositionalArgumentsFormatter(),
+            ],
+        },
+        "plain_console": {
+            "()": _structlog.stdlib.ProcessorFormatter,
+            "processor": _structlog.dev.ConsoleRenderer(),
+            "foreign_pre_chain": [
+                _structlog.contextvars.merge_contextvars,
+                _structlog.processors.TimeStamper(fmt="iso"),
+                _structlog.stdlib.add_logger_name,
+                _structlog.stdlib.add_log_level,
+                _structlog.stdlib.PositionalArgumentsFormatter(),
+            ],
+        },
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": _log_renderer,
+        },
+    },
+    "root": {"handlers": ["console"], "level": "INFO"},
+    "loggers": {
+        "django": {"handlers": ["console"], "level": "INFO", "propagate": False},
+        "django_structlog": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        "apps": {
+            "handlers": ["console"],
+            "level": "DEBUG" if DEBUG else "INFO",
+            "propagate": False,
+        },
+        "celery": {"handlers": ["console"], "level": "INFO", "propagate": False},
+    },
+}
+
+# Enable django-structlog Celery signal handlers for task context propagation.
+DJANGO_STRUCTLOG_CELERY_ENABLED = True
+
+# OTel OTLP endpoint — set to http://jaeger:4317 in docker-compose.yml (Phase 13-03).
+# Tracing is a no-op when empty — no overhead in CI, no failed connections when Jaeger is absent.
+OTEL_EXPORTER_OTLP_ENDPOINT = env("OTEL_EXPORTER_OTLP_ENDPOINT", default="")
+
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
@@ -26,6 +90,7 @@ INSTALLED_APPS = [
     "ninja_extra",
     "corsheaders",
     "django_celery_results",
+    "django_structlog",
     "allauth",
     "allauth.account",
     "allauth.headless",
@@ -45,6 +110,7 @@ MIDDLEWARE = [
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "allauth.account.middleware.AccountMiddleware",
+    "apps.core.middleware.RequestContextMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
