@@ -82,7 +82,14 @@ Plans:
 4. The Expo mobile app sends PostHog events on the client side without any per-screen instrumentation
 5. Running `create-foundation-app --without observability` produces a project with zero PostHog imports and `manage.py check` passes clean
 
-**Plans**: TBD
+**Plans:** 4 plans
+
+Plans:
+
+- [ ] 14-01-PLAN.md — Wave 1: RED test stubs (test_observability.py + scaffolder removal test)
+- [ ] 14-02-PLAN.md — Wave 2: Django backend (observability.py + middleware + Celery signal + settings)
+- [ ] 14-03-PLAN.md — Wave 1: Frontend providers (Next.js PostHogProvider + Expo PostHogProvider)
+- [ ] 14-04-PLAN.md — Wave 1: CLI removal (removeObservability() + SelectedFeatures + index wiring)
 
 ### Phase 15: Health Probes + Celery Infrastructure
 
@@ -158,8 +165,8 @@ Plans:
 | 10. Webhook Infra + Service      | v1.1      | 3/3            | Complete    | 2026-03-08 |
 | 11. API Endpoints + Frontend     | v1.1      | 8/8            | Complete    | 2026-03-10 |
 | 12. Invoice PDF + CLI            | v1.1      | 3/3            | Complete    | 2026-03-11 |
-| 13. Structured Logging + Tracing | 3/3       | Complete       | 2026-03-11  | -          |
-| 14. ObservabilityAdapter         | v1.2      | 0/TBD          | Not started | -          |
+| 13. Structured Logging + Tracing | v1.2      | 3/3            | Complete    | 2026-03-11 |
+| 14. ObservabilityAdapter         | v1.2      | 0/4            | Not started | -          |
 | 15. Health Probes + Celery Infra | v1.2      | 0/TBD          | Not started | -          |
 | 16. Security Hardening           | v1.2      | 0/TBD          | Not started | -          |
 | 17. Dev-Time Security Gates      | v1.2      | 0/TBD          | Not started | -          |
