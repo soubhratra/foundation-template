@@ -4,20 +4,20 @@
   "private": true,
   "type": "module",
   "main": "dist/index.cjs",
-  "module": "dist/index.mjs",
+  "module": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
       "require": "./dist/index.cjs",
-      "import": "./dist/index.mjs",
-      "default": "./dist/index.mjs"
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
     },
     "./forms": {
       "types": "./dist/forms.d.ts",
       "require": "./dist/forms.cjs",
-      "import": "./dist/forms.mjs",
-      "default": "./dist/forms.mjs"
+      "import": "./dist/forms.js",
+      "default": "./dist/forms.js"
     }
   },
   "files": [
