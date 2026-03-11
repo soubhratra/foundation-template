@@ -25,6 +25,10 @@ dependencies = [
     "langchain-openai>=1.1.9",
     "weasyprint>=62.0,<70",
     "jinja2>=3.1",
+    "structlog>=25.5.0",
+    "opentelemetry-api>=1.40.0",
+    "opentelemetry-sdk>=1.40.0",
+    "opentelemetry-exporter-otlp-proto-grpc>=1.40.0",
 ]
 
 [dependency-groups]
