@@ -9,8 +9,8 @@ Requirements for v1.2. Each maps to roadmap phases starting at phase 13.
 
 ### Observability
 
-- [ ] **OBS-01**: Developer can see structured JSON logs with `request_id`, `user_id`, `duration_ms` auto-injected on every Django request via `structlog`
-- [ ] **OBS-02**: Developer can trace requests end-to-end across Django + Celery + PostgreSQL via OpenTelemetry auto-instrumentation with OTLP exporter; Jaeger runs in Docker Compose for local inspection
+- [x] **OBS-01**: Developer can see structured JSON logs with `request_id`, `user_id`, `duration_ms` auto-injected on every Django request via `structlog`
+- [x] **OBS-02**: Developer can trace requests end-to-end across Django + Celery + PostgreSQL via OpenTelemetry auto-instrumentation with OTLP exporter; Jaeger runs in Docker Compose for local inspection
 - [ ] **OBS-03**: Developer can capture exceptions + product analytics + session replay via `ObservabilityAdapter` ABC with `PostHogAdapter` as default — covers Django + Celery + Next.js + Expo — `--without observability` removes it cleanly; `SentryAdapter` available as documented swap
 - [ ] **OBS-04**: Ops can probe app readiness via `GET /api/health/live` (process alive), `/api/health/ready` (DB + Redis + Celery reachable), `/api/health/startup` (migrations applied)
 - [ ] **OBS-05**: Developer gets a `celery beat` service in Docker Compose with an example periodic task scaffold (noop task demonstrating retry + error handling patterns)
@@ -66,25 +66,25 @@ Requirements for v1.2. Each maps to roadmap phases starting at phase 13.
 
 ## Traceability
 
-| Requirement | Phase | Status  |
-| ----------- | ----- | ------- |
-| OBS-01      | 13    | Pending |
-| OBS-02      | 13    | Pending |
-| OBS-03      | 14    | Pending |
-| OBS-04      | 15    | Pending |
-| OBS-05      | 15    | Pending |
-| OBS-06      | 15    | Pending |
-| SEC-01      | 16    | Pending |
-| SEC-02      | 16    | Pending |
-| SEC-03      | 16    | Pending |
-| DEV-01      | 17    | Pending |
-| DEV-02      | 17    | Pending |
-| DEV-03      | 17    | Pending |
-| DEV-06      | 17    | Pending |
-| DEV-04      | 18    | Pending |
-| DEV-05      | 18    | Pending |
-| DEV-07      | 18    | Pending |
-| DEV-08      | 18    | Pending |
+| Requirement | Phase | Status   |
+| ----------- | ----- | -------- |
+| OBS-01      | 13    | Complete |
+| OBS-02      | 13    | Complete |
+| OBS-03      | 14    | Pending  |
+| OBS-04      | 15    | Pending  |
+| OBS-05      | 15    | Pending  |
+| OBS-06      | 15    | Pending  |
+| SEC-01      | 16    | Pending  |
+| SEC-02      | 16    | Pending  |
+| SEC-03      | 16    | Pending  |
+| DEV-01      | 17    | Pending  |
+| DEV-02      | 17    | Pending  |
+| DEV-03      | 17    | Pending  |
+| DEV-06      | 17    | Pending  |
+| DEV-04      | 18    | Pending  |
+| DEV-05      | 18    | Pending  |
+| DEV-07      | 18    | Pending  |
+| DEV-08      | 18    | Pending  |
 
 **Coverage:**
 
