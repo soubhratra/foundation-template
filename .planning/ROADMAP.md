@@ -41,7 +41,7 @@ Full archive: `.planning/milestones/v1.1-ROADMAP.md`
 **Milestone Goal:** Every scaffolded product ships with full runtime visibility and dev-time security gates from day one, with zero extra configuration.
 
 - [x] **Phase 13: Structured Logging + Distributed Tracing** — structlog JSON logs with request context auto-injected; OpenTelemetry auto-instrumentation across Django + Celery + PostgreSQL; Jaeger in Docker Compose (completed 2026-03-11)
-- [ ] **Phase 14: ObservabilityAdapter** — `ObservabilityAdapter` ABC with `PostHogAdapter` default covering Django + Celery + Next.js + Expo; `--without observability` removes it cleanly
+- [x] **Phase 14: ObservabilityAdapter** — `ObservabilityAdapter` ABC with `PostHogAdapter` default covering Django + Celery + Next.js + Expo; `--without observability` removes it cleanly (completed 2026-03-11)
 - [ ] **Phase 15: Health Probes + Celery Infrastructure** — `/api/health/live|ready|startup` probes; Celery Beat scaffold with example periodic task; Flower dev monitoring in Docker Compose
 - [ ] **Phase 16: Security Hardening** — Redis cache + session backend via `django-redis`; auth endpoint rate limiting via `django-ratelimit`; security headers via `django-csp` + HSTS + Next.js `headers()`
 - [ ] **Phase 17: Dev-Time Security Gates** — `detect-secrets` + `bandit` in pre-commit + CI; `pip-audit` + `pnpm audit` as CI merge gate; `django-debug-toolbar` for local query analysis
@@ -82,7 +82,7 @@ Plans:
 4. The Expo mobile app sends PostHog events on the client side without any per-screen instrumentation
 5. Running `create-foundation-app --without observability` produces a project with zero PostHog imports and `manage.py check` passes clean
 
-**Plans:** 3/4 plans executed
+**Plans:** 4/4 plans complete
 
 Plans:
 
@@ -166,7 +166,7 @@ Plans:
 | 11. API Endpoints + Frontend     | v1.1      | 8/8            | Complete    | 2026-03-10 |
 | 12. Invoice PDF + CLI            | v1.1      | 3/3            | Complete    | 2026-03-11 |
 | 13. Structured Logging + Tracing | v1.2      | 3/3            | Complete    | 2026-03-11 |
-| 14. ObservabilityAdapter         | 3/4       | In Progress    |             | -          |
+| 14. ObservabilityAdapter         | 4/4       | Complete       | 2026-03-11  | -          |
 | 15. Health Probes + Celery Infra | v1.2      | 0/TBD          | Not started | -          |
 | 16. Security Hardening           | v1.2      | 0/TBD          | Not started | -          |
 | 17. Dev-Time Security Gates      | v1.2      | 0/TBD          | Not started | -          |

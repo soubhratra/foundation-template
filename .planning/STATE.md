@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Observability & DevEx Hardening
 status: planning
-stopped_at: Completed 14-04-PLAN.md
-last_updated: "2026-03-11T19:27:44.986Z"
+stopped_at: Completed 14-02-PLAN.md
+last_updated: "2026-03-11T19:34:28.120Z"
 last_activity: 2026-03-11 — v1.2 roadmap created (phases 13–18)
 progress:
   total_phases: 6
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 7
-  completed_plans: 6
+  completed_plans: 7
   percent: 0
 ---
 
@@ -53,6 +53,7 @@ _Updated after each plan completion_
 | Phase 14-observability-adapter P01 | 3 | 2 tasks | 2 files |
 | Phase 14-observability-adapter P03 | 3 | 2 tasks | 5 files |
 | Phase 14-observability-adapter P04 | 11 | 2 tasks | 3 files |
+| Phase 14-observability-adapter P02 | 4 | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -74,6 +75,9 @@ _Updated after each plan completion_
 - [Phase 14-observability-adapter]: capture_pageview: false mandatory in Next.js App Router + manual PostHogPageView — SDK built-in tracking misses client-side navigations
 - [Phase 14-observability-adapter]: autocapture.captureScreens: false in Expo — Expo Router incompatible with PostHog useNavigationState screen autocapture (crashes on launch)
 - [Phase 14-observability-adapter]: String-based indexOf/slice used for multi-line JSX tag removal in removeObservability() — regex with /m flag + repeated group caused catastrophic backtracking; string approach is O(n) and deterministic
+- [Phase 14-observability-adapter]: posthog in main [project.dependencies] (not optional group) — runtime dep; NoOpAdapter handles absent key at runtime via settings, not at install time
+- [Phase 14-observability-adapter]: process_exception returns None (not re-raise) — Django propagates exception naturally; re-raise causes duplicate processing
+- [Phase 14-observability-adapter]: task_failure signal connected in CoreConfig.ready() with weak=False — PostHogAdapter creates fresh client per call so no pre-fork thread issue
 
 ### Pending Todos
 
@@ -86,6 +90,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-11T19:27:44.982Z
-Stopped at: Completed 14-04-PLAN.md
+Last session: 2026-03-11T19:34:28.115Z
+Stopped at: Completed 14-02-PLAN.md
 Resume file: None
