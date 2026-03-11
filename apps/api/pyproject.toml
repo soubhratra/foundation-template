@@ -30,6 +30,9 @@ dependencies = [
     "opentelemetry-sdk>=1.40.0",
     "opentelemetry-exporter-otlp-proto-grpc>=1.40.0",
     "django-structlog[celery]>=10.0",
+    "opentelemetry-instrumentation-django>=0.60b0",
+    "opentelemetry-instrumentation-celery>=0.60b0",
+    "opentelemetry-instrumentation-psycopg>=0.60b0",
 ]
 
 [dependency-groups]
