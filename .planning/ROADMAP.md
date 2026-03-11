@@ -145,7 +145,7 @@ Plans:
 3. A PR that introduces a dependency with a known CVE fails the CI `pip-audit` or `pnpm audit` gate before merge
 4. Opening the app in a browser in development mode renders the `django-debug-toolbar` panel — it is absent in test and production environments
 
-**Plans:** 1/3 plans executed
+**Plans:** 2/3 plans executed
 
 Plans:
 
@@ -187,5 +187,5 @@ Plans:
 | 14. ObservabilityAdapter         | v1.2      | 4/4            | Complete    | 2026-03-11 |
 | 15. Health Probes + Celery Infra | v1.2      | 3/3            | Complete    | 2026-03-11 |
 | 16. Security Hardening           | 3/3       | Complete       | 2026-03-11  | -          |
-| 17. Dev-Time Security Gates      | 1/3       | In Progress    |             | -          |
+| 17. Dev-Time Security Gates      | 2/3       | In Progress    |             | -          |
 | 18. Dev-Time Quality Gates       | v1.2      | 0/TBD          | Not started | -          |

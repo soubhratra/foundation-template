@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Observability & DevEx Hardening
 status: planning
-stopped_at: Completed 17-01-PLAN.md
-last_updated: "2026-03-11T22:22:15.892Z"
+stopped_at: Completed 17-02-PLAN.md
+last_updated: "2026-03-11T22:27:12.301Z"
 last_activity: 2026-03-11 — v1.2 roadmap created (phases 13–18)
 progress:
   total_phases: 6
   completed_phases: 4
   total_plans: 16
-  completed_plans: 14
+  completed_plans: 15
   percent: 0
 ---
 
@@ -61,6 +61,7 @@ _Updated after each plan completion_
 | Phase 16-security-hardening P02 | 5 | 2 tasks | 7 files |
 | Phase 16-security-hardening P03 | 9 | 2 tasks | 6 files |
 | Phase 17-dev-time-security-gates P01 | 5 | 1 tasks | 1 files |
+| Phase 17-dev-time-security-gates P02 | 3 | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -100,6 +101,8 @@ _Updated after each plan completion_
 - [Phase 16-03]: HSTS in production.py only (not base.py) — local HTTP development would break; test requires secure=True + ALLOWED_HOSTS=['testserver'] to simulate HTTPS
 - [Phase 16-03]: Next.js CSP uses unsafe-inline (static headers() function) — App Router hydration requires it; Django CSP uses nonces (different origin, no conflict)
 - [Phase 17-dev-time-security-gates]: pytest.fail() with RED reason strings used for all 8 dev-gate test stubs — mirrors Phase 16-01 pattern; cleaner FAILED output identifies which plan implements each behavior
+- [Phase 17-dev-time-security-gates]: Initial .secrets.baseline generated alongside detect-secrets hook (Rule 3 auto-fix) — hook exits with error 2 if baseline missing, blocking all commits
+- [Phase 17-dev-time-security-gates]: [Phase 17-02]: Security audit steps placed in existing jobs (api/web) rather than separate security job — avoids overhead, co-located with dep installs
 
 ### Pending Todos
 
@@ -112,6 +115,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-11T22:22:15.888Z
-Stopped at: Completed 17-01-PLAN.md
+Last session: 2026-03-11T22:27:12.297Z
+Stopped at: Completed 17-02-PLAN.md
 Resume file: None
