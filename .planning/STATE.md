@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Observability & DevEx Hardening
 status: planning
-stopped_at: Completed 18-dev-time-quality-gates/18-03-PLAN.md
-last_updated: "2026-03-11T23:24:24.901Z"
+stopped_at: Completed 18-dev-time-quality-gates/18-02-PLAN.md
+last_updated: "2026-03-11T23:40:23.929Z"
 last_activity: 2026-03-11 — v1.2 roadmap created (phases 13–18)
 progress:
   total_phases: 6
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 19
-  completed_plans: 18
+  completed_plans: 19
   percent: 0
 ---
 
@@ -65,6 +65,7 @@ _Updated after each plan completion_
 | Phase 17-dev-time-security-gates P03 | 15 | 2 tasks | 5 files |
 | Phase 18-dev-time-quality-gates P01 | 1 | 1 tasks | 1 files |
 | Phase 18-dev-time-quality-gates P03 | 2 | 2 tasks | 3 files |
+| Phase 18-dev-time-quality-gates P02 | 525602 | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -113,6 +114,9 @@ _Updated after each plan completion_
 - [Phase 18-01]: Imports limited to pytest + pathlib.Path — no runtime deps since nplusone is not installed yet; file-level assertions deferred to Plan 18-02 GREEN phase
 - [Phase 18-03]: schemathesis CLI tool (schemathesis run) used — not the pytest plugin; CI job runs against live Django dev server with separate postgres DB (foundation_schemathesis) to avoid state pollution
 - [Phase 18-03]: --hypothesis-max-examples 30 for CI cost control; --max-response-time 5000 for performance regression detection; billing/webhook + health + auth paths excluded from fuzzing
+- [Phase 18-02]: nplusone 1.0.0 has no pytest plugin — implemented allow_lazy_load and \_LazyLoadProfiler directly in conftest.py; synthetic nplusone.ext.pytest module registered in sys.modules for import compatibility
+- [Phase 18-02]: \_LazyLoadProfiler activates LazyListener only (not EagerListener) — avoids false positives on unused eager loads in billing tests that correctly use select_related
+- [Phase 18-02]: LazyListener requires explicit blinker signal disconnect in **exit** — teardown() is a no-op; without explicit disconnect, handlers fire in subsequent tests causing spurious NPlusOneError
 
 ### Pending Todos
 
@@ -125,6 +129,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-11T23:24:24.897Z
-Stopped at: Completed 18-dev-time-quality-gates/18-03-PLAN.md
+Last session: 2026-03-11T23:40:23.925Z
+Stopped at: Completed 18-dev-time-quality-gates/18-02-PLAN.md
 Resume file: None
