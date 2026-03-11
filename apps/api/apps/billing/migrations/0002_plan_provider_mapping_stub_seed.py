@@ -13,7 +13,16 @@ from django.db import migrations
 
 STUB_MAPPINGS = [
     # (plan_id, billing_period, price_id)
-    ("pro", "monthly", "price_stub_pro_monthly"),
+    #
+    # "price_stub_monthly" is the canonical price ID returned by
+    # StubAdapter.retrieve_subscription() for ALL subscriptions.  Using it as
+    # the price_id for ("pro", "monthly") means a dev user who subscribes via
+    # the stub checkout flow will have their plan resolved back to "pro" when
+    # the billing page calls get_subscription_detail().
+    #
+    # The stub adapter ignores the actual price_id during checkout, so all
+    # per-plan price IDs here are functionally equivalent in dev/test.
+    ("pro", "monthly", "price_stub_monthly"),
     ("pro", "annual", "price_stub_pro_annual"),
     ("enterprise", "monthly", "price_stub_enterprise_monthly"),
     ("enterprise", "annual", "price_stub_enterprise_annual"),

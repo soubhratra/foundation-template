@@ -85,6 +85,51 @@ function getPlanName(planId: string | null | undefined): string {
 }
 
 // ---------------------------------------------------------------------------
+// PDF download
+// ---------------------------------------------------------------------------
+
+async function downloadInvoicePdf(invoiceId: string): Promise<void> {
+  const apiBase = (process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/$/, "");
+
+  // Enqueue PDF generation
+  const enqueueRes = await fetch(`${apiBase}/api/v1/billing/invoices/${invoiceId}/pdf`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "X-CSRFToken": getCsrfToken() },
+  });
+  if (!enqueueRes.ok) throw new Error("Failed to start PDF generation");
+  const { task_id } = (await enqueueRes.json()) as { task_id: string };
+
+  // Poll until complete (max 30s)
+  for (let i = 0; i < 30; i++) {
+    await new Promise((r) => setTimeout(r, 1000));
+    const statusRes = await fetch(`${apiBase}/api/v1/billing/invoices/pdf-status/${task_id}`, {
+      credentials: "include",
+    });
+    if (!statusRes.ok) throw new Error("Failed to poll PDF status");
+    const data = (await statusRes.json()) as { status: string; pdf_base64?: string };
+    if (data.status === "success" && data.pdf_base64) {
+      const bytes = Uint8Array.from(atob(data.pdf_base64), (c) => c.charCodeAt(0));
+      const blob = new Blob([bytes], { type: "application/pdf" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `invoice-${invoiceId}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+      return;
+    }
+    if (data.status === "failure") throw new Error("PDF generation failed");
+  }
+  throw new Error("PDF generation timed out");
+}
+
+function getCsrfToken(): string {
+  const match = document.cookie.match(/csrftoken=([^;]+)/);
+  return match ? match[1] : "";
+}
+
+// ---------------------------------------------------------------------------
 // Main component
 // ---------------------------------------------------------------------------
 
@@ -100,6 +145,7 @@ export function BillingClient({
 }: BillingClientProps) {
   const [sheetMode, setSheetMode] = useState<SheetMode>(null);
   const [selectedPlan, setSelectedPlan] = useState<{ id: string; period: string } | null>(null);
+  const [downloadingPdf, setDownloadingPdf] = useState<string | null>(null);
   const [prorationPreview, setProrationPreview] = useState<ProrationPreviewOut | null>(null);
   const [isPending, setIsPending] = useState(false);
 
@@ -377,7 +423,24 @@ export function BillingClient({
                               Download
                             </a>
                           ) : (
-                            <span className="text-sm text-muted-foreground">—</span>
+                            <button
+                              className="text-sm underline hover:no-underline disabled:opacity-50 disabled:cursor-not-allowed"
+                              disabled={downloadingPdf === invoice.invoice_id}
+                              onClick={async () => {
+                                setDownloadingPdf(invoice.invoice_id);
+                                try {
+                                  await downloadInvoicePdf(invoice.invoice_id);
+                                } catch {
+                                  toast.error("Failed to download PDF. Please try again.");
+                                } finally {
+                                  setDownloadingPdf(null);
+                                }
+                              }}
+                            >
+                              {downloadingPdf === invoice.invoice_id
+                                ? "Generating…"
+                                : "Download PDF"}
+                            </button>
                           )}
                         </TableCell>
                       </TableRow>
