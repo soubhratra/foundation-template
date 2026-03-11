@@ -186,3 +186,8 @@ urlpatterns = [
     path("api/v1/billing/webhooks/", billing_views.stripe_webhook, name="stripe-webhook"),
     # BILLING_END
 ]
+
+if settings.DEBUG:
+    from debug_toolbar.toolbar import debug_toolbar_urls
+
+    urlpatterns += debug_toolbar_urls()
