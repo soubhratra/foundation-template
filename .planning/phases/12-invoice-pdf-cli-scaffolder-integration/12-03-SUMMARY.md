@@ -53,10 +53,10 @@ completed: "2026-03-10"
 
 ## Performance
 
-- **Duration:** ~8 min
+- **Duration:** ~8 min (automated) + human smoke test
 - **Started:** 2026-03-10T13:09:00Z
-- **Completed:** 2026-03-10T13:12:22Z
-- **Tasks:** 1 of 2 (Task 2 is checkpoint:human-verify — awaiting human)
+- **Completed:** 2026-03-11 (human verification approved)
+- **Tasks:** 2 of 2 (all complete)
 - **Files modified:** 4
 
 ## Accomplishments
@@ -70,8 +70,7 @@ completed: "2026-03-10"
 Each task was committed atomically:
 
 1. **Task 1: SCAFF-04 — pytest test invoking compiled CLI via subprocess** - `5ce71f5` (test)
-
-Task 2 (human-verify checkpoint) is pending human approval.
+2. **Task 2: Human smoke test** - approved by human (2026-03-11) — no code commit (human-verify checkpoint)
 
 ## Files Created/Modified
 
@@ -108,20 +107,21 @@ Task 2 (human-verify checkpoint) is pending human approval.
 
 The plan's suggested subprocess approach (`node dist/index.js --without billing --output-dir {tmpdir} --non-interactive`) was not feasible — `dist/index.js` doesn't accept those flags; it's a fully interactive @clack/prompts flow. The fallback approach (calling `dist/remove.js` directly via `node --input-type=module`) achieves the same goal: the compiled TypeScript is exercised, any TypeScript bug in `removeBillingModule()` will surface here.
 
-## Awaiting Human Verification
+## Human Verification Results
 
-Task 2 is `checkpoint:human-verify`. Human must:
+Task 2 `checkpoint:human-verify` — approved by human on 2026-03-11. Verified:
 
-1. Run `cd apps/api && python -m pytest tests/ -q` — confirm all green
-2. Start dev env and test invoice PDF download flow at `/billing`
-3. Test scaffolder billing prompt (`node dist/index.js --skip-validation` — billing pre-checked)
-4. Test `--without billing` flag (verify billing artifacts absent in scaffolded project)
+1. Full pytest suite green (no regressions)
+2. Invoice PDF download works end-to-end: POST enqueues task, Celery worker generates PDF, polling returns success, browser downloads file
+3. Scaffolder billing prompt appears with Billing Module pre-checked
+4. Deselecting billing removes all billing artifacts cleanly
+5. `--without billing` flag works non-interactively
 
 ## Next Phase Readiness
 
-- Phase 12 automated tests complete — SCAFF-04 pytest test green, full suite clean
-- Human checkpoint (Task 2) required before phase can be marked DONE
-- After human approval: phase 12 complete, milestone v1.1 Billing & Payments done
+- Phase 12 complete — all success criteria met and human-verified
+- Milestone v1.1 Billing & Payments Module is DONE
+- No blockers for future phases
 
 ## Self-Check: PASSED
 
@@ -130,8 +130,9 @@ Task 2 is `checkpoint:human-verify`. Human must:
 - FOUND: `packages/create-foundation-app/src/rollback.ts` (with fs-extra default import)
 - FOUND: `packages/create-foundation-app/src/copy.ts` (with fs-extra default import)
 - FOUND commit 5ce71f5: test(12-03): SCAFF-04 integration test + fix fs-extra ESM imports for Node 24
+- Human verification: approved 2026-03-11 — all smoke tests passed
 
 ---
 
 _Phase: 12-invoice-pdf-cli-scaffolder-integration_
-_Completed: 2026-03-10 (partial — awaiting human-verify checkpoint)_
+_Completed: 2026-03-11_

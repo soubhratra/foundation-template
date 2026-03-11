@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Billing & Payments Module
 current_phase: 12-invoice-pdf-cli-scaffolder-integration
-current_plan: 12-03 (checkpoint — awaiting human-verify)
-status: executing
-last_updated: "2026-03-10T13:13:36.256Z"
+current_plan: 12-03 (complete)
+status: milestone-complete
+last_updated: "2026-03-11T00:00:00Z"
 progress:
   total_phases: 4
   completed_phases: 4
@@ -24,7 +24,7 @@ See: .planning/PROJECT.md
 **Milestone:** v1.1 Billing & Payments Module
 **Current phase:** 12-invoice-pdf-cli-scaffolder-integration
 **Current plan:** 12-03 (checkpoint — awaiting human-verify Task 2)
-**Status:** Blocked — human verification required
+**Status:** Complete — milestone v1.1 Billing & Payments Module fully shipped
 
 ## Session Log
 
@@ -34,6 +34,7 @@ See: .planning/PROJECT.md
 - 2026-03-10: Completed 12-01 — WeasyPrint + Jinja2 invoice PDF generation, Celery task, two new billing API endpoints
 - 2026-03-10: Completed 12-02 — removeBillingModule() CLI scaffolder, vitest TDD suite (7 tests GREEN), billing prompt + --without billing flag
 - 2026-03-10: Checkpoint 12-03 Task 2 — SCAFF-04 pytest test GREEN (subprocess CLI invocation), fixed fs-extra Node v24 ESM bug; awaiting human PDF + scaffolder smoke test
+- 2026-03-11: Completed 12-03 — human verification approved (PDF download, scaffolder billing prompt + --without billing flag all confirmed)
 
 ## Performance Metrics
 
@@ -90,4 +91,4 @@ See: .planning/PROJECT.md
 
 ## Stopped At
 
-Checkpoint: 12-03 Task 2 (human-verify) — PDF download flow + scaffolder billing opt-out smoke test
+Milestone v1.1 complete — all 4 phases (9–12) done, all success criteria met and human-verified on 2026-03-11
