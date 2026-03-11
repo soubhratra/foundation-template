@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Observability & DevEx Hardening
 status: planning
-stopped_at: Completed 16-03-PLAN.md
-last_updated: "2026-03-11T21:10:51.529Z"
+stopped_at: Phase 17 context gathered
+last_updated: "2026-03-11T21:57:30.234Z"
 last_activity: 2026-03-11 — v1.2 roadmap created (phases 13–18)
 progress:
   total_phases: 6
@@ -110,6 +110,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-11T21:06:29.748Z
-Stopped at: Completed 16-03-PLAN.md
-Resume file: None
+Last session: 2026-03-11T21:57:30.231Z
+Stopped at: Phase 17 context gathered
+Resume file: .planning/phases/17-dev-time-security-gates/17-CONTEXT.md
