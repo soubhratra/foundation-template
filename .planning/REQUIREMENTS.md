@@ -18,9 +18,9 @@ Requirements for v1.2. Each maps to roadmap phases starting at phase 13.
 
 ### Security & Performance
 
-- [ ] **SEC-01**: Auth endpoints are rate-limited via `django-ratelimit` with Redis-backed counters; limits configurable per endpoint via Django settings
-- [ ] **SEC-02**: Every HTTP response ships with security headers (`django-csp`, HSTS, `X-Frame-Options`, `Referrer-Policy`) via Django middleware; Next.js `headers()` config ships matching CSP + frame policy
-- [ ] **SEC-03**: Django cache and session store use Redis via `django-redis` as default backend — `LocMemCache` is not used in any non-test environment
+- [x] **SEC-01**: Auth endpoints are rate-limited via `django-ratelimit` with Redis-backed counters; limits configurable per endpoint via Django settings
+- [x] **SEC-02**: Every HTTP response ships with security headers (`django-csp`, HSTS, `X-Frame-Options`, `Referrer-Policy`) via Django middleware; Next.js `headers()` config ships matching CSP + frame policy
+- [x] **SEC-03**: Django cache and session store use Redis via `django-redis` as default backend — `LocMemCache` is not used in any non-test environment
 
 ### Dev-Time Quality Gates
 
@@ -74,9 +74,9 @@ Requirements for v1.2. Each maps to roadmap phases starting at phase 13.
 | OBS-04      | 15    | Complete |
 | OBS-05      | 15    | Complete |
 | OBS-06      | 15    | Complete |
-| SEC-01      | 16    | Pending  |
-| SEC-02      | 16    | Pending  |
-| SEC-03      | 16    | Pending  |
+| SEC-01      | 16    | Complete |
+| SEC-02      | 16    | Complete |
+| SEC-03      | 16    | Complete |
 | DEV-01      | 17    | Pending  |
 | DEV-02      | 17    | Pending  |
 | DEV-03      | 17    | Pending  |

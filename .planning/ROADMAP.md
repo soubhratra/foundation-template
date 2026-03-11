@@ -125,7 +125,7 @@ Plans:
 4. Every HTTP response from Next.js includes matching `Content-Security-Policy` and `X-Frame-Options` headers via the `headers()` config
 5. Django cache operations (`cache.get`, `cache.set`) and session reads/writes hit Redis — `LocMemCache` is not used in development or production environments
 
-**Plans:** 3 plans
+**Plans:** 1/3 plans executed
 
 Plans:
 
@@ -180,6 +180,6 @@ Plans:
 | 13. Structured Logging + Tracing | v1.2      | 3/3            | Complete    | 2026-03-11 |
 | 14. ObservabilityAdapter         | v1.2      | 4/4            | Complete    | 2026-03-11 |
 | 15. Health Probes + Celery Infra | v1.2      | 3/3            | Complete    | 2026-03-11 |
-| 16. Security Hardening           | v1.2      | 0/3            | Not started | -          |
+| 16. Security Hardening           | 1/3       | In Progress    |             | -          |
 | 17. Dev-Time Security Gates      | v1.2      | 0/TBD          | Not started | -          |
 | 18. Dev-Time Quality Gates       | v1.2      | 0/TBD          | Not started | -          |
