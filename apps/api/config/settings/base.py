@@ -79,6 +79,19 @@ DJANGO_STRUCTLOG_CELERY_ENABLED = True
 # Tracing is a no-op when empty — no overhead in CI, no failed connections when Jaeger is absent.
 OTEL_EXPORTER_OTLP_ENDPOINT = env("OTEL_EXPORTER_OTLP_ENDPOINT", default="")
 
+# ---------------------------------------------------------------------------
+# OBSERVABILITY MODULE
+# ---------------------------------------------------------------------------
+POSTHOG_API_KEY: str = env("POSTHOG_API_KEY", default="")
+POSTHOG_HOST: str = env("POSTHOG_HOST", default="https://eu.i.posthog.com")
+OBSERVABILITY_ADAPTER: str = env(
+    "OBSERVABILITY_ADAPTER",
+    default="apps.core.observability.NoOpAdapter",
+)
+# ---------------------------------------------------------------------------
+# END OBSERVABILITY MODULE
+# ---------------------------------------------------------------------------
+
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
@@ -111,6 +124,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "allauth.account.middleware.AccountMiddleware",
     "apps.core.middleware.RequestContextMiddleware",
+    "apps.core.middleware.ObservabilityMiddleware",  # OBSERVABILITY MODULE
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]

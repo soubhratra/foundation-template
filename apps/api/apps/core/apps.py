@@ -21,3 +21,30 @@ class CoreConfig(AppConfig):
         # when OTEL_EXPORTER_OTLP_ENDPOINT is absent — they produce no-op spans.
         DjangoInstrumentor().instrument()
         PsycopgInstrumentor().instrument()
+
+        # Connect task_failure signal to auto-capture Celery task exceptions.
+        # weak=False prevents the handler from being garbage collected.
+        # Lazy import of get_observability_adapter inside handler body avoids
+        # circular import at module level.
+        from celery.signals import task_failure
+
+        @task_failure.connect(weak=False)
+        def handle_task_failure(  # type: ignore[misc]
+            sender,
+            task_id,
+            exception,
+            args,
+            kwargs,
+            traceback,
+            einfo,
+            **extra,
+        ) -> None:
+            from apps.core.observability import get_observability_adapter
+
+            context = {
+                "task_name": (sender.__name__ if hasattr(sender, "__name__") else str(sender)),
+                "task_id": task_id,
+                "task_args": str(args),
+                "user_id": "celery",
+            }
+            get_observability_adapter().capture_exception(exception, context)
