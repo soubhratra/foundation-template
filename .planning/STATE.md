@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Observability & DevEx Hardening
 status: planning
-stopped_at: Completed 15-02-PLAN.md
-last_updated: "2026-03-11T20:01:24.299Z"
+stopped_at: Completed 15-03-PLAN.md
+last_updated: "2026-03-11T20:03:01.099Z"
 last_activity: 2026-03-11 — v1.2 roadmap created (phases 13–18)
 progress:
   total_phases: 6
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 10
-  completed_plans: 9
+  completed_plans: 10
   percent: 0
 ---
 
@@ -56,6 +56,7 @@ _Updated after each plan completion_
 | Phase 14-observability-adapter P02 | 4 | 2 tasks | 6 files |
 | Phase 15-health-probes-celery-infrastructure P01 | 92 | 2 tasks | 4 files |
 | Phase 15-health-probes-celery-infrastructure P02 | 12 | 2 tasks | 6 files |
+| Phase 15-health-probes-celery-infrastructure P03 | 4 | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -84,6 +85,9 @@ _Updated after each plan completion_
 - [Phase 15-health-probes-celery-infrastructure]: \_check_postgres, \_count_pending_migrations, \_do_work mocked as internal helpers — drives exact interface Plans 15-02 and 15-03 must implement
 - [Phase 15-health-probes-celery-infrastructure]: Plain Django views (not Ninja) for health probes — probes must work even if Ninja app is misconfigured; health probes mounted before Ninja path to prevent URL shadowing
 - [Phase 15-health-probes-celery-infrastructure]: Internal helpers (\_check_postgres, \_check_redis, \_check_celery, \_count_pending_migrations) extracted as module-level functions — Phase 15-01 RED test stubs mock these directly
+- [Phase 15-health-probes-celery-infrastructure]: raise self.retry(...) from exc required — ruff B904 enforces exception chaining in except blocks for proper traceback context
+- [Phase 15-health-probes-celery-infrastructure]: Flower is dev-only (docker-compose.yml only, not prod) per OBS-06; celery-worker added to dev compose so beat-dispatched tasks have a consumer
+- [Phase 15-health-probes-celery-infrastructure]: DatabaseScheduler chosen over PersistentScheduler — DB-backed schedule allows runtime interval edits via admin without container restart
 
 ### Pending Todos
 
@@ -96,6 +100,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-11T20:01:24.296Z
-Stopped at: Completed 15-02-PLAN.md
+Last session: 2026-03-11T20:03:01.095Z
+Stopped at: Completed 15-03-PLAN.md
 Resume file: None

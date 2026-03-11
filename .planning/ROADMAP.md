@@ -42,7 +42,7 @@ Full archive: `.planning/milestones/v1.1-ROADMAP.md`
 
 - [x] **Phase 13: Structured Logging + Distributed Tracing** — structlog JSON logs with request context auto-injected; OpenTelemetry auto-instrumentation across Django + Celery + PostgreSQL; Jaeger in Docker Compose (completed 2026-03-11)
 - [x] **Phase 14: ObservabilityAdapter** — `ObservabilityAdapter` ABC with `PostHogAdapter` default covering Django + Celery + Next.js + Expo; `--without observability` removes it cleanly (completed 2026-03-11)
-- [ ] **Phase 15: Health Probes + Celery Infrastructure** — `/api/health/live|ready|startup` probes; Celery Beat scaffold with example periodic task; Flower dev monitoring in Docker Compose
+- [x] **Phase 15: Health Probes + Celery Infrastructure** — `/api/health/live|ready|startup` probes; Celery Beat scaffold with example periodic task; Flower dev monitoring in Docker Compose (completed 2026-03-11)
 - [ ] **Phase 16: Security Hardening** — Redis cache + session backend via `django-redis`; auth endpoint rate limiting via `django-ratelimit`; security headers via `django-csp` + HSTS + Next.js `headers()`
 - [ ] **Phase 17: Dev-Time Security Gates** — `detect-secrets` + `bandit` in pre-commit + CI; `pip-audit` + `pnpm audit` as CI merge gate; `django-debug-toolbar` for local query analysis
 - [ ] **Phase 18: Dev-Time Quality Gates** — `nplusone` N+1 detection as pytest fixture; `schemathesis` API contract fuzzing as CI job; `commitlint` conventional commits hook; ruff McCabe complexity gate (max=10)
@@ -104,7 +104,7 @@ Plans:
 4. `docker compose up` starts a `celery-beat` service and the logs show it successfully scheduling the example periodic task on its configured interval
 5. A developer can open Flower at `http://localhost:5555` and see Celery worker status and task history — Flower does not appear in the production Docker Compose file
 
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 
 Plans:
 
@@ -173,7 +173,7 @@ Plans:
 | 12. Invoice PDF + CLI            | v1.1      | 3/3            | Complete    | 2026-03-11 |
 | 13. Structured Logging + Tracing | v1.2      | 3/3            | Complete    | 2026-03-11 |
 | 14. ObservabilityAdapter         | v1.2      | 4/4            | Complete    | 2026-03-11 |
-| 15. Health Probes + Celery Infra | 2/3       | In Progress    |             | -          |
+| 15. Health Probes + Celery Infra | 3/3       | Complete       | 2026-03-11  | -          |
 | 16. Security Hardening           | v1.2      | 0/TBD          | Not started | -          |
 | 17. Dev-Time Security Gates      | v1.2      | 0/TBD          | Not started | -          |
 | 18. Dev-Time Quality Gates       | v1.2      | 0/TBD          | Not started | -          |

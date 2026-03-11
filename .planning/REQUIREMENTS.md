@@ -14,7 +14,7 @@ Requirements for v1.2. Each maps to roadmap phases starting at phase 13.
 - [x] **OBS-03**: Developer can capture exceptions + product analytics + session replay via `ObservabilityAdapter` ABC with `PostHogAdapter` as default — covers Django + Celery + Next.js + Expo — `--without observability` removes it cleanly; `SentryAdapter` available as documented swap
 - [x] **OBS-04**: Ops can probe app readiness via `GET /api/health/live` (process alive), `/api/health/ready` (DB + Redis + Celery reachable), `/api/health/startup` (migrations applied)
 - [x] **OBS-05**: Developer gets a `celery beat` service in Docker Compose with an example periodic task scaffold (noop task demonstrating retry + error handling patterns)
-- [ ] **OBS-06**: Developer can view Celery worker and task status via Flower running in Docker Compose (dev only — not in production Docker Compose)
+- [x] **OBS-06**: Developer can view Celery worker and task status via Flower running in Docker Compose (dev only — not in production Docker Compose)
 
 ### Security & Performance
 
@@ -73,7 +73,7 @@ Requirements for v1.2. Each maps to roadmap phases starting at phase 13.
 | OBS-03      | 14    | Complete |
 | OBS-04      | 15    | Complete |
 | OBS-05      | 15    | Complete |
-| OBS-06      | 15    | Pending  |
+| OBS-06      | 15    | Complete |
 | SEC-01      | 16    | Pending  |
 | SEC-02      | 16    | Pending  |
 | SEC-03      | 16    | Pending  |
