@@ -729,6 +729,7 @@ dev = [
     { name = "pytest" },
     { name = "pytest-cov" },
     { name = "pytest-django" },
+    { name = "pytest-structlog" },
     { name = "ruff" },
 ]
 
@@ -770,6 +771,7 @@ dev = [
     { name = "pytest", specifier = ">=8.0" },
     { name = "pytest-cov", specifier = ">=5.0" },
     { name = "pytest-django", specifier = ">=4.9" },
+    { name = "pytest-structlog", specifier = ">=1.2" },
     { name = "ruff", specifier = ">=0.8" },
 ]
 
@@ -1970,6 +1972,19 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/13/2b/db9a193df89e5660137f5428063bcc2ced7ad790003b26974adf5c5ceb3b/pytest_django-4.12.0.tar.gz", hash = "sha256:df94ec819a83c8979c8f6de13d9cdfbe76e8c21d39473cfe2b40c9fc9be3c758", size = 91156, upload-time = "2026-02-14T18:40:49.235Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/83/a5/41d091f697c09609e7ef1d5d61925494e0454ebf51de7de05f0f0a728f1d/pytest_django-4.12.0-py3-none-any.whl", hash = "sha256:3ff300c49f8350ba2953b90297d23bf5f589db69545f56f1ec5f8cff5da83e85", size = 26123, upload-time = "2026-02-14T18:40:47.381Z" },
+]
+
+[[package]]
+name = "pytest-structlog"
+version = "1.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pytest" },
+    { name = "structlog" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/94/71/177ef678fde8257c10ae822080811467c0fc893c17daac4c065e0836cd63/pytest_structlog-1.2.tar.gz", hash = "sha256:11b37487663a990bcd490da2e68e2f96b0ecd6a1704f5e82561d5840bd321a60", size = 13285, upload-time = "2025-09-10T02:32:35.962Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/80/3f/cce51dfeb5f1956a30f480611921e9a899ae5cc5f41bb24858ac99401b17/pytest_structlog-1.2-py3-none-any.whl", hash = "sha256:a5659f6b7d43aa53cf8090075deadad35a6bf1899073ea18118e299232d3d6f0", size = 8636, upload-time = "2025-09-10T02:32:34.952Z" },
 ]
 
 [[package]]
