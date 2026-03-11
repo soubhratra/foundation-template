@@ -44,7 +44,7 @@ Full archive: `.planning/milestones/v1.1-ROADMAP.md`
 - [x] **Phase 14: ObservabilityAdapter** — `ObservabilityAdapter` ABC with `PostHogAdapter` default covering Django + Celery + Next.js + Expo; `--without observability` removes it cleanly (completed 2026-03-11)
 - [x] **Phase 15: Health Probes + Celery Infrastructure** — `/api/health/live|ready|startup` probes; Celery Beat scaffold with example periodic task; Flower dev monitoring in Docker Compose (completed 2026-03-11)
 - [x] **Phase 16: Security Hardening** — Redis cache + session backend via `django-redis`; auth endpoint rate limiting via `django-ratelimit`; security headers via `django-csp` + HSTS + Next.js `headers()` (completed 2026-03-11)
-- [ ] **Phase 17: Dev-Time Security Gates** — `detect-secrets` + `bandit` in pre-commit + CI; `pip-audit` + `pnpm audit` as CI merge gate; `django-debug-toolbar` for local query analysis
+- [x] **Phase 17: Dev-Time Security Gates** — `detect-secrets` + `bandit` in pre-commit + CI; `pip-audit` + `pnpm audit` as CI merge gate; `django-debug-toolbar` for local query analysis (completed 2026-03-11)
 - [ ] **Phase 18: Dev-Time Quality Gates** — `nplusone` N+1 detection as pytest fixture; `schemathesis` API contract fuzzing as CI job; `commitlint` conventional commits hook; ruff McCabe complexity gate (max=10)
 
 ## Phase Details
@@ -145,7 +145,7 @@ Plans:
 3. A PR that introduces a dependency with a known CVE fails the CI `pip-audit` or `pnpm audit` gate before merge
 4. Opening the app in a browser in development mode renders the `django-debug-toolbar` panel — it is absent in test and production environments
 
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 
 Plans:
 
@@ -187,5 +187,5 @@ Plans:
 | 14. ObservabilityAdapter         | v1.2      | 4/4            | Complete    | 2026-03-11 |
 | 15. Health Probes + Celery Infra | v1.2      | 3/3            | Complete    | 2026-03-11 |
 | 16. Security Hardening           | 3/3       | Complete       | 2026-03-11  | -          |
-| 17. Dev-Time Security Gates      | 2/3       | In Progress    |             | -          |
+| 17. Dev-Time Security Gates      | 3/3       | Complete       | 2026-03-11  | -          |
 | 18. Dev-Time Quality Gates       | v1.2      | 0/TBD          | Not started | -          |
