@@ -2,6 +2,7 @@ import { QueryClient, type DefaultOptions } from "@tanstack/react-query";
 import createQueryClient, { type OpenapiQueryClient } from "openapi-react-query";
 
 import type { paths } from "./gen/v1";
+import { ApiError } from "./errors";
 import { createApiClient, type ApiClient, type CreateApiClientOptions } from "./create-client";
 
 export interface BuildApiQueryClientOptions extends CreateApiClientOptions {
@@ -22,7 +23,18 @@ export interface ApiQueryClientBundle {
 
 const DEFAULT_QUERY_OPTIONS: DefaultOptions = {
   queries: {
-    retry: 1,
+    retry: (failureCount, error) => {
+      // Never retry auth errors — they won't succeed and cause a blank-page loop
+      // on unauthenticated pages (401 keeps the query in pending/loading state).
+      if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
+        return false;
+      }
+      return failureCount < 1;
+    },
+    // Don't refetch when a new observer subscribes to an errored query.
+    // Without this, every component that calls useAuth() on an unauthed page
+    // triggers a new 401 fetch cycle, producing an infinite-loop in the console.
+    retryOnMount: false,
     staleTime: 30_000,
     refetchOnWindowFocus: false,
   },
@@ -48,7 +60,9 @@ function mergeDefaultOptions(overrides?: DefaultOptions): DefaultOptions {
   } satisfies DefaultOptions;
 }
 
-export function buildApiQueryClient(options: BuildApiQueryClientOptions = {}): ApiQueryClientBundle {
+export function buildApiQueryClient(
+  options: BuildApiQueryClientOptions = {},
+): ApiQueryClientBundle {
   const queryClient =
     options.queryClient ??
     new QueryClient({

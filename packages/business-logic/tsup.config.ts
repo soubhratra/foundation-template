@@ -1,3 +1,4 @@
+import { writeFileSync, readFileSync } from "node:fs";
 import { defineConfig } from "tsup";
 
 export default defineConfig({
@@ -12,6 +13,14 @@ export default defineConfig({
   treeshake: true,
   target: "es2020",
   platform: "neutral",
+  async onSuccess() {
+    // Prepend "use client" to dist files so Next.js App Router treats this
+    // package as client-only (required because this package uses React hooks).
+    for (const file of ["dist/index.js", "dist/index.cjs"]) {
+      const original = readFileSync(file, "utf8");
+      writeFileSync(file, `"use client";\n${original}`);
+    }
+  },
   tsconfig: "tsconfig.json",
   external: [
     "react",

@@ -13,16 +13,15 @@ export const metadata: Metadata = {
   description: "Full-stack SaaS starter kit",
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   const apiBaseUrl = buildApiBaseUrl(env.NEXT_PUBLIC_API_URL);
 
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={cn("min-h-screen bg-background font-sans antialiased")}>
+      <body
+        className={cn("min-h-screen bg-background font-sans antialiased")}
+        suppressHydrationWarning
+      >
         <ThemeProvider>
           <AppProviders baseUrl={apiBaseUrl}>{children}</AppProviders>
         </ThemeProvider>
