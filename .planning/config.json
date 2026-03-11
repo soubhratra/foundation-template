@@ -4,9 +4,11 @@
   "commit_docs": true,
   "model_profile": "quality",
   "workflow": {
-    "research": true,
+    "research": false,
     "plan_check": true,
-    "verifier": true
+    "verifier": true,
+    "_auto_chain_active": false,
+    "nyquist_validation": true
   },
   "granularity": "fine"
 }
