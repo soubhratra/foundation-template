@@ -24,12 +24,12 @@ Requirements for v1.2. Each maps to roadmap phases starting at phase 13.
 
 ### Dev-Time Quality Gates
 
-- [ ] **DEV-01**: Secrets are blocked at commit time and fail CI via `detect-secrets` pre-commit hook + CI step
-- [ ] **DEV-02**: Python security issues (hardcoded passwords, unsafe subprocess calls, etc.) are flagged at commit time and in CI via `bandit` pre-commit hook + CI step
-- [ ] **DEV-03**: Known-vulnerable Python and JS dependencies block CI merge via `pip-audit` + `pnpm audit` gate
+- [x] **DEV-01**: Secrets are blocked at commit time and fail CI via `detect-secrets` pre-commit hook + CI step
+- [x] **DEV-02**: Python security issues (hardcoded passwords, unsafe subprocess calls, etc.) are flagged at commit time and in CI via `bandit` pre-commit hook + CI step
+- [x] **DEV-03**: Known-vulnerable Python and JS dependencies block CI merge via `pip-audit` + `pnpm audit` gate
 - [ ] **DEV-04**: N+1 query regressions fail the backend test suite via `nplusone` auto-detecting pytest fixture (raises on detected N+1 unless explicitly allowed)
 - [ ] **DEV-05**: API contract regressions are caught in CI via `schemathesis` property-based fuzzing against the OpenAPI spec on the Django test server
-- [ ] **DEV-06**: Developer can analyze SQL queries, cache hits, and request profiling locally via `django-debug-toolbar` (dev only — disabled in test + production)
+- [x] **DEV-06**: Developer can analyze SQL queries, cache hits, and request profiling locally via `django-debug-toolbar` (dev only — disabled in test + production)
 - [ ] **DEV-07**: Non-conventional commits are blocked at commit time via `commitlint` pre-commit hook enforcing the Conventional Commits spec
 - [ ] **DEV-08**: Code complexity exceeding McCabe max=10 is blocked by ruff in pre-commit + CI
 
@@ -77,10 +77,10 @@ Requirements for v1.2. Each maps to roadmap phases starting at phase 13.
 | SEC-01      | 16    | Complete |
 | SEC-02      | 16    | Complete |
 | SEC-03      | 16    | Complete |
-| DEV-01      | 17    | Pending  |
-| DEV-02      | 17    | Pending  |
-| DEV-03      | 17    | Pending  |
-| DEV-06      | 17    | Pending  |
+| DEV-01      | 17    | Complete |
+| DEV-02      | 17    | Complete |
+| DEV-03      | 17    | Complete |
+| DEV-06      | 17    | Complete |
 | DEV-04      | 18    | Pending  |
 | DEV-05      | 18    | Pending  |
 | DEV-07      | 18    | Pending  |

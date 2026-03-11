@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Observability & DevEx Hardening
 status: planning
-stopped_at: Phase 17 context gathered
-last_updated: "2026-03-11T21:57:30.234Z"
+stopped_at: Completed 17-01-PLAN.md
+last_updated: "2026-03-11T22:22:15.892Z"
 last_activity: 2026-03-11 — v1.2 roadmap created (phases 13–18)
 progress:
   total_phases: 6
   completed_phases: 4
-  total_plans: 13
-  completed_plans: 13
+  total_plans: 16
+  completed_plans: 14
   percent: 0
 ---
 
@@ -60,6 +60,7 @@ _Updated after each plan completion_
 | Phase 16-security-hardening P01 | 2 | 1 tasks | 1 files |
 | Phase 16-security-hardening P02 | 5 | 2 tasks | 7 files |
 | Phase 16-security-hardening P03 | 9 | 2 tasks | 6 files |
+| Phase 17-dev-time-security-gates P01 | 5 | 1 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -98,6 +99,7 @@ _Updated after each plan completion_
 - [Phase 16-03]: django-csp 4.0 CONTENT*SECURITY_POLICY dict API (not old CSP*\* flat settings); NONCE sentinels for per-request nonce injection in script-src, style-src
 - [Phase 16-03]: HSTS in production.py only (not base.py) — local HTTP development would break; test requires secure=True + ALLOWED_HOSTS=['testserver'] to simulate HTTPS
 - [Phase 16-03]: Next.js CSP uses unsafe-inline (static headers() function) — App Router hydration requires it; Django CSP uses nonces (different origin, no conflict)
+- [Phase 17-dev-time-security-gates]: pytest.fail() with RED reason strings used for all 8 dev-gate test stubs — mirrors Phase 16-01 pattern; cleaner FAILED output identifies which plan implements each behavior
 
 ### Pending Todos
 
@@ -110,6 +112,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-11T21:57:30.231Z
-Stopped at: Phase 17 context gathered
-Resume file: .planning/phases/17-dev-time-security-gates/17-CONTEXT.md
+Last session: 2026-03-11T22:22:15.888Z
+Stopped at: Completed 17-01-PLAN.md
+Resume file: None
