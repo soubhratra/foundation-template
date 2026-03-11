@@ -148,3 +148,14 @@ docker compose up -d
 
 _Phase: 13-structured-logging-distributed-tracing_
 _Completed: 2026-03-11_
+
+## Self-Check: PASSED
+
+- FOUND: apps/api/apps/core/tracing.py
+- FOUND: apps/api/apps/core/apps.py
+- FOUND: apps/api/config/celery.py
+- FOUND: docker-compose.yml (jaeger service added)
+- FOUND: apps/api/.env.example (OTel vars documented)
+- FOUND: .planning/phases/13-structured-logging-distributed-tracing/13-03-SUMMARY.md
+- FOUND: commit 4528e42 (Task 1)
+- FOUND: commit 2b14616 (Task 2)
