@@ -103,6 +103,7 @@ INSTALLED_APPS = [
     "ninja_extra",
     "corsheaders",
     "django_celery_results",
+    "django_celery_beat",
     "django_structlog",
     "allauth",
     "allauth.account",
@@ -201,6 +202,23 @@ CELERY_BROKER_URL = env("CELERY_BROKER_URL", default="redis://localhost:6379/0")
 CELERY_RESULT_BACKEND = "django-db"
 CELERY_TASK_TRACK_STARTED = True
 CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 minutes
+
+# --------------------------------------------------------------------------
+# Celery Beat Schedule — Phase 15
+# --------------------------------------------------------------------------
+# DatabaseScheduler reads schedule from DB (django_celery_beat tables).
+# Add tasks here for initial seeding; operators can edit via admin or API.
+CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
+
+from celery.schedules import crontab  # noqa: E402, F401
+
+CELERY_BEAT_SCHEDULE = {
+    "example-periodic-task": {
+        "task": "apps.core.tasks.example_periodic_task",
+        "schedule": 60.0,  # every 60 seconds — change to crontab() for cron expressions
+        "options": {"expires": 30},  # drop if no worker picks it up in 30s
+    },
+}
 
 # --------------------------------------------------------------------------
 # OpenAI Configuration

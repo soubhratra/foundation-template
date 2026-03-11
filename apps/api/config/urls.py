@@ -167,6 +167,8 @@ api.auto_discover_controllers()
 
 urlpatterns = [
     path("admin/", admin.site.urls),
+    # Health probes — mounted before Ninja api/ to avoid URL shadowing
+    path("api/health/", include("apps.core.health_urls")),
     path(
         "api/v1/auth/browser/v1/auth/session",
         HeadlessSessionView.as_api_view(client=Client.BROWSER),
