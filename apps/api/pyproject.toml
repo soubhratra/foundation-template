@@ -34,6 +34,8 @@ dependencies = [
     "opentelemetry-instrumentation-celery>=0.60b0",
     "opentelemetry-instrumentation-psycopg>=0.60b0",
     "posthog>=7.9.0",
+    "django-celery-beat>=2.7",
+    "flower>=2.0",
 ]
 
 [dependency-groups]
