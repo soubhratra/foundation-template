@@ -41,3 +41,22 @@ repos:
       - id: bandit
         args: ["-lll", "-x", "tests/"]
         files: ^apps/
+
+  # Conventional Commits enforcement — blocks non-conventional commit messages (DEV-07)
+  # NOTE: requires `pre-commit install --hook-type commit-msg` in addition to `pre-commit install`
+  - repo: https://github.com/compilerla/conventional-pre-commit
+    rev: v3.4.0
+    hooks:
+      - id: conventional-pre-commit
+        stages: [commit-msg]
+        args:
+          - feat
+          - fix
+          - docs
+          - refactor
+          - test
+          - chore
+          - perf
+          - ci
+          - build
+          - revert

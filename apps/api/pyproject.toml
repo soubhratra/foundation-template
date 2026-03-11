@@ -39,6 +39,7 @@ dependencies = [
     "django-redis==6.0.0",
     "django-ratelimit==4.1.0",
     "django-csp==4.0",
+    "nplusone>=1.0",
 ]
 
 [dependency-groups]
@@ -73,3 +74,9 @@ warn_unused_configs = true
 
 [tool.django-stubs]
 django_settings_module = "config.settings.development"
+
+[tool.ruff.lint]
+select = ["E", "F", "C90"]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10
