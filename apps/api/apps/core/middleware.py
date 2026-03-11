@@ -1,4 +1,4 @@
-"""RequestContextMiddleware and ObservabilityMiddleware.
+"""RequestContextMiddleware, ObservabilityMiddleware, and AuthRateLimitMiddleware.
 
 RequestContextMiddleware — injects request context into structlog for every request.
 Binds: request_id (UUID4), user_id (pk or "anonymous"), method, path.
@@ -12,6 +12,9 @@ in MIDDLEWARE so request.user is populated before user_id is read.
 
 ObservabilityMiddleware — auto-captures unhandled Django exceptions.
 Insert AFTER RequestContextMiddleware in MIDDLEWARE.
+
+AuthRateLimitMiddleware — path-scoped rate limiting for /api/v1/auth/ routes.
+Insert AFTER ObservabilityMiddleware in MIDDLEWARE.
 """
 
 from __future__ import annotations
@@ -22,6 +25,7 @@ from typing import Any
 
 import structlog
 from django.http import HttpRequest, HttpResponse
+from django_ratelimit.core import is_ratelimited
 
 from apps.core.observability import get_observability_adapter
 
@@ -99,3 +103,47 @@ class ObservabilityMiddleware:
         # Return None — Django continues its normal exception processing chain.
         # The exception propagates, gets logged, and the 500 response is generated normally.
         return None
+
+
+# Auth endpoint URL prefixes subject to rate limiting.
+# Covers both browser-session and app (JWT) allauth headless flows.
+_AUTH_RATE_LIMIT_PATHS = (
+    "/api/v1/auth/browser/v1/",
+    "/api/v1/auth/app/v1/",
+)
+
+
+class AuthRateLimitMiddleware:
+    """Rate-limit allauth headless auth endpoints via is_ratelimited() helper.
+
+    Applied as middleware (not @ratelimit decorator) because allauth's headless
+    views are registered internally and are not owned code.
+
+    RATELIMIT_FAIL_OPEN = True means requests pass through if Redis is
+    unreachable — auth availability is prioritised over strict enforcement
+    during cache outages.
+
+    Disabled in tests via conftest autouse fixture:
+        settings.RATELIMIT_ENABLE = False
+    """
+
+    def __init__(self, get_response) -> None:
+        self.get_response = get_response
+
+    def __call__(self, request: HttpRequest) -> HttpResponse:
+        if request.path.startswith(_AUTH_RATE_LIMIT_PATHS):
+            from django.conf import settings
+
+            rate = getattr(settings, "RATELIMIT_AUTH_LOGIN", "5/m")
+            limited = is_ratelimited(
+                request,
+                group="auth",
+                key="ip",
+                rate=rate,
+                increment=True,
+            )
+            if limited:
+                from apps.core.ratelimit import ratelimited_error
+
+                return ratelimited_error(request)
+        return self.get_response(request)

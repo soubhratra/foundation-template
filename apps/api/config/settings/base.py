@@ -102,6 +102,7 @@ INSTALLED_APPS = [
     "django.contrib.sites",
     "ninja_extra",
     "corsheaders",
+    "csp",
     "django_celery_results",
     "django_celery_beat",
     "django_structlog",
@@ -117,6 +118,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "csp.middleware.CSPMiddleware",  # SECURITY HEADERS — nonce generated per-request
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "corsheaders.middleware.CorsMiddleware",
@@ -126,6 +128,7 @@ MIDDLEWARE = [
     "allauth.account.middleware.AccountMiddleware",
     "apps.core.middleware.RequestContextMiddleware",
     "apps.core.middleware.ObservabilityMiddleware",  # OBSERVABILITY MODULE
+    "apps.core.middleware.AuthRateLimitMiddleware",  # RATE LIMITING MODULE
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
@@ -192,6 +195,94 @@ STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 REDIS_URL = env("REDIS_URL", default="redis://localhost:6379/0")
+CACHE_REDIS_URL = env("CACHE_REDIS_URL", default="redis://localhost:6379/1")
+SESSION_REDIS_URL = env("SESSION_REDIS_URL", default="redis://localhost:6379/2")
+
+# --- CACHE + SESSION BACKEND ---
+# django-redis: replaces LocMemCache in all non-test environments.
+# DB 0: Celery (CELERY_BROKER_URL)
+# DB 1: Django cache (CACHE_REDIS_URL)
+# DB 2: Django sessions (SESSION_REDIS_URL)
+# Tests override CACHES to LocMemCache via conftest test_isolation_settings fixture.
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": CACHE_REDIS_URL,
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+            "SOCKET_CONNECT_TIMEOUT": 5,
+            "SOCKET_TIMEOUT": 5,
+        },
+    },
+    "sessions": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": SESSION_REDIS_URL,
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+            "SOCKET_CONNECT_TIMEOUT": 5,
+            "SOCKET_TIMEOUT": 5,
+        },
+    },
+}
+
+SESSION_ENGINE = "django.contrib.sessions.backends.cache"
+SESSION_CACHE_ALIAS = "sessions"
+
+# --- RATE LIMITING ---
+# django-ratelimit: IP-based rate limiting on auth endpoints.
+# Auth endpoints are allauth headless views — rate limiting is applied via
+# AuthRateLimitMiddleware (path-prefix scoped) rather than @ratelimit decorator
+# (allauth views are not owned code; decorator cannot be applied directly).
+# RATELIMIT_FAIL_OPEN: pass through if Redis unreachable — auth availability > enforcement.
+# RATELIMIT_ENABLE: set to False in tests via conftest autouse fixture (not in development.py).
+RATELIMIT_AUTH_LOGIN: str = "5/m"
+RATELIMIT_ENABLE: bool = True
+RATELIMIT_FAIL_OPEN: bool = True
+RATELIMIT_USE_CACHE: str = "default"
+RATELIMIT_VIEW: str = "apps.core.ratelimit.ratelimited_error"
+
+# --- SECURITY HEADERS ---
+# django-csp 4.0 uses CONTENT_SECURITY_POLICY dict (NOT old CSP_* flat settings).
+# Old API (CSP_DEFAULT_SRC etc.) is silently ignored in 4.0 — do not mix APIs.
+#
+# NONCE sentinel: django-csp replaces "NONCE" with 'nonce-{unique_value}' per request.
+# request.csp_nonce is available in templates for inline scripts that must be whitelisted.
+#
+# Third-party sources:
+#   PostHog: eu.i.posthog.com and us.i.posthog.com (EU/US data regions)
+#   Stripe:  js.stripe.com (SDK), hooks.stripe.com (webhook ping JS)
+#
+# upgrade-insecure-requests omitted — HSTS in production.py handles upgrade-to-HTTPS.
+# Adding it here would break local HTTP development.
+CONTENT_SECURITY_POLICY = {
+    "DIRECTIVES": {
+        "default-src": ["'self'"],
+        "script-src": ["'self'", "NONCE", "https://js.stripe.com"],
+        "script-src-elem": ["'self'", "NONCE", "https://js.stripe.com"],
+        "style-src": ["'self'", "NONCE"],
+        "img-src": ["'self'", "data:", "blob:"],
+        "font-src": ["'self'"],
+        "connect-src": [
+            "'self'",
+            "https://eu.i.posthog.com",
+            "https://us.i.posthog.com",
+            "https://hooks.stripe.com",
+        ],
+        "frame-src": ["https://js.stripe.com"],
+        "object-src": ["'none'"],
+        "base-uri": ["'self'"],
+        "form-action": ["'self'"],
+        "frame-ancestors": ["'none'"],
+    },
+}
+
+# X-Frame-Options: Django's XFrameOptionsMiddleware reads X_FRAME_OPTIONS.
+# "DENY" is the Django default but we set it explicitly for auditability.
+X_FRAME_OPTIONS = "DENY"
+
+# Referrer-Policy: Django SecurityMiddleware reads SECURE_REFERRER_POLICY.
+# "strict-origin-when-cross-origin" sends full URL on same-origin, origin only cross-origin.
+SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
 
 FRONTEND_URL = env("FRONTEND_URL", default="http://localhost:3000")
 
