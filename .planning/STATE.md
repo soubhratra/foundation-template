@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Observability & DevEx Hardening
 status: planning
-stopped_at: Phase 14 context gathered
-last_updated: "2026-03-11T18:36:53.118Z"
+stopped_at: Completed 14-01-PLAN.md
+last_updated: "2026-03-11T19:07:02.099Z"
 last_activity: 2026-03-11 — v1.2 roadmap created (phases 13–18)
 progress:
   total_phases: 6
   completed_phases: 1
-  total_plans: 3
-  completed_plans: 3
+  total_plans: 7
+  completed_plans: 4
   percent: 0
 ---
 
@@ -50,6 +50,7 @@ _Updated after each plan completion_
 | Phase 13-structured-logging-distributed-tracing P01 | 7 | 2 tasks | 6 files |
 | Phase 13-structured-logging-distributed-tracing P02 | 12 | 2 tasks | 5 files |
 | Phase 13-structured-logging-distributed-tracing P03 | 9 | 2 tasks | 6 files |
+| Phase 14-observability-adapter P01 | 3 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -65,6 +66,8 @@ _Updated after each plan completion_
 - [Phase 13-03]: configure_otel() is a no-op when OTEL_EXPORTER_OTLP_ENDPOINT absent — OTLPSpanExporter imported lazily to avoid ~100ms import overhead in CI/dev without Jaeger
 - [Phase 13-03]: CeleryInstrumentor().instrument() called in worker_process_init signal (after prefork) — BatchSpanProcessor threads survive fork boundary; weak=False prevents GC
 - [Phase 13-03]: DjangoStructLogInitStep registered in celery.py here (Plan 13-03) — co-located with other Celery startup config as structlog context propagation infrastructure
+- [Phase 14-observability-adapter]: Deferred import pattern (import inside test function body) over top-level try/except — produces cleaner per-test failure messages in RED/GREEN TDD cycle
+- [Phase 14-observability-adapter]: Scaffolder removal test mirrors test_scaffolder_billing_removal.py: subprocess + inline ESM node --input-type=module targeting dist/remove.js, no TTY required
 
 ### Pending Todos
 
@@ -77,6 +80,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-11T18:36:53.114Z
-Stopped at: Phase 14 context gathered
-Resume file: .planning/phases/14-observability-adapter/14-CONTEXT.md
+Last session: 2026-03-11T19:07:02.096Z
+Stopped at: Completed 14-01-PLAN.md
+Resume file: None
