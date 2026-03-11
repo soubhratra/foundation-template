@@ -524,12 +524,24 @@ export async function removeObservability(outputDir: string): Promise<void> {
     );
 
     // Remove <PostHogProvider ...> wrapper — unwrap children
-    // Remove opening PostHogProvider tag (multi-line)
-    layoutContent = layoutContent.replace(/^\s*<PostHogProvider\n(?:\s+[^\n]*\n)*\s*>\n/m, "");
+    // Remove opening PostHogProvider tag (multi-line, safe string splice):
+    // Find the tag start, then find the closing standalone ">" line and slice out the whole range
+    {
+      const tagStart = layoutContent.indexOf("    <PostHogProvider");
+      if (tagStart !== -1) {
+        // Find the next line that is just whitespace + ">" (the JSX self-closing brace)
+        const closeArrow = layoutContent.indexOf("\n    >", tagStart);
+        if (closeArrow !== -1) {
+          // Remove from tagStart to end of the ">\n" line
+          layoutContent =
+            layoutContent.slice(0, tagStart) + layoutContent.slice(closeArrow + "\n    >\n".length);
+        }
+      }
+    }
     // Remove <PostHogScreenTracker /> line
-    layoutContent = layoutContent.replace(/^\s*<PostHogScreenTracker \/>\n/m, "");
+    layoutContent = layoutContent.replace(/[ \t]*<PostHogScreenTracker \/>\n/, "");
     // Remove closing </PostHogProvider> tag
-    layoutContent = layoutContent.replace(/^\s*<\/PostHogProvider>\n/m, "");
+    layoutContent = layoutContent.replace(/[ \t]*<\/PostHogProvider>\n/, "");
 
     await writeFile(layoutTsxPath, layoutContent, "utf-8");
     logger.info(`  ✓ Removed PostHog from _layout.tsx`);

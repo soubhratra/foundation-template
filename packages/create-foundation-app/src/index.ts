@@ -16,6 +16,7 @@ import {
   removeLandingApp,
   removeWebApp,
   removeBillingModule,
+  removeObservability,
 } from "./remove.js";
 import { runValidation } from "./validation-runner.js";
 import { rollbackGeneration } from "./rollback.js";
@@ -44,6 +45,11 @@ export async function main() {
     (withoutIdx !== -1 && withoutArgs[withoutIdx + 1] === "billing") ||
     withoutArgs.includes("--without-billing");
 
+  // Parse --without observability / --without-observability flag
+  const withoutObservabilityFlag =
+    (withoutIdx !== -1 && withoutArgs[withoutIdx + 1] === "observability") ||
+    withoutArgs.includes("--without-observability");
+
   // Track output directory for rollback
   let outputDir = "";
 
@@ -58,7 +64,10 @@ export async function main() {
     const projectName = await promptProjectName();
     const rawFeatures = await promptFeatures();
     // If --without billing flag was passed, remove billing from selected features
-    const features = withoutBillingFlag ? rawFeatures.filter((f) => f !== "billing") : rawFeatures;
+    // If --without observability flag was passed, remove observability from selected features
+    const features = rawFeatures
+      .filter((f) => !(withoutBillingFlag && f === "billing"))
+      .filter((f) => !(withoutObservabilityFlag && f === "observability"));
     outputDir = await promptOutputDir();
 
     // Build configuration object
@@ -112,6 +121,9 @@ export async function main() {
     }
     if (!config.features.includes("billing")) {
       await removeBillingModule(config.outputDir);
+    }
+    if (!config.features.includes("observability")) {
+      await removeObservability(config.outputDir);
     }
     s4.stop(pc.green("✓ Features configured"));
 
