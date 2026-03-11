@@ -573,6 +573,18 @@ wheels = [
 ]
 
 [[package]]
+name = "django-ipware"
+version = "7.0.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "python-ipware" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/23/64/c7e4791edf01ba483cce444770b3e6a930ba12195ba1eeb37b5bf6dce8a8/django-ipware-7.0.1.tar.gz", hash = "sha256:d9ec43d2bf7cdf216fed8d494a084deb5761a54860a53b2e74346a4f384cff47", size = 6827, upload-time = "2024-04-19T20:02:49.257Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/11/33/bf539925b102d68200da5b1d3eacb8aa5d5d9a065972e8b8724d0d53bb0d/django_ipware-7.0.1-py2.py3-none-any.whl", hash = "sha256:db16bbee920f661ae7f678e4270460c85850f03c6761a4eaeb489bdc91f64709", size = 6425, upload-time = "2024-04-19T20:02:47.469Z" },
+]
+
+[[package]]
 name = "django-ninja"
 version = "1.5.3"
 source = { registry = "https://pypi.org/simple" }
@@ -599,6 +611,26 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/d7/00/0bd1cce1e101c2112cc5d6e517a52a62fe08c1607b8f6e265cbed6a7fcdd/django_ninja_extra-0.31.0.tar.gz", hash = "sha256:07658a8a166ee19070a5c6305874b282fcd784cd910e21d5891051fcc34c5ea0", size = 61232, upload-time = "2026-02-01T05:18:26.839Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/d0/96/c0fabee0a0a1261ccc15845b4968a4fb1fbbd0282975ed37262976c4fa17/django_ninja_extra-0.31.0-py3-none-any.whl", hash = "sha256:db321e33a0b566840d4fb13d4edd843a8df4d805e23165dab437f25d662d98cf", size = 82509, upload-time = "2026-02-01T05:18:25.811Z" },
+]
+
+[[package]]
+name = "django-structlog"
+version = "10.0.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "asgiref" },
+    { name = "django" },
+    { name = "django-ipware" },
+    { name = "structlog" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/72/a9/102f316fb60dbec46642168979c4f57c9d8140fe43624ddca1ca6106274a/django_structlog-10.0.0.tar.gz", hash = "sha256:4e3fa4a930697fb9b649470e389419bb73b916a1ecf4f4bf2f8727f5cbfdb002", size = 23054, upload-time = "2025-10-22T21:20:21.14Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/6c/83/d7245a2a2bb46ae65ecff00686181d632553b131ea0c5cbfcbdb8f89c190/django_structlog-10.0.0-py3-none-any.whl", hash = "sha256:4f9db3cb7b308df6aa4afe1353d9c19d5bac757022ddbbb5c24f3d0d6a91a240", size = 18159, upload-time = "2025-10-22T21:20:19.804Z" },
+]
+
+[package.optional-dependencies]
+celery = [
+    { name = "celery" },
 ]
 
 [[package]]
@@ -699,6 +731,7 @@ dependencies = [
     { name = "django-cors-headers" },
     { name = "django-environ" },
     { name = "django-ninja-extra" },
+    { name = "django-structlog", extra = ["celery"] },
     { name = "gunicorn" },
     { name = "jinja2" },
     { name = "langchain-core" },
@@ -743,6 +776,7 @@ requires-dist = [
     { name = "django-cors-headers", specifier = ">=4.4" },
     { name = "django-environ", specifier = ">=0.11" },
     { name = "django-ninja-extra", specifier = ">=0.21" },
+    { name = "django-structlog", extras = ["celery"], specifier = ">=10.0" },
     { name = "gunicorn", specifier = ">=22.0" },
     { name = "jinja2", specifier = ">=3.1" },
     { name = "langchain-core", specifier = ">=1.2.13" },
@@ -2010,6 +2044,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/ec/67/09765eacf4e44413c4f8943ba5a317fcb9c7b447c3b8b0b7fce7e3090b0b/python_discovery-1.1.1.tar.gz", hash = "sha256:584c08b141c5b7029f206b4e8b78b1a1764b22121e21519b89dec56936e95b0a", size = 56016, upload-time = "2026-03-07T00:00:56.354Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/75/0f/2bf7e3b5a4a65f623cb820feb5793e243fad58ae561015ee15a6152f67a2/python_discovery-1.1.1-py3-none-any.whl", hash = "sha256:69f11073fa2392251e405d4e847d60ffffd25fd762a0dc4d1a7d6b9c3f79f1a3", size = 30732, upload-time = "2026-03-07T00:00:55.143Z" },
+]
+
+[[package]]
+name = "python-ipware"
+version = "3.0.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/9e/60/da4426c3e9aee56f08b24091a9e85a0414260f928f97afd0013dfbd0332f/python_ipware-3.0.0.tar.gz", hash = "sha256:9117b1c4dddcb5d5ca49e6a9617de2fc66aec2ef35394563ac4eecabdf58c062", size = 16609, upload-time = "2024-04-19T20:00:58.938Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/08/bd/ccd7416fdb30f104ddf6cfd8ee9f699441c7d9880a26f9b3089438adee05/python_ipware-3.0.0-py3-none-any.whl", hash = "sha256:fc936e6e7ec9fcc107f9315df40658f468ac72f739482a707181742882e36b60", size = 10761, upload-time = "2024-04-19T20:00:57.171Z" },
 ]
 
 [[package]]
