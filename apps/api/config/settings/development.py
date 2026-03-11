@@ -7,6 +7,10 @@ CSRF_COOKIE_SECURE = False
 
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 
+# Allow login without email verification in development.
+# Production keeps ACCOUNT_EMAIL_VERIFICATION = "mandatory" from base.py.
+ACCOUNT_EMAIL_VERIFICATION = "optional"
+
 # Use StubAdapter in development/testing — no Stripe API keys required.
 # Switch to StripeAdapter in production settings.
 BILLING_ADAPTER = "apps.billing.stub_adapter.StubAdapter"

@@ -1,83 +1,12 @@
 "use client";
 
-import {
-  ComponentType,
-  createContext,
-  type ReactNode,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { createContext, type ReactNode, useContext, useMemo } from "react";
 import { QueryClientProvider } from "@tanstack/react-query";
 
-import type {
-  ApiQueryClientBundle,
-  BuildApiQueryClientOptions,
-} from "@repo/api-client";
+import type { ApiQueryClientBundle, BuildApiQueryClientOptions } from "@repo/api-client";
 import { buildApiQueryClient } from "@repo/api-client";
 
 import { createMemoryTokenStorage, type TokenStorage } from "./utils/storage";
-
-type DevtoolsComponent = ComponentType<{ initialIsOpen?: boolean }>;
-
-let resolvedDevtools: DevtoolsComponent | null | undefined;
-let devtoolsPromise: Promise<DevtoolsComponent | null> | null = null;
-
-async function loadDevtools(): Promise<DevtoolsComponent | null> {
-  if (typeof window === "undefined") {
-    return null;
-  }
-
-  if (typeof resolvedDevtools !== "undefined") {
-    return resolvedDevtools;
-  }
-
-  if (!devtoolsPromise) {
-    devtoolsPromise = import("@tanstack/react-query-devtools")
-      .then((module) => module.ReactQueryDevtools as DevtoolsComponent)
-      .catch(() => null);
-  }
-
-  const component = await devtoolsPromise;
-  resolvedDevtools = component;
-  devtoolsPromise = null;
-  return component ?? null;
-}
-
-interface ReactQueryDevtoolsPortalProps {
-  readonly initialIsOpen?: boolean;
-}
-
-function ReactQueryDevtoolsPortal({ initialIsOpen }: ReactQueryDevtoolsPortalProps) {
-  const [Devtools, setDevtools] = useState<DevtoolsComponent | null>(
-    typeof resolvedDevtools === "undefined" ? null : resolvedDevtools,
-  );
-
-  useEffect(() => {
-    let mounted = true;
-    loadDevtools()
-      .then((component) => {
-        if (mounted) {
-          setDevtools(component);
-        }
-      })
-      .catch(() => {
-        if (mounted) {
-          setDevtools(null);
-        }
-      });
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
-  if (!Devtools) {
-    return null;
-  }
-
-  return <Devtools initialIsOpen={initialIsOpen} />;
-}
 
 function resolveDefaultBaseUrl(): string {
   const fallback =
@@ -113,17 +42,11 @@ export function useAuthContext(): AuthContextValue {
 export interface AuthProviderProps extends BuildApiQueryClientOptions {
   readonly children: ReactNode;
   readonly tokenStorage?: TokenStorage;
-  readonly enableDevtools?: boolean;
-  readonly devtoolsInitialIsOpen?: boolean;
 }
-
-const DEFAULT_DEVTOOLS = process.env.NODE_ENV !== "production";
 
 export function AuthProvider({
   children,
   tokenStorage,
-  enableDevtools = DEFAULT_DEVTOOLS,
-  devtoolsInitialIsOpen,
   queryClient,
   queryClientOptions,
   baseUrl: providedBaseUrl,
@@ -135,10 +58,7 @@ export function AuthProvider({
 }: AuthProviderProps) {
   const baseUrl = sanitizeBaseUrl(providedBaseUrl);
 
-  const storage = useMemo(
-    () => tokenStorage ?? createMemoryTokenStorage(),
-    [tokenStorage],
-  );
+  const storage = useMemo(() => tokenStorage ?? createMemoryTokenStorage(), [tokenStorage]);
 
   const bundle = useMemo<ApiQueryClientBundle>(() => {
     return buildApiQueryClient({
@@ -170,16 +90,9 @@ export function AuthProvider({
     };
   }, [baseUrl, bundle, storage]);
 
-  const shouldRenderDevtools = enableDevtools && typeof window !== "undefined";
-
   return (
     <AuthContext.Provider value={contextValue}>
-      <QueryClientProvider client={bundle.queryClient}>
-        {children}
-        {shouldRenderDevtools ? (
-          <ReactQueryDevtoolsPortal initialIsOpen={devtoolsInitialIsOpen} />
-        ) : null}
-      </QueryClientProvider>
+      <QueryClientProvider client={bundle.queryClient}>{children}</QueryClientProvider>
     </AuthContext.Provider>
   );
 }

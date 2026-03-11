@@ -97,7 +97,21 @@ function createAuthMiddleware(options: CreateApiClientOptions, version: string):
         headers.set("X-Session-Token", sessionToken);
       }
 
-      return new Request(request, { headers });
+      // Always include credentials so session cookies are sent for web (browser)
+      // auth. For JWT and server-side usage this is a no-op.
+      return new Request(request, { headers, credentials: "include" });
+    },
+    onResponse: async ({ response }) => {
+      if (!response.ok) {
+        let body: Record<string, unknown> = {};
+        try {
+          body = (await response.clone().json()) as Record<string, unknown>;
+        } catch {
+          // ignore parse errors — body may be empty or non-JSON
+        }
+        throw normalizeFetchError({ ...body, status: response.status });
+      }
+      return response;
     },
     onError: ({ error }) => {
       throw normalizeFetchError(error);

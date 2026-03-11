@@ -1,11 +1,7 @@
 "use client";
 
 import { useCallback } from "react";
-import {
-  useMutation,
-  type UseMutationResult,
-  type UseQueryResult,
-} from "@tanstack/react-query";
+import { useMutation, type UseMutationResult, type UseQueryResult } from "@tanstack/react-query";
 
 import type { paths } from "@repo/api-client/gen/v1";
 import type { LoginInput } from "@repo/validation";
@@ -16,11 +12,15 @@ import type { TokenStorage } from "../utils/storage";
 export const USER_QUERY_PATH = "/api/v1/users/me" as const;
 export const USER_QUERY_KEY = ["get", USER_QUERY_PATH] as const;
 
-const SESSION_LOGIN_PATH = "/api/v1/auth/session/login" as const;
-const JWT_LOGIN_PATH = "/api/v1/auth/jwt/login" as const;
-const LOGOUT_PATH = "/api/v1/auth/logout/" as const;
+// Allauth headless endpoints — browser client (session cookie) and app client (JWT)
+const SESSION_LOGIN_PATH = "/api/v1/auth/browser/v1/auth/login" as const;
+const JWT_LOGIN_PATH = "/api/v1/auth/app/v1/auth/login" as const;
+const LOGOUT_PATH = "/api/v1/auth/browser/v1/auth/session" as const;
+// Config endpoint: GET triggers get_token() on Django, which sets the csrftoken cookie
+const BROWSER_CONFIG_PATH = "/api/v1/auth/browser/v1/config" as const;
 
-type CurrentUser = paths[typeof USER_QUERY_PATH]["get"]["responses"][200]["content"]["application/json"];
+type CurrentUser =
+  paths[typeof USER_QUERY_PATH]["get"]["responses"][200]["content"]["application/json"];
 
 export interface SessionLoginResponse {
   readonly user?: CurrentUser;
@@ -46,10 +46,10 @@ export type JwtLoginVariables = LoginInput & {
 };
 
 interface ErrorEnvelope {
-  readonly error?: {
-    readonly message?: string;
-  };
+  readonly error?: { readonly message?: string };
   readonly detail?: string;
+  // django-allauth headless error format
+  readonly errors?: ReadonlyArray<{ readonly message?: string; readonly code?: string }>;
 }
 
 type UserQueryResult = UseQueryResult<CurrentUser | undefined, never>;
@@ -86,6 +86,10 @@ export function useAuth(options?: UseAuthOptions): UseAuthResult {
   const login = useMutation<SessionLoginResponse, Error, SessionLoginVariables>({
     mutationFn: async ({ tokenStorage: overrideStorage, ...credentials }) => {
       const adapter = overrideStorage ?? storage;
+      // Prime the CSRF cookie if not yet present (first visit before any GET request)
+      if (!getCsrfToken()) {
+        await fetch(buildUrl(context.baseUrl, BROWSER_CONFIG_PATH), { credentials: "include" });
+      }
       const result = await requestJson<SessionLoginResponse>(context.baseUrl, SESSION_LOGIN_PATH, {
         method: "POST",
         body: JSON.stringify(credentials),
@@ -118,7 +122,7 @@ export function useAuth(options?: UseAuthOptions): UseAuthResult {
   const logout = useMutation<void, Error, void>({
     mutationFn: async () => {
       await request(context.baseUrl, LOGOUT_PATH, {
-        method: "POST",
+        method: "DELETE",
         credentials: "include",
       });
       await storage.clearTokens();
@@ -168,11 +172,31 @@ async function requestJson<T>(baseUrl: string, path: string, init: RequestInit):
   return JSON.parse(text) as T;
 }
 
+function getCsrfToken(): string | undefined {
+  if (typeof document === "undefined") return undefined;
+  const match = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]*)/);
+  return match ? decodeURIComponent(match[1]!) : undefined;
+}
+
 async function request(baseUrl: string, path: string, init: RequestInit): Promise<Response> {
   const url = buildUrl(baseUrl, path);
+  const method = (init.method ?? "GET").toUpperCase();
+  const isMutating = !["GET", "HEAD", "OPTIONS", "TRACE"].includes(method);
+
+  const { headers, ...rest } = init;
+  if (isMutating) {
+    const csrf = getCsrfToken();
+    if (csrf) {
+      const merged = new Headers(headers);
+      merged.set("X-CSRFToken", csrf);
+      headers = merged;
+    }
+  }
+
   const response = await fetch(url, {
     credentials: "include",
-    ...init,
+    ...rest,
+    headers,
   });
   if (!response.ok) {
     throw new Error(await formatError(response));
@@ -183,7 +207,12 @@ async function request(baseUrl: string, path: string, init: RequestInit): Promis
 async function formatError(response: Response): Promise<string> {
   try {
     const payload = (await response.json()) as ErrorEnvelope;
-    return payload.error?.message ?? payload.detail ?? response.statusText;
+    return (
+      payload.error?.message ??
+      payload.errors?.[0]?.message ??
+      payload.detail ??
+      response.statusText
+    );
   } catch {
     return response.statusText || `Request failed with status ${response.status}`;
   }
