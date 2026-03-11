@@ -41,6 +41,21 @@ jobs:
       - name: Install dependencies
         run: cd apps/api && uv sync
 
+      - name: Run bandit security scan
+        run: cd apps/api && uv run bandit -r apps/ -lll -x tests/
+
+      - name: Run pip-audit
+        run: |
+          # Read ignore list from .pip-audit-ignore (one CVE ID per line, # comments allowed)
+          IGNORE_ARGS=""
+          if [ -f ".pip-audit-ignore" ]; then
+            while IFS= read -r line; do
+              [[ "$line" =~ ^#.*$ || -z "$line" ]] && continue
+              IGNORE_ARGS="$IGNORE_ARGS --ignore-vuln $line"
+            done < ".pip-audit-ignore"
+          fi
+          cd apps/api && uv run pip-audit $IGNORE_ARGS
+
       - name: Run ruff lint
         run: cd apps/api && uv run ruff check .
 
@@ -92,6 +107,9 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Run pnpm audit
+        run: pnpm audit --audit-level high
 
       - name: Build dependencies
         run: pnpm turbo build --filter=@repo/web^...

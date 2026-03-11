@@ -1,0 +1,9 @@
+# pip-audit ignore list
+# Format: one vulnerability ID per line (CVE-*, PYSEC-*, GHSA-*)
+# Add a comment on the NEXT line explaining why each entry is suppressed.
+# Example:
+# PYSEC-2023-1234
+# Not applicable — we do not use the affected code path (XML parsing disabled)
+#
+# IMPORTANT: Do NOT use `continue-on-error: true` in CI as a workaround.
+# Each entry here must have a documented justification.
