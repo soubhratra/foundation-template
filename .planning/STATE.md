@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Observability & DevEx Hardening
 status: planning
-stopped_at: Completed 15-01-PLAN.md
-last_updated: "2026-03-11T19:55:44.465Z"
+stopped_at: Completed 15-02-PLAN.md
+last_updated: "2026-03-11T20:01:24.299Z"
 last_activity: 2026-03-11 — v1.2 roadmap created (phases 13–18)
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 10
-  completed_plans: 8
+  completed_plans: 9
   percent: 0
 ---
 
@@ -55,6 +55,7 @@ _Updated after each plan completion_
 | Phase 14-observability-adapter P04 | 11 | 2 tasks | 3 files |
 | Phase 14-observability-adapter P02 | 4 | 2 tasks | 6 files |
 | Phase 15-health-probes-celery-infrastructure P01 | 92 | 2 tasks | 4 files |
+| Phase 15-health-probes-celery-infrastructure P02 | 12 | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -81,6 +82,8 @@ _Updated after each plan completion_
 - [Phase 14-observability-adapter]: task_failure signal connected in CoreConfig.ready() with weak=False — PostHogAdapter creates fresh client per call so no pre-fork thread issue
 - [Phase 15-health-probes-celery-infrastructure]: django-celery-beat and flower placed in [project.dependencies] not dev group — both need runtime presence (beat needs migrations + AppConfig, flower runs as standalone process)
 - [Phase 15-health-probes-celery-infrastructure]: \_check_postgres, \_count_pending_migrations, \_do_work mocked as internal helpers — drives exact interface Plans 15-02 and 15-03 must implement
+- [Phase 15-health-probes-celery-infrastructure]: Plain Django views (not Ninja) for health probes — probes must work even if Ninja app is misconfigured; health probes mounted before Ninja path to prevent URL shadowing
+- [Phase 15-health-probes-celery-infrastructure]: Internal helpers (\_check_postgres, \_check_redis, \_check_celery, \_count_pending_migrations) extracted as module-level functions — Phase 15-01 RED test stubs mock these directly
 
 ### Pending Todos
 
@@ -93,6 +96,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-11T19:55:44.461Z
-Stopped at: Completed 15-01-PLAN.md
+Last session: 2026-03-11T20:01:24.296Z
+Stopped at: Completed 15-02-PLAN.md
 Resume file: None
