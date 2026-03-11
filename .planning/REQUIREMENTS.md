@@ -66,35 +66,33 @@ Requirements for v1.2. Each maps to roadmap phases starting at phase 13.
 
 ## Traceability
 
-Populated during roadmap creation.
-
 | Requirement | Phase | Status  |
 | ----------- | ----- | ------- |
-| OBS-01      | —     | Pending |
-| OBS-02      | —     | Pending |
-| OBS-03      | —     | Pending |
-| OBS-04      | —     | Pending |
-| OBS-05      | —     | Pending |
-| OBS-06      | —     | Pending |
-| SEC-01      | —     | Pending |
-| SEC-02      | —     | Pending |
-| SEC-03      | —     | Pending |
-| DEV-01      | —     | Pending |
-| DEV-02      | —     | Pending |
-| DEV-03      | —     | Pending |
-| DEV-04      | —     | Pending |
-| DEV-05      | —     | Pending |
-| DEV-06      | —     | Pending |
-| DEV-07      | —     | Pending |
-| DEV-08      | —     | Pending |
+| OBS-01      | 13    | Pending |
+| OBS-02      | 13    | Pending |
+| OBS-03      | 14    | Pending |
+| OBS-04      | 15    | Pending |
+| OBS-05      | 15    | Pending |
+| OBS-06      | 15    | Pending |
+| SEC-01      | 16    | Pending |
+| SEC-02      | 16    | Pending |
+| SEC-03      | 16    | Pending |
+| DEV-01      | 17    | Pending |
+| DEV-02      | 17    | Pending |
+| DEV-03      | 17    | Pending |
+| DEV-06      | 17    | Pending |
+| DEV-04      | 18    | Pending |
+| DEV-05      | 18    | Pending |
+| DEV-07      | 18    | Pending |
+| DEV-08      | 18    | Pending |
 
 **Coverage:**
 
 - v1.2 requirements: 17 total
-- Mapped to phases: 0
-- Unmapped: 17 ⚠️ (will be resolved by roadmapper)
+- Mapped to phases: 17
+- Unmapped: 0 ✓
 
 ---
 
 _Requirements defined: 2026-03-11_
-_Last updated: 2026-03-11 after initial v1.2 definition_
+_Last updated: 2026-03-11 — traceability populated by roadmapper (phases 13–18)_

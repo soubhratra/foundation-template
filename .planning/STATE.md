@@ -2,11 +2,11 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Observability & DevEx Hardening
-current_phase: (not started)
-status: Defining requirements
+current_phase: 13
+status: Ready to plan
 last_updated: "2026-03-11"
 progress:
-  total_phases: 0
+  total_phases: 6
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -19,19 +19,51 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-11)
 
 **Core value:** A new SaaS product goes from zero to running full-stack app (web + mobile + API + auth) in under 5 minutes with one command.
-**Current focus:** v1.2 — Observability & DevEx Hardening
+**Current focus:** v1.2 — Observability & DevEx Hardening (Phase 13 of 18)
 
-## Position
+## Current Position
 
-**Milestone:** v1.2 — Observability & DevEx Hardening
-**Current phase:** Not started (defining requirements)
-**Plan:** —
-**Status:** Defining requirements
-**Last activity:** 2026-03-11 — Milestone v1.2 started
+Phase: 13 of 18 (Structured Logging + Distributed Tracing)
+Plan: — of — in current phase
+Status: Ready to plan
+Last activity: 2026-03-11 — v1.2 roadmap created (phases 13–18)
+
+Progress: [░░░░░░░░░░] 0% (v1.2) | Phases 1–12 complete (v1.0 + v1.1)
+
+## Performance Metrics
+
+**Velocity:**
+
+- Total plans completed (v1.2): 0
+- Average duration: — min
+- Total execution time: — hours
+
+**By Phase:**
+
+| Phase | Plans | Total | Avg/Plan |
+| ----- | ----- | ----- | -------- |
+| -     | -     | -     | -        |
+
+_Updated after each plan completion_
 
 ## Accumulated Context
 
-- v1.0 shipped: Turborepo monorepo, Django Ninja Extra, Next.js 15, Expo, auth (allauth), shared packages, CI/CD, CLI scaffolder
-- v1.1 shipped: Billing & Payments module — PaymentAdapter ABC, Stripe default, full lifecycle, webhooks, PDF invoices, billing frontend
-- v1.2 scope defined in: `docs/plans/2026-03-11-saas-platform-enhancements-design.md`
-- Previous phases: v1.0 (phases 1–8), v1.1 (phases 9–12) → v1.2 starts at phase 13
+### Decisions
+
+- v1.2 key decision: PostHog over Sentry — single SDK covers errors + analytics + feature flags + session replay; adapter pattern keeps it swappable (see PROJECT.md)
+- v1.2 key decision: ObservabilityAdapter ABC mirrors PaymentAdapter pattern — PostHogAdapter default, NoOpAdapter for tests, swappable via one Django setting
+
+### Pending Todos
+
+None yet.
+
+### Blockers/Concerns
+
+- Phase 17 (Dev-Time Security Gates) has no hard dependency on phases 13–16 — can be executed in parallel if context allows
+- Phase 14 (ObservabilityAdapter) depends on Phase 13 middleware setup being in place for Django request context
+
+## Session Continuity
+
+Last session: 2026-03-11
+Stopped at: Roadmap created — phases 13–18 defined, all 17 requirements mapped
+Resume file: None
