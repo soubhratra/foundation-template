@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Observability & DevEx Hardening
 status: planning
-stopped_at: Completed 16-01-PLAN.md
-last_updated: "2026-03-11T20:53:14.651Z"
+stopped_at: Completed 16-02-PLAN.md
+last_updated: "2026-03-11T21:00:57.399Z"
 last_activity: 2026-03-11 — v1.2 roadmap created (phases 13–18)
 progress:
   total_phases: 6
   completed_phases: 3
   total_plans: 13
-  completed_plans: 11
+  completed_plans: 12
   percent: 0
 ---
 
@@ -58,6 +58,7 @@ _Updated after each plan completion_
 | Phase 15-health-probes-celery-infrastructure P02 | 12 | 2 tasks | 6 files |
 | Phase 15-health-probes-celery-infrastructure P03 | 4 | 2 tasks | 4 files |
 | Phase 16-security-hardening P01 | 2 | 1 tasks | 1 files |
+| Phase 16-security-hardening P02 | 5 | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -90,6 +91,9 @@ _Updated after each plan completion_
 - [Phase 15-health-probes-celery-infrastructure]: Flower is dev-only (docker-compose.yml only, not prod) per OBS-06; celery-worker added to dev compose so beat-dispatched tasks have a consumer
 - [Phase 15-health-probes-celery-infrastructure]: DatabaseScheduler chosen over PersistentScheduler — DB-backed schedule allows runtime interval edits via admin without container restart
 - [Phase 16-security-hardening]: [Phase 16-01]: pytest.fail() with RED reason strings used for all 9 security test stubs — cleaner FAILED output that identifies which plan implements each behavior
+- [Phase 16-02]: AuthRateLimitMiddleware returns response directly (not raise Ratelimited()) — Django default Ratelimited handler returns 403 HTML, not 429 JSON
+- [Phase 16-02]: RATELIMIT_FAIL_OPEN=True — auth availability prioritised over strict enforcement during Redis outages
+- [Phase 16-02]: test_isolation_settings autouse fixture: LocMemCache + RATELIMIT_ENABLE=False for all tests; rate limit tests use override_settings per-test
 
 ### Pending Todos
 
@@ -102,6 +106,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-11T20:53:14.648Z
-Stopped at: Completed 16-01-PLAN.md
+Last session: 2026-03-11T21:00:57.395Z
+Stopped at: Completed 16-02-PLAN.md
 Resume file: None
