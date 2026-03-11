@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Observability & DevEx Hardening
 status: planning
-stopped_at: Completed 13-02-PLAN.md (structlog pipeline + middleware)
-last_updated: "2026-03-11T18:13:19.532Z"
+stopped_at: Completed 13-03-PLAN.md (distributed tracing + Jaeger)
+last_updated: "2026-03-11T18:18:48.233Z"
 last_activity: 2026-03-11 — v1.2 roadmap created (phases 13–18)
 progress:
   total_phases: 6
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 3
-  completed_plans: 2
+  completed_plans: 3
   percent: 0
 ---
 
@@ -49,6 +49,7 @@ Progress: [░░░░░░░░░░] 0% (v1.2) | Phases 1–12 complete (v
 _Updated after each plan completion_
 | Phase 13-structured-logging-distributed-tracing P01 | 7 | 2 tasks | 6 files |
 | Phase 13-structured-logging-distributed-tracing P02 | 12 | 2 tasks | 5 files |
+| Phase 13-structured-logging-distributed-tracing P03 | 9 | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -61,6 +62,9 @@ _Updated after each plan completion_
 - [Phase 13-02]: LOGGING dict placed inline in base.py using \_structlog alias; ConsoleRenderer dev / JSONRenderer prod automatic via DEBUG
 - [Phase 13-02]: OTel trace_id/span_id fields omitted (not null) when no span active — clean log events for parsers
 - [Phase 13-02]: DJANGO_STRUCTLOG_CELERY_ENABLED=True + OTEL_EXPORTER_OTLP_ENDPOINT added now to prepare Plan 13-03 landing zone
+- [Phase 13-03]: configure_otel() is a no-op when OTEL_EXPORTER_OTLP_ENDPOINT absent — OTLPSpanExporter imported lazily to avoid ~100ms import overhead in CI/dev without Jaeger
+- [Phase 13-03]: CeleryInstrumentor().instrument() called in worker_process_init signal (after prefork) — BatchSpanProcessor threads survive fork boundary; weak=False prevents GC
+- [Phase 13-03]: DjangoStructLogInitStep registered in celery.py here (Plan 13-03) — co-located with other Celery startup config as structlog context propagation infrastructure
 
 ### Pending Todos
 
@@ -73,6 +77,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-11T18:13:19.529Z
-Stopped at: Completed 13-02-PLAN.md (structlog pipeline + middleware)
+Last session: 2026-03-11T18:18:48.230Z
+Stopped at: Completed 13-03-PLAN.md (distributed tracing + Jaeger)
 Resume file: None
