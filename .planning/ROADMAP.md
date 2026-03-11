@@ -104,7 +104,13 @@ Plans:
 4. `docker compose up` starts a `celery-beat` service and the logs show it successfully scheduling the example periodic task on its configured interval
 5. A developer can open Flower at `http://localhost:5555` and see Celery worker status and task history — Flower does not appear in the production Docker Compose file
 
-**Plans**: TBD
+**Plans:** 3 plans
+
+Plans:
+
+- [ ] 15-01-PLAN.md — Wave 1: Install deps + RED test stubs (test_health_probes.py + test_periodic_tasks.py)
+- [ ] 15-02-PLAN.md — Wave 2: Health probe implementation (health.py + health_urls.py + URL wiring)
+- [ ] 15-03-PLAN.md — Wave 2: Celery Beat + Flower Docker Compose (tasks.py + settings + docker-compose)
 
 ### Phase 16: Security Hardening
 
@@ -166,8 +172,8 @@ Plans:
 | 11. API Endpoints + Frontend     | v1.1      | 8/8            | Complete    | 2026-03-10 |
 | 12. Invoice PDF + CLI            | v1.1      | 3/3            | Complete    | 2026-03-11 |
 | 13. Structured Logging + Tracing | v1.2      | 3/3            | Complete    | 2026-03-11 |
-| 14. ObservabilityAdapter         | 4/4       | Complete       | 2026-03-11  | -          |
-| 15. Health Probes + Celery Infra | v1.2      | 0/TBD          | Not started | -          |
+| 14. ObservabilityAdapter         | v1.2      | 4/4            | Complete    | 2026-03-11 |
+| 15. Health Probes + Celery Infra | v1.2      | 0/3            | Not started | -          |
 | 16. Security Hardening           | v1.2      | 0/TBD          | Not started | -          |
 | 17. Dev-Time Security Gates      | v1.2      | 0/TBD          | Not started | -          |
 | 18. Dev-Time Quality Gates       | v1.2      | 0/TBD          | Not started | -          |
