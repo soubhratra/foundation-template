@@ -43,9 +43,27 @@ A new SaaS product goes from zero to running full-stack app (web + mobile + API 
 - ✓ Billing frontend: `/billing` page with plan display, payment history, upgrade/downgrade modals, cancel flow, past-due banner — v1.1
 - ✓ CLI scaffolder integration — billing included by default, `--without billing` removes module cleanly, `manage.py check` verified — v1.1
 
-### Active (v2.0)
+### Active (v1.2)
 
-_(No requirements defined yet — run `/gsd:new-milestone` to define next milestone)_
+<!-- Observability & DevEx Hardening — runtime visibility + dev-time quality gates -->
+
+- [ ] Structured JSON logging via `structlog` with `request_id`, `user_id`, `duration_ms` on every request
+- [ ] Distributed tracing via OpenTelemetry auto-instrumentation (Django + Celery + DB), OTLP exporter, Jaeger in Docker Compose
+- [ ] Error tracking via Sentry SDK (Django + Celery + Next.js + Expo), `--without sentry` removes it
+- [ ] Enhanced health probes: `/api/health/live`, `/api/health/ready`, `/api/health/startup`
+- [ ] Rate limiting on auth endpoints via `django-ratelimit`, Redis-backed
+- [ ] Security headers via `django-csp`, HSTS, X-Frame-Options (Django middleware + Next.js `headers()`)
+- [ ] Redis cache backend via `django-redis` as default cache + session store
+- [ ] Celery Beat scaffold with example recurring tasks in Docker Compose
+- [ ] Flower dev-only monitoring in Docker Compose
+- [ ] Secret scanning via `detect-secrets` in pre-commit + CI
+- [ ] Python SAST via `bandit` in pre-commit + CI
+- [ ] Dependency auditing via `pip-audit` + `pnpm audit` as CI gate
+- [ ] N+1 detection via `nplusone` as pytest fixture
+- [ ] API contract fuzzing via `schemathesis` as CI job
+- [ ] `django-debug-toolbar` for local query analysis (dev only)
+- [ ] `commitlint` pre-commit hook for conventional commit enforcement
+- [ ] ruff McCabe complexity gate (max=10) in pre-commit
 
 ### Out of Scope
 
@@ -100,6 +118,17 @@ _(No requirements defined yet — run `/gsd:new-milestone` to define next milest
 | Async PDF via Celery + WeasyPrint  | Never block HTTP request cycle; WeasyPrint has fontconfig deadlock on fork    | ✓ Good — lazy import inside task body prevents deadlock; 512KB MAX_PDF_BYTES guard added   |
 | Billing in template (v1.1)         | High-leverage addition; every SaaS product needs billing infrastructure       | ✓ Good — 36 requirements delivered, 40/40 verification truths passed, human-verified       |
 
+## Current Milestone: v1.2 — Observability & DevEx Hardening
+
+**Goal:** Every scaffolded product ships with full runtime visibility and dev-time security gates from day one, with zero extra configuration.
+
+**Target features:**
+
+- Structured logging (structlog), distributed tracing (OpenTelemetry + Jaeger), error tracking (Sentry optional)
+- Security hardening: rate limiting, security headers, Redis cache/session
+- Celery Beat scaffold + Flower dev monitoring
+- Dev-time gates: detect-secrets, bandit, pip-audit, nplusone, schemathesis, commitlint, complexity linting
+
 ## Current State (v1.1)
 
 - **Version shipped:** v1.1 (2026-03-11)
@@ -107,8 +136,8 @@ _(No requirements defined yet — run `/gsd:new-milestone` to define next milest
 - **Stack:** Django Ninja Extra + Next.js 15 + Expo SDK 53 + Turborepo + pnpm + Stripe SDK v14 + Celery + WeasyPrint
 - **CLI:** `create-foundation-app` — interactive scaffolder with feature removal (billing, AI, mobile), validation, rollback
 - **Billing module:** `apps/api/apps/billing/` — adapter-based, Stripe default, removable via `--without billing`
-- **Next milestone:** Undefined — run `/gsd:new-milestone` to define
+- **Next milestone:** v1.2 — Observability & DevEx Hardening (requirements defined 2026-03-11)
 
 ---
 
-_Last updated: 2026-03-11 after v1.1 milestone_
+_Last updated: 2026-03-11 after v1.2 milestone start_
