@@ -72,7 +72,23 @@ class StubAdapter(PaymentAdapter):
         return {"identifier": identifier or "stub_identifier"}
 
     def list_invoices(self, customer_id: str, limit: int = 10) -> list[dict[str, Any]]:
-        return []
+        from apps.billing.models import Customer
+
+        try:
+            customer = Customer.objects.get(stripe_customer_id=customer_id)
+        except (Customer.DoesNotExist, Customer.MultipleObjectsReturned):
+            return []
+        return [
+            {
+                "invoice_id": str(p.id),
+                "amount": int(p.amount * 100),
+                "currency": p.currency,
+                "status": p.status,
+                "created": int(p.created_at.timestamp()),
+                "invoice_url": None,
+            }
+            for p in customer.payments.order_by("-created_at")[:limit]
+        ]
 
     def preview_proration(
         self,
