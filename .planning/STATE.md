@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Observability & DevEx Hardening
 status: planning
-stopped_at: Completed 13-03-PLAN.md (distributed tracing + Jaeger)
-last_updated: "2026-03-11T18:22:58.746Z"
+stopped_at: Phase 14 context gathered
+last_updated: "2026-03-11T18:36:53.118Z"
 last_activity: 2026-03-11 — v1.2 roadmap created (phases 13–18)
 progress:
   total_phases: 6
@@ -77,6 +77,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-11T18:18:48.230Z
-Stopped at: Completed 13-03-PLAN.md (distributed tracing + Jaeger)
-Resume file: None
+Last session: 2026-03-11T18:36:53.114Z
+Stopped at: Phase 14 context gathered
+Resume file: .planning/phases/14-observability-adapter/14-CONTEXT.md
