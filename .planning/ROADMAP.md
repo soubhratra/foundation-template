@@ -165,7 +165,7 @@ Plans:
 3. Attempting to commit with a message that does not follow the Conventional Commits spec (e.g., `"fixed bug"`) is blocked by the pre-commit hook with the spec violation shown
 4. A Python function exceeding McCabe complexity 10 is blocked by ruff in pre-commit and fails CI — the developer sees which function triggered the gate
 
-**Plans:** 1/3 plans executed
+**Plans:** 2/3 plans executed
 
 Plans:
 
@@ -194,4 +194,4 @@ Plans:
 | 15. Health Probes + Celery Infra | v1.2      | 3/3            | Complete   | 2026-03-11 |
 | 16. Security Hardening           | 3/3       | Complete       | 2026-03-11 | -          |
 | 17. Dev-Time Security Gates      | 3/3       | Complete       | 2026-03-11 | -          |
-| 18. Dev-Time Quality Gates       | 1/3       | In Progress    |            | -          |
+| 18. Dev-Time Quality Gates       | 2/3       | In Progress    |            | -          |
