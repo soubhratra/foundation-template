@@ -12,8 +12,8 @@ Requirements for v1.2. Each maps to roadmap phases starting at phase 13.
 - [x] **OBS-01**: Developer can see structured JSON logs with `request_id`, `user_id`, `duration_ms` auto-injected on every Django request via `structlog`
 - [x] **OBS-02**: Developer can trace requests end-to-end across Django + Celery + PostgreSQL via OpenTelemetry auto-instrumentation with OTLP exporter; Jaeger runs in Docker Compose for local inspection
 - [x] **OBS-03**: Developer can capture exceptions + product analytics + session replay via `ObservabilityAdapter` ABC with `PostHogAdapter` as default — covers Django + Celery + Next.js + Expo — `--without observability` removes it cleanly; `SentryAdapter` available as documented swap
-- [ ] **OBS-04**: Ops can probe app readiness via `GET /api/health/live` (process alive), `/api/health/ready` (DB + Redis + Celery reachable), `/api/health/startup` (migrations applied)
-- [ ] **OBS-05**: Developer gets a `celery beat` service in Docker Compose with an example periodic task scaffold (noop task demonstrating retry + error handling patterns)
+- [x] **OBS-04**: Ops can probe app readiness via `GET /api/health/live` (process alive), `/api/health/ready` (DB + Redis + Celery reachable), `/api/health/startup` (migrations applied)
+- [x] **OBS-05**: Developer gets a `celery beat` service in Docker Compose with an example periodic task scaffold (noop task demonstrating retry + error handling patterns)
 - [ ] **OBS-06**: Developer can view Celery worker and task status via Flower running in Docker Compose (dev only — not in production Docker Compose)
 
 ### Security & Performance
@@ -71,8 +71,8 @@ Requirements for v1.2. Each maps to roadmap phases starting at phase 13.
 | OBS-01      | 13    | Complete |
 | OBS-02      | 13    | Complete |
 | OBS-03      | 14    | Complete |
-| OBS-04      | 15    | Pending  |
-| OBS-05      | 15    | Pending  |
+| OBS-04      | 15    | Complete |
+| OBS-05      | 15    | Complete |
 | OBS-06      | 15    | Pending  |
 | SEC-01      | 16    | Pending  |
 | SEC-02      | 16    | Pending  |

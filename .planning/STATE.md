@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Observability & DevEx Hardening
 status: planning
-stopped_at: Completed 14-02-PLAN.md
-last_updated: "2026-03-11T19:38:45.402Z"
+stopped_at: Completed 15-01-PLAN.md
+last_updated: "2026-03-11T19:55:44.465Z"
 last_activity: 2026-03-11 — v1.2 roadmap created (phases 13–18)
 progress:
   total_phases: 6
   completed_phases: 2
-  total_plans: 7
-  completed_plans: 7
+  total_plans: 10
+  completed_plans: 8
   percent: 0
 ---
 
@@ -54,6 +54,7 @@ _Updated after each plan completion_
 | Phase 14-observability-adapter P03 | 3 | 2 tasks | 5 files |
 | Phase 14-observability-adapter P04 | 11 | 2 tasks | 3 files |
 | Phase 14-observability-adapter P02 | 4 | 2 tasks | 6 files |
+| Phase 15-health-probes-celery-infrastructure P01 | 92 | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -78,6 +79,8 @@ _Updated after each plan completion_
 - [Phase 14-observability-adapter]: posthog in main [project.dependencies] (not optional group) — runtime dep; NoOpAdapter handles absent key at runtime via settings, not at install time
 - [Phase 14-observability-adapter]: process_exception returns None (not re-raise) — Django propagates exception naturally; re-raise causes duplicate processing
 - [Phase 14-observability-adapter]: task_failure signal connected in CoreConfig.ready() with weak=False — PostHogAdapter creates fresh client per call so no pre-fork thread issue
+- [Phase 15-health-probes-celery-infrastructure]: django-celery-beat and flower placed in [project.dependencies] not dev group — both need runtime presence (beat needs migrations + AppConfig, flower runs as standalone process)
+- [Phase 15-health-probes-celery-infrastructure]: \_check_postgres, \_count_pending_migrations, \_do_work mocked as internal helpers — drives exact interface Plans 15-02 and 15-03 must implement
 
 ### Pending Todos
 
@@ -90,6 +93,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-11T19:34:28.115Z
-Stopped at: Completed 14-02-PLAN.md
+Last session: 2026-03-11T19:55:44.461Z
+Stopped at: Completed 15-01-PLAN.md
 Resume file: None
