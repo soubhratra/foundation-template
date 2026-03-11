@@ -60,7 +60,14 @@ Full archive: `.planning/milestones/v1.1-ROADMAP.md`
 2. A developer can open Jaeger at `http://localhost:16686` and see a distributed trace that spans a Django view, a Celery task it dispatched, and the SQL queries each made
 3. `docker compose up` starts Jaeger alongside Postgres and Redis — no extra steps required
 4. Trace context propagates automatically: a trace started in a Django view is continued by the Celery worker that handles its async task
-   **Plans**: TBD
+
+**Plans:** 3 plans
+
+Plans:
+
+- [ ] 13-01-PLAN.md — Wave 0 test stubs (test_logging, test_middleware, test_tracing)
+- [ ] 13-02-PLAN.md — structlog pipeline: logging.py + middleware.py + Django settings wiring
+- [ ] 13-03-PLAN.md — OTel tracing: tracing.py + Celery worker init + Jaeger in docker-compose
 
 ### Phase 14: ObservabilityAdapter
 
@@ -74,7 +81,8 @@ Full archive: `.planning/milestones/v1.1-ROADMAP.md`
 3. The Next.js app sends PostHog page views and errors on the client side without any per-page instrumentation
 4. The Expo mobile app sends PostHog events on the client side without any per-screen instrumentation
 5. Running `create-foundation-app --without observability` produces a project with zero PostHog imports and `manage.py check` passes clean
-   **Plans**: TBD
+
+**Plans**: TBD
 
 ### Phase 15: Health Probes + Celery Infrastructure
 
@@ -88,7 +96,8 @@ Full archive: `.planning/milestones/v1.1-ROADMAP.md`
 3. `GET /api/health/startup` returns HTTP 200 only when all Django migrations have been applied; returns HTTP 503 with the count of unapplied migrations
 4. `docker compose up` starts a `celery-beat` service and the logs show it successfully scheduling the example periodic task on its configured interval
 5. A developer can open Flower at `http://localhost:5555` and see Celery worker status and task history — Flower does not appear in the production Docker Compose file
-   **Plans**: TBD
+
+**Plans**: TBD
 
 ### Phase 16: Security Hardening
 
@@ -102,7 +111,8 @@ Full archive: `.planning/milestones/v1.1-ROADMAP.md`
 3. Every HTTP response from Django includes `Content-Security-Policy`, `Strict-Transport-Security`, `X-Frame-Options`, and `Referrer-Policy` headers with secure values
 4. Every HTTP response from Next.js includes matching `Content-Security-Policy` and `X-Frame-Options` headers via the `headers()` config
 5. Django cache operations (`cache.get`, `cache.set`) and session reads/writes hit Redis — `LocMemCache` is not used in development or production environments
-   **Plans**: TBD
+
+**Plans**: TBD
 
 ### Phase 17: Dev-Time Security Gates
 
@@ -115,7 +125,8 @@ Full archive: `.planning/milestones/v1.1-ROADMAP.md`
 2. The CI pipeline fails on a PR that introduces a `bandit` high-severity finding, with the finding shown in CI output
 3. A PR that introduces a dependency with a known CVE fails the CI `pip-audit` or `pnpm audit` gate before merge
 4. Opening the app in a browser in development mode renders the `django-debug-toolbar` panel — it is absent in test and production environments
-   **Plans**: TBD
+
+**Plans**: TBD
 
 ### Phase 18: Dev-Time Quality Gates
 
@@ -128,7 +139,8 @@ Full archive: `.planning/milestones/v1.1-ROADMAP.md`
 2. A CI job runs `schemathesis` against the live Django test server and the job fails if any property-based request causes a 5xx response or a response that violates the OpenAPI schema
 3. Attempting to commit with a message that does not follow the Conventional Commits spec (e.g., `"fixed bug"`) is blocked by the pre-commit hook with the spec violation shown
 4. A Python function exceeding McCabe complexity 10 is blocked by ruff in pre-commit and fails CI — the developer sees which function triggered the gate
-   **Plans**: TBD
+
+**Plans**: TBD
 
 ## Progress
 
@@ -146,7 +158,7 @@ Full archive: `.planning/milestones/v1.1-ROADMAP.md`
 | 10. Webhook Infra + Service      | v1.1      | 3/3            | Complete    | 2026-03-08 |
 | 11. API Endpoints + Frontend     | v1.1      | 8/8            | Complete    | 2026-03-10 |
 | 12. Invoice PDF + CLI            | v1.1      | 3/3            | Complete    | 2026-03-11 |
-| 13. Structured Logging + Tracing | v1.2      | 0/TBD          | Not started | -          |
+| 13. Structured Logging + Tracing | v1.2      | 0/3            | Not started | -          |
 | 14. ObservabilityAdapter         | v1.2      | 0/TBD          | Not started | -          |
 | 15. Health Probes + Celery Infra | v1.2      | 0/TBD          | Not started | -          |
 | 16. Security Hardening           | v1.2      | 0/TBD          | Not started | -          |
