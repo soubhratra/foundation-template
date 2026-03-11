@@ -1,11 +1,42 @@
 "use client";
 
-import React, { Suspense, useEffect, useMemo, useState, type ReactNode } from "react";
+import React, { Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+
+import posthog from "posthog-js";
+import { PostHogProvider, usePostHog } from "posthog-js/react";
+import { usePathname } from "next/navigation";
 
 import { AuthProvider, createWebTokenStorage } from "@repo/business-logic";
 
 import { Toaster } from "@/components/ui/sonner";
 import { useSessionToast } from "@/hooks/use-session-toast";
+
+if (typeof window !== "undefined") {
+  posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY ?? "", {
+    api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST ?? "https://eu.i.posthog.com",
+    capture_pageview: false, // Manual via PostHogPageView
+    capture_pageleave: true,
+    session_recording: { maskAllInputs: true },
+    loaded: (ph) => {
+      if (!process.env.NEXT_PUBLIC_POSTHOG_KEY) ph.opt_out_capturing();
+    },
+  });
+}
+
+function PostHogPageView() {
+  const pathname = usePathname();
+  const ph = usePostHog();
+  const prevPathnameRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (pathname && prevPathnameRef.current !== pathname) {
+      prevPathnameRef.current = pathname;
+      ph.capture("$pageview", { $current_url: window.location.href });
+    }
+  }, [pathname, ph]);
+
+  return null;
+}
 
 type DevtoolsComponent = React.ComponentType<{ initialIsOpen?: boolean }>;
 
@@ -39,12 +70,15 @@ export function AppProviders({ children, baseUrl, redirectBase = "/login" }: App
   const tokenStorage = useMemo(() => createWebTokenStorage(), []);
 
   return (
-    <AuthProvider baseUrl={baseUrl} tokenStorage={tokenStorage}>
-      <Suspense fallback={<>{children}</>}>
-        <SessionBoundary redirectBase={redirectBase}>{children}</SessionBoundary>
-      </Suspense>
-      <ReactQueryDevtoolsPortal />
-    </AuthProvider>
+    <PostHogProvider client={posthog}>
+      <PostHogPageView />
+      <AuthProvider baseUrl={baseUrl} tokenStorage={tokenStorage}>
+        <Suspense fallback={<>{children}</>}>
+          <SessionBoundary redirectBase={redirectBase}>{children}</SessionBoundary>
+        </Suspense>
+        <ReactQueryDevtoolsPortal />
+      </AuthProvider>
+    </PostHogProvider>
   );
 }
 
