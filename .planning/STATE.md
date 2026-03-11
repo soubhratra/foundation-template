@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Observability & DevEx Hardening
 status: planning
-stopped_at: Completed 16-02-PLAN.md
-last_updated: "2026-03-11T21:00:57.399Z"
+stopped_at: Completed 16-03-PLAN.md
+last_updated: "2026-03-11T21:06:29.751Z"
 last_activity: 2026-03-11 — v1.2 roadmap created (phases 13–18)
 progress:
   total_phases: 6
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 13
-  completed_plans: 12
+  completed_plans: 13
   percent: 0
 ---
 
@@ -59,6 +59,7 @@ _Updated after each plan completion_
 | Phase 15-health-probes-celery-infrastructure P03 | 4 | 2 tasks | 4 files |
 | Phase 16-security-hardening P01 | 2 | 1 tasks | 1 files |
 | Phase 16-security-hardening P02 | 5 | 2 tasks | 7 files |
+| Phase 16-security-hardening P03 | 9 | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -94,6 +95,9 @@ _Updated after each plan completion_
 - [Phase 16-02]: AuthRateLimitMiddleware returns response directly (not raise Ratelimited()) — Django default Ratelimited handler returns 403 HTML, not 429 JSON
 - [Phase 16-02]: RATELIMIT_FAIL_OPEN=True — auth availability prioritised over strict enforcement during Redis outages
 - [Phase 16-02]: test_isolation_settings autouse fixture: LocMemCache + RATELIMIT_ENABLE=False for all tests; rate limit tests use override_settings per-test
+- [Phase 16-03]: django-csp 4.0 CONTENT*SECURITY_POLICY dict API (not old CSP*\* flat settings); NONCE sentinels for per-request nonce injection in script-src, style-src
+- [Phase 16-03]: HSTS in production.py only (not base.py) — local HTTP development would break; test requires secure=True + ALLOWED_HOSTS=['testserver'] to simulate HTTPS
+- [Phase 16-03]: Next.js CSP uses unsafe-inline (static headers() function) — App Router hydration requires it; Django CSP uses nonces (different origin, no conflict)
 
 ### Pending Todos
 
@@ -106,6 +110,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-11T21:00:57.395Z
-Stopped at: Completed 16-02-PLAN.md
+Last session: 2026-03-11T21:06:29.748Z
+Stopped at: Completed 16-03-PLAN.md
 Resume file: None

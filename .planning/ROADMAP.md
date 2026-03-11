@@ -43,7 +43,7 @@ Full archive: `.planning/milestones/v1.1-ROADMAP.md`
 - [x] **Phase 13: Structured Logging + Distributed Tracing** — structlog JSON logs with request context auto-injected; OpenTelemetry auto-instrumentation across Django + Celery + PostgreSQL; Jaeger in Docker Compose (completed 2026-03-11)
 - [x] **Phase 14: ObservabilityAdapter** — `ObservabilityAdapter` ABC with `PostHogAdapter` default covering Django + Celery + Next.js + Expo; `--without observability` removes it cleanly (completed 2026-03-11)
 - [x] **Phase 15: Health Probes + Celery Infrastructure** — `/api/health/live|ready|startup` probes; Celery Beat scaffold with example periodic task; Flower dev monitoring in Docker Compose (completed 2026-03-11)
-- [ ] **Phase 16: Security Hardening** — Redis cache + session backend via `django-redis`; auth endpoint rate limiting via `django-ratelimit`; security headers via `django-csp` + HSTS + Next.js `headers()`
+- [x] **Phase 16: Security Hardening** — Redis cache + session backend via `django-redis`; auth endpoint rate limiting via `django-ratelimit`; security headers via `django-csp` + HSTS + Next.js `headers()` (completed 2026-03-11)
 - [ ] **Phase 17: Dev-Time Security Gates** — `detect-secrets` + `bandit` in pre-commit + CI; `pip-audit` + `pnpm audit` as CI merge gate; `django-debug-toolbar` for local query analysis
 - [ ] **Phase 18: Dev-Time Quality Gates** — `nplusone` N+1 detection as pytest fixture; `schemathesis` API contract fuzzing as CI job; `commitlint` conventional commits hook; ruff McCabe complexity gate (max=10)
 
@@ -125,7 +125,7 @@ Plans:
 4. Every HTTP response from Next.js includes matching `Content-Security-Policy` and `X-Frame-Options` headers via the `headers()` config
 5. Django cache operations (`cache.get`, `cache.set`) and session reads/writes hit Redis — `LocMemCache` is not used in development or production environments
 
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 
 Plans:
 
@@ -180,6 +180,6 @@ Plans:
 | 13. Structured Logging + Tracing | v1.2      | 3/3            | Complete    | 2026-03-11 |
 | 14. ObservabilityAdapter         | v1.2      | 4/4            | Complete    | 2026-03-11 |
 | 15. Health Probes + Celery Infra | v1.2      | 3/3            | Complete    | 2026-03-11 |
-| 16. Security Hardening           | 2/3       | In Progress    |             | -          |
+| 16. Security Hardening           | 3/3       | Complete       | 2026-03-11  | -          |
 | 17. Dev-Time Security Gates      | v1.2      | 0/TBD          | Not started | -          |
 | 18. Dev-Time Quality Gates       | v1.2      | 0/TBD          | Not started | -          |
