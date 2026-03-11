@@ -49,7 +49,7 @@ A new SaaS product goes from zero to running full-stack app (web + mobile + API 
 
 - [ ] Structured JSON logging via `structlog` with `request_id`, `user_id`, `duration_ms` on every request
 - [ ] Distributed tracing via OpenTelemetry auto-instrumentation (Django + Celery + DB), OTLP exporter, Jaeger in Docker Compose
-- [ ] Error tracking via Sentry SDK (Django + Celery + Next.js + Expo), `--without sentry` removes it
+- [ ] Error tracking + product analytics via `ObservabilityAdapter` ABC with `PostHogAdapter` default (Django + Celery + Next.js + Expo) — `--without observability` removes it
 - [ ] Enhanced health probes: `/api/health/live`, `/api/health/ready`, `/api/health/startup`
 - [ ] Rate limiting on auth endpoints via `django-ratelimit`, Redis-backed
 - [ ] Security headers via `django-csp`, HSTS, X-Frame-Options (Django middleware + Next.js `headers()`)
@@ -100,23 +100,25 @@ A new SaaS product goes from zero to running full-stack app (web + mobile + API 
 
 ## Key Decisions
 
-| Decision                           | Rationale                                                                     | Outcome                                                                                    |
-| ---------------------------------- | ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| Django Allauth for auth            | Native Django, full control, no external auth service dependency              | ✓ Good — headless mode + dual auth (session+JWT) works cleanly                             |
-| AI as optional module              | Not every SaaS needs AI; pluggable avoids bloat                               | ✓ Good — CLI scaffolder removes AI module cleanly via feature flag                         |
-| Billing module in template (v1.1)  | Products need billing fast; adapter pattern keeps it swappable, not coupled   | ✓ Good — PaymentAdapter ABC + StripeAdapter; swappable with one Django setting             |
-| No multi-tenancy in template       | Tenancy model depends on product; template shouldn't constrain                | ✓ Good — confirmed valid                                                                   |
-| CLI scaffolder for new projects    | Better than GitHub template — can customize features, names, configs          | ✓ Good — `create-foundation-app` with validation + rollback shipped                        |
-| Auto-generated TS from OpenAPI     | Single source of truth for API types; Django Ninja generates OpenAPI natively | ✓ Good — but Allauth headless endpoints missing from spec; manual fetch workaround applied |
-| Docker-first deployment            | Maximum flexibility across cloud providers; no vendor lock-in                 | ✓ Good — multi-stage Dockerfiles ship in Phase 7                                           |
-| React Native Web for shared UI     | Share component primitives across web and mobile in monorepo                  | ✓ Good — packages/ui ships shared primitives consumed by both apps                         |
-| Tailwind CSS 3.4 (not 4)           | Tailwind 4 preview crashes Next.js PostCSS pipeline                           | ⚠️ Revisit — upgrade to Tailwind 4 when stable release ships                               |
-| HS256 JWT (not RSA)                | Avoids RSA key provisioning complexity in template scaffolding                | ✓ Good — appropriate for template; each product can upgrade                                |
-| PaymentAdapter ABC (not dj-stripe) | dj-stripe adds ~40 migrations coupling to User model, forces provider lock-in | ✓ Good — domain-centric adapter with StripeAdapter as default; swappable in one setting    |
-| Plain Django view for webhook      | Raw body bytes required for Stripe HMAC; Ninja may buffer/parse body          | ✓ Good — reliable HMAC verification, HTTP 200 + Celery dispatch pattern works cleanly      |
-| PlanProviderMapping table          | No `stripe_price_id` on models; internal plan IDs stay provider-agnostic      | ✓ Good — price IDs seeded via migration 0002 for dev/test; no hardcoding in service code   |
-| Async PDF via Celery + WeasyPrint  | Never block HTTP request cycle; WeasyPrint has fontconfig deadlock on fork    | ✓ Good — lazy import inside task body prevents deadlock; 512KB MAX_PDF_BYTES guard added   |
-| Billing in template (v1.1)         | High-leverage addition; every SaaS product needs billing infrastructure       | ✓ Good — 36 requirements delivered, 40/40 verification truths passed, human-verified       |
+| Decision                           | Rationale                                                                                                                                                                 | Outcome                                                                                    |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| Django Allauth for auth            | Native Django, full control, no external auth service dependency                                                                                                          | ✓ Good — headless mode + dual auth (session+JWT) works cleanly                             |
+| AI as optional module              | Not every SaaS needs AI; pluggable avoids bloat                                                                                                                           | ✓ Good — CLI scaffolder removes AI module cleanly via feature flag                         |
+| Billing module in template (v1.1)  | Products need billing fast; adapter pattern keeps it swappable, not coupled                                                                                               | ✓ Good — PaymentAdapter ABC + StripeAdapter; swappable with one Django setting             |
+| No multi-tenancy in template       | Tenancy model depends on product; template shouldn't constrain                                                                                                            | ✓ Good — confirmed valid                                                                   |
+| CLI scaffolder for new projects    | Better than GitHub template — can customize features, names, configs                                                                                                      | ✓ Good — `create-foundation-app` with validation + rollback shipped                        |
+| Auto-generated TS from OpenAPI     | Single source of truth for API types; Django Ninja generates OpenAPI natively                                                                                             | ✓ Good — but Allauth headless endpoints missing from spec; manual fetch workaround applied |
+| Docker-first deployment            | Maximum flexibility across cloud providers; no vendor lock-in                                                                                                             | ✓ Good — multi-stage Dockerfiles ship in Phase 7                                           |
+| React Native Web for shared UI     | Share component primitives across web and mobile in monorepo                                                                                                              | ✓ Good — packages/ui ships shared primitives consumed by both apps                         |
+| Tailwind CSS 3.4 (not 4)           | Tailwind 4 preview crashes Next.js PostCSS pipeline                                                                                                                       | ⚠️ Revisit — upgrade to Tailwind 4 when stable release ships                               |
+| HS256 JWT (not RSA)                | Avoids RSA key provisioning complexity in template scaffolding                                                                                                            | ✓ Good — appropriate for template; each product can upgrade                                |
+| PaymentAdapter ABC (not dj-stripe) | dj-stripe adds ~40 migrations coupling to User model, forces provider lock-in                                                                                             | ✓ Good — domain-centric adapter with StripeAdapter as default; swappable in one setting    |
+| Plain Django view for webhook      | Raw body bytes required for Stripe HMAC; Ninja may buffer/parse body                                                                                                      | ✓ Good — reliable HMAC verification, HTTP 200 + Celery dispatch pattern works cleanly      |
+| PlanProviderMapping table          | No `stripe_price_id` on models; internal plan IDs stay provider-agnostic                                                                                                  | ✓ Good — price IDs seeded via migration 0002 for dev/test; no hardcoding in service code   |
+| Async PDF via Celery + WeasyPrint  | Never block HTTP request cycle; WeasyPrint has fontconfig deadlock on fork                                                                                                | ✓ Good — lazy import inside task body prevents deadlock; 512KB MAX_PDF_BYTES guard added   |
+| Billing in template (v1.1)         | High-leverage addition; every SaaS product needs billing infrastructure                                                                                                   | ✓ Good — 36 requirements delivered, 40/40 verification truths passed, human-verified       |
+| PostHog over Sentry (v1.2)         | Single SDK covers errors + analytics + feature flags + session replay; generous free tier; self-hostable; adapter pattern lets projects swap to Sentry if they outgrow it | — Pending                                                                                  |
+| ObservabilityAdapter ABC (v1.2)    | Same pattern as PaymentAdapter — PostHogAdapter default, NoOpAdapter for tests; swappable via one Django setting; avoids SDK lock-in across web/mobile/backend            | — Pending                                                                                  |
 
 ## Current Milestone: v1.2 — Observability & DevEx Hardening
 
@@ -124,7 +126,7 @@ A new SaaS product goes from zero to running full-stack app (web + mobile + API 
 
 **Target features:**
 
-- Structured logging (structlog), distributed tracing (OpenTelemetry + Jaeger), error tracking (Sentry optional)
+- Structured logging (structlog), distributed tracing (OpenTelemetry + Jaeger), error tracking + analytics (PostHog via ObservabilityAdapter, optional)
 - Security hardening: rate limiting, security headers, Redis cache/session
 - Celery Beat scaffold + Flower dev monitoring
 - Dev-time gates: detect-secrets, bandit, pip-audit, nplusone, schemathesis, commitlint, complexity linting
