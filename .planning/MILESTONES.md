@@ -1,5 +1,24 @@
 # Milestones
 
+## v1.1 Billing & Payments Module (Shipped: 2026-03-11)
+
+**Phases completed:** 4 phases, 17 plans | **Phases:** 9–12
+**Files:** ~60 files modified/created | **Timeline:** 2026-03-07 → 2026-03-11 (4 days) | **Commits:** ~87
+**Verifications:** Phase 9 (9/9) + Phase 10 (13/13) + Phase 11 (8/8) + Phase 12 (10/10) = 40/40 truths
+
+**Key accomplishments:**
+
+1. Provider-agnostic `PaymentAdapter` ABC with `StripeClient` v14 `StripeAdapter` — billing backend swappable with one `BILLING_ADAPTER` Django setting change
+2. Full subscription lifecycle: Stripe Checkout for new subscriptions, upgrade/downgrade with proration preview, cancel at period end, reactivate — all via `BillingService` testable with `StubAdapter`
+3. Async webhook infrastructure: plain Django view with HMAC verification returns HTTP 200 immediately, Celery dispatch, idempotent `ProcessedWebhookEvent` guard, 6 Tier-1 Stripe event handlers
+4. Complete billing frontend: Next.js `/billing` page with current plan, payment history, upgrade/downgrade modals, cancel flow, past-due banner in dashboard
+5. Async invoice PDF generation: WeasyPrint + Jinja2 A4 template, `generate_invoice_pdf` Celery task, polling endpoint — PDF generation never blocks HTTP request cycle
+6. CLI scaffolder integration: billing included by default in `create-foundation-app`, `--without billing` flag removes all billing files cleanly; SCAFF-04 pytest verifies `manage.py check` passes post-removal
+
+**Archive:** `.planning/milestones/v1.1-ROADMAP.md` | `.planning/milestones/v1.1-REQUIREMENTS.md`
+
+---
+
 ## v1.0 Foundation Template (Shipped: 2026-03-07)
 
 **Phases completed:** 8 phases, 36 plans

@@ -32,16 +32,20 @@ A new SaaS product goes from zero to running full-stack app (web + mobile + API 
 - ✓ Docker-first deployment: Docker Compose for local, Dockerfiles ready for any cloud provider — v1.0
 - ✓ User management: basic user model, profile, account settings pages — v1.0
 
-### Active (v1.1)
+### Validated (v1.1)
 
-- [ ] Billing & Payments optional module — adapter pattern, Stripe default, swappable per project
-- [ ] Subscription lifecycle: create, upgrade, downgrade, cancel
-- [ ] One-time charge support
-- [ ] Usage-based (metered) billing support
-- [ ] Webhook receiver + event processors (payment failed, renewal, invoice events)
-- [ ] Server-side PDF invoice generation
-- [ ] Minimal frontend: plan display, payment history, upgrade/downgrade, cancel flow
-- [ ] CLI scaffolder integration — included by default, removable
+- ✓ Billing & Payments optional module — adapter pattern, Stripe default, swappable per project — v1.1
+- ✓ Subscription lifecycle: create via Stripe Checkout, upgrade/downgrade with proration preview, cancel at period end, reactivate — v1.1
+- ✓ One-time charge support via Stripe Checkout in `payment` mode — v1.1
+- ✓ Usage-based (metered) billing support via Stripe Meter Events v2 API — v1.1
+- ✓ Webhook receiver + event processors: HMAC verification, async Celery dispatch, 6 Tier-1 Stripe events, idempotent processing — v1.1
+- ✓ Server-side PDF invoice generation via WeasyPrint + Jinja2, async Celery task, never blocks HTTP — v1.1
+- ✓ Billing frontend: `/billing` page with plan display, payment history, upgrade/downgrade modals, cancel flow, past-due banner — v1.1
+- ✓ CLI scaffolder integration — billing included by default, `--without billing` removes module cleanly, `manage.py check` verified — v1.1
+
+### Active (v2.0)
+
+_(No requirements defined yet — run `/gsd:new-milestone` to define next milestone)_
 
 ### Out of Scope
 
@@ -78,39 +82,33 @@ A new SaaS product goes from zero to running full-stack app (web + mobile + API 
 
 ## Key Decisions
 
-| Decision                        | Rationale                                                                     | Outcome                                                                                    |
-| ------------------------------- | ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| Django Allauth for auth         | Native Django, full control, no external auth service dependency              | ✓ Good — headless mode + dual auth (session+JWT) works cleanly                             |
-| AI as optional module           | Not every SaaS needs AI; pluggable avoids bloat                               | ✓ Good — CLI scaffolder removes AI module cleanly via feature flag                         |
-| No billing in template          | Too product-specific; each SaaS has different pricing models                  | ✓ Good — confirmed valid; each product adds its own                                        |
-| No multi-tenancy in template    | Tenancy model depends on product; template shouldn't constrain                | ✓ Good — confirmed valid                                                                   |
-| CLI scaffolder for new projects | Better than GitHub template — can customize features, names, configs          | ✓ Good — `create-foundation-app` with validation + rollback shipped                        |
-| Auto-generated TS from OpenAPI  | Single source of truth for API types; Django Ninja generates OpenAPI natively | ✓ Good — but Allauth headless endpoints missing from spec; manual fetch workaround applied |
-| Docker-first deployment         | Maximum flexibility across cloud providers; no vendor lock-in                 | ✓ Good — multi-stage Dockerfiles ship in Phase 7                                           |
-| React Native Web for shared UI  | Share component primitives across web and mobile in monorepo                  | ✓ Good — packages/ui ships shared primitives consumed by both apps                         |
-| Tailwind CSS 3.4 (not 4)        | Tailwind 4 preview crashes Next.js PostCSS pipeline                           | ⚠️ Revisit — upgrade to Tailwind 4 when stable release ships                               |
-| HS256 JWT (not RSA)             | Avoids RSA key provisioning complexity in template scaffolding                | ✓ Good — appropriate for template; each product can upgrade                                |
+| Decision                           | Rationale                                                                     | Outcome                                                                                    |
+| ---------------------------------- | ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| Django Allauth for auth            | Native Django, full control, no external auth service dependency              | ✓ Good — headless mode + dual auth (session+JWT) works cleanly                             |
+| AI as optional module              | Not every SaaS needs AI; pluggable avoids bloat                               | ✓ Good — CLI scaffolder removes AI module cleanly via feature flag                         |
+| Billing module in template (v1.1)  | Products need billing fast; adapter pattern keeps it swappable, not coupled   | ✓ Good — PaymentAdapter ABC + StripeAdapter; swappable with one Django setting             |
+| No multi-tenancy in template       | Tenancy model depends on product; template shouldn't constrain                | ✓ Good — confirmed valid                                                                   |
+| CLI scaffolder for new projects    | Better than GitHub template — can customize features, names, configs          | ✓ Good — `create-foundation-app` with validation + rollback shipped                        |
+| Auto-generated TS from OpenAPI     | Single source of truth for API types; Django Ninja generates OpenAPI natively | ✓ Good — but Allauth headless endpoints missing from spec; manual fetch workaround applied |
+| Docker-first deployment            | Maximum flexibility across cloud providers; no vendor lock-in                 | ✓ Good — multi-stage Dockerfiles ship in Phase 7                                           |
+| React Native Web for shared UI     | Share component primitives across web and mobile in monorepo                  | ✓ Good — packages/ui ships shared primitives consumed by both apps                         |
+| Tailwind CSS 3.4 (not 4)           | Tailwind 4 preview crashes Next.js PostCSS pipeline                           | ⚠️ Revisit — upgrade to Tailwind 4 when stable release ships                               |
+| HS256 JWT (not RSA)                | Avoids RSA key provisioning complexity in template scaffolding                | ✓ Good — appropriate for template; each product can upgrade                                |
+| PaymentAdapter ABC (not dj-stripe) | dj-stripe adds ~40 migrations coupling to User model, forces provider lock-in | ✓ Good — domain-centric adapter with StripeAdapter as default; swappable in one setting    |
+| Plain Django view for webhook      | Raw body bytes required for Stripe HMAC; Ninja may buffer/parse body          | ✓ Good — reliable HMAC verification, HTTP 200 + Celery dispatch pattern works cleanly      |
+| PlanProviderMapping table          | No `stripe_price_id` on models; internal plan IDs stay provider-agnostic      | ✓ Good — price IDs seeded via migration 0002 for dev/test; no hardcoding in service code   |
+| Async PDF via Celery + WeasyPrint  | Never block HTTP request cycle; WeasyPrint has fontconfig deadlock on fork    | ✓ Good — lazy import inside task body prevents deadlock; 512KB MAX_PDF_BYTES guard added   |
+| Billing in template (v1.1)         | High-leverage addition; every SaaS product needs billing infrastructure       | ✓ Good — 36 requirements delivered, 40/40 verification truths passed, human-verified       |
 
-## Current Milestone: v1.1 Billing & Payments Module
+## Current State (v1.1)
 
-**Goal:** Add an optional, adapter-based billing and payments module that ships with every new project by default but can be excluded via the CLI scaffolder.
-
-**Target features:**
-
-- PaymentAdapter ABC with Stripe as default implementation
-- Subscription, one-time, and usage-based payment support
-- Webhook processing, server-side PDF invoices
-- Minimal billing frontend (plan display, history, upgrade/downgrade, cancel)
-- CLI scaffolder opt-out (removes module cleanly)
-
-## Current State (v1.0)
-
-- **Version shipped:** v1.0 (2026-03-07)
-- **Codebase:** ~162k LOC Python, ~27k LOC TypeScript across 504 files
-- **Stack:** Django Ninja Extra + Next.js 15 + Expo SDK 53 + Turborepo + pnpm
-- **CLI:** `create-foundation-app` — interactive scaffolder with feature removal, validation, rollback
+- **Version shipped:** v1.1 (2026-03-11)
+- **Codebase:** ~552k LOC total (Python + TypeScript) across the monorepo
+- **Stack:** Django Ninja Extra + Next.js 15 + Expo SDK 53 + Turborepo + pnpm + Stripe SDK v14 + Celery + WeasyPrint
+- **CLI:** `create-foundation-app` — interactive scaffolder with feature removal (billing, AI, mobile), validation, rollback
+- **Billing module:** `apps/api/apps/billing/` — adapter-based, Stripe default, removable via `--without billing`
 - **Next milestone:** Undefined — run `/gsd:new-milestone` to define
 
 ---
 
-_Last updated: 2026-03-07 — Milestone v1.1 started_
+_Last updated: 2026-03-11 after v1.1 milestone_

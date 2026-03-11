@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Billing & Payments Module
 current_phase: 12-invoice-pdf-cli-scaffolder-integration
-current_plan: 12-03 (complete)
-status: milestone-complete
-last_updated: "2026-03-11T00:00:00Z"
+current_plan: 12-03 (checkpoint — awaiting human-verify Task 2)
+status: completed
+last_updated: "2026-03-11T12:37:16.022Z"
 progress:
   total_phases: 4
   completed_phases: 4
@@ -17,14 +17,17 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md
+See: .planning/PROJECT.md (updated 2026-03-11)
+
+**Core value:** A new SaaS product goes from zero to running full-stack app (web + mobile + API + auth) in under 5 minutes with one command.
+**Current focus:** Planning next milestone — run `/gsd:new-milestone`
 
 ## Position
 
 **Milestone:** v1.1 Billing & Payments Module
 **Current phase:** 12-invoice-pdf-cli-scaffolder-integration
 **Current plan:** 12-03 (checkpoint — awaiting human-verify Task 2)
-**Status:** Complete — milestone v1.1 Billing & Payments Module fully shipped
+**Status:** v1.1 milestone complete
 
 ## Session Log
 
