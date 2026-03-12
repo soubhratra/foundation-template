@@ -52,9 +52,59 @@ Living document — updated after each milestone.
 
 ---
 
+## Milestone: v1.2 — Observability & DevEx Hardening
+
+**Shipped:** 2026-03-12
+**Phases:** 6 (13–18) | **Plans:** 19 | **Verifications:** 66/66 truths | **Timeline:** 1 day
+
+### What Was Built
+
+- structlog JSON logging pipeline — `request_id`, `user_id`, `duration_ms` auto-injected on every Django request; OTel auto-instrumentation across Django + Celery + PostgreSQL + Redis; Jaeger in Docker Compose
+- `ObservabilityAdapter` ABC (PostHogAdapter default, NoOpAdapter for CI/test) across Django (middleware + Celery signal), Next.js, and Expo — swappable via one Django setting; `--without observability` removes all 7 touch points cleanly
+- `/api/health/live|ready|startup` plain Django health probes; Celery Beat with `DatabaseScheduler` + example periodic task; Flower dev-only in Docker Compose
+- Redis-backed rate limiting + CSP/HSTS/X-Frame-Options security headers on both Django and Next.js
+- Secret scanning + Python SAST + dependency auditing as pre-commit + CI gates
+- `nplusone` N+1 autouse pytest fixture; `schemathesis` API contract fuzzing CI job; `commitlint` hook; ruff McCabe complexity gate
+
+### What Worked
+
+- **Adapter pattern consistency**: The `ObservabilityAdapter` ABC follows the same `PaymentAdapter` pattern established in v1.1 — the pattern is now proven and generalizable to any optional module
+- **Post-audit quick fixes**: The milestone audit caught 2 HIGH-priority integration breaks (stale test URL, Docker Compose Redis env vars) that individual phase verifications missed — the cross-phase audit step is essential and proved its value
+- **TDD throughout**: All 6 phases used Wave 0 RED stubs (pytest.fail() with reason strings) giving clear done criteria per plan; 66/66 truths across all verifications
+- **Plain Django for health probes**: Resisting the urge to use Ninja for health probes (same reasoning as webhook in v1.1) — probes work even if Ninja app is misconfigured
+
+### What Was Inefficient
+
+- **nplusone plugin absence**: nplusone 1.0.0 dropped its pytest plugin — discovered mid-implementation, requiring a custom `sys.modules` shim and blinker signal teardown; this would have been caught by upfront research
+- **Post-audit gap closure**: The 2 HIGH-priority gaps (BREAK-1, BREAK-2) should have been caught during phase execution; they slipped through because phase verifications test in isolation, not in the composed runtime environment
+- **SUMMARY frontmatter gaps**: 3 phases (13, 14-04, 18-03) had empty `requirements-completed` frontmatter — minor doc debt that required manual note in the audit; enforce this as a post-phase checklist item
+
+### Patterns Established
+
+- **Lazy OTel exporter import**: Lazy import of `OTLPSpanExporter` inside `configure_otel()` avoids ~100ms import overhead in CI/dev without Jaeger — apply to all optional infra deps
+- **NoOpAdapter default**: Optional adapters (Observability, Payment) default to NoOp — never fail when optional config is absent; CI and local dev without API keys produce zero errors
+- **OBSERVABILITY_MODULE comment delimiters**: Same `# OBSERVABILITY MODULE` / `# END OBSERVABILITY MODULE` marker pattern as `# BILLING MODULE` blocks — enables reliable regex removal in CLI scaffolder
+- **DatabaseScheduler for Celery Beat**: Prefer `DatabaseScheduler` over `PersistentScheduler` — allows runtime schedule edits via Django admin without container restarts
+- **pytest.fail() for RED stubs**: Using `pytest.fail("RED: [reason]")` over `assert False` in stub tests — produces cleaner FAILED output that identifies which plan implements each behavior
+
+### Key Lessons
+
+- **Cross-phase integration testing is non-negotiable**: Individual phase verifications test components in isolation; the audit step tests the composed system — never skip it before milestone completion
+- **nplusone LazyListener only**: Activate `LazyListener` (not `EagerListener`) to avoid false positives on correct eager loads (`select_related` in billing tests); explicitly disconnect blinker signal in `__exit__` or handlers fire in subsequent tests
+- **Health probes before Ninja path**: Mount health probe URL patterns before `path("api/", ninja_api.urls)` in `urls.py` — Ninja wildcard will shadow them if registered after
+- **Cap schemathesis examples for CI cost**: `--hypothesis-max-examples 30` is sufficient for CI; full 100-example runs cost 3× more with marginal additional coverage for contract testing
+
+### Cost Observations
+
+- Sessions: ~20 subagent execution sessions across 6 phases
+- Notable: All 6 phases completed in a single day — high velocity enabled by clear TDD stubs and stable adapter pattern from v1.1; post-audit gap closure added 1 quick task session
+
+---
+
 ## Cross-Milestone Trends
 
-| Milestone | Phases | Plans | Verifications | Days | Scope Accuracy          |
-| --------- | ------ | ----- | ------------- | ---- | ----------------------- |
-| v1.0      | 8      | 36    | n/a           | 13   | Good                    |
-| v1.1      | 4      | 17    | 40/40         | 4    | Phase 11 grew 5→8 plans |
+| Milestone | Phases | Plans | Verifications | Days | Scope Accuracy                        |
+| --------- | ------ | ----- | ------------- | ---- | ------------------------------------- |
+| v1.0      | 8      | 36    | n/a           | 13   | Good                                  |
+| v1.1      | 4      | 17    | 40/40         | 4    | Phase 11 grew 5→8 plans               |
+| v1.2      | 6      | 19    | 66/66         | 1    | Clean scope; 2 post-audit quick fixes |

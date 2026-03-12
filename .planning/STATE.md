@@ -2,35 +2,35 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Observability & DevEx Hardening
-status: planning
-stopped_at: Completed 18-dev-time-quality-gates/18-02-PLAN.md
-last_updated: "2026-03-11T23:44:29.505Z"
-last_activity: 2026-03-11 — v1.2 roadmap created (phases 13–18)
+status: complete
+stopped_at: Milestone v1.2 archived 2026-03-12
+last_updated: "2026-03-12T00:00:00.000Z"
+last_activity: "2026-03-12 — Milestone v1.2 complete and archived"
 progress:
   total_phases: 6
   completed_phases: 6
   total_plans: 19
   completed_plans: 19
-  percent: 0
+  percent: 100
 ---
 
 # Session State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-03-11)
+See: .planning/PROJECT.md (updated 2026-03-12)
 
 **Core value:** A new SaaS product goes from zero to running full-stack app (web + mobile + API + auth) in under 5 minutes with one command.
-**Current focus:** v1.2 — Observability & DevEx Hardening (Phase 13 of 18)
+**Current focus:** Planning next milestone — run `/gsd:new-milestone` to define v1.3
 
 ## Current Position
 
-Phase: 13 of 18 (Structured Logging + Distributed Tracing)
-Plan: — of — in current phase
-Status: Ready to plan
-Last activity: 2026-03-12 — Completed quick task 1: fix stale test URL in test_middleware.py and add Redis env vars to Docker Compose
+Phase: All 18 complete (v1.0 + v1.1 + v1.2)
+Plan: — milestone complete —
+Status: Milestone v1.2 archived — ready for next milestone planning
+Last activity: 2026-03-12 — Milestone v1.2 archived
 
-Progress: [░░░░░░░░░░] 0% (v1.2) | Phases 1–12 complete (v1.0 + v1.1)
+Progress: [██████████] 100% (v1.2 COMPLETE) | Phases 1–18 complete (v1.0 + v1.1 + v1.2)
 
 ## Performance Metrics
 

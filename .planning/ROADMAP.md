@@ -4,7 +4,7 @@
 
 - ✅ **v1.0 Foundation Template** — Phases 1–8 (shipped 2026-03-07)
 - ✅ **v1.1 Billing & Payments Module** — Phases 9–12 (shipped 2026-03-11)
-- 🚧 **v1.2 Observability & DevEx Hardening** — Phases 13–18 (in progress)
+- ✅ **v1.2 Observability & DevEx Hardening** — Phases 13–18 (shipped 2026-03-12)
 
 ## Phases
 
@@ -36,18 +36,23 @@ Full archive: `.planning/milestones/v1.1-ROADMAP.md`
 
 </details>
 
-### 🚧 v1.2 Observability & DevEx Hardening (In Progress)
+<details>
+<summary>✅ v1.2 Observability & DevEx Hardening (Phases 13–18) — SHIPPED 2026-03-12</summary>
 
-**Milestone Goal:** Every scaffolded product ships with full runtime visibility and dev-time security gates from day one, with zero extra configuration.
+- [x] Phase 13: Structured Logging + Distributed Tracing (3/3 plans) — completed 2026-03-11
+- [x] Phase 14: ObservabilityAdapter (4/4 plans) — completed 2026-03-11
+- [x] Phase 15: Health Probes + Celery Infrastructure (3/3 plans) — completed 2026-03-11
+- [x] Phase 16: Security Hardening (3/3 plans) — completed 2026-03-11
+- [x] Phase 17: Dev-Time Security Gates (3/3 plans) — completed 2026-03-11
+- [x] Phase 18: Dev-Time Quality Gates (3/3 plans) — completed 2026-03-11
 
-- [x] **Phase 13: Structured Logging + Distributed Tracing** — structlog JSON logs with request context auto-injected; OpenTelemetry auto-instrumentation across Django + Celery + PostgreSQL; Jaeger in Docker Compose (completed 2026-03-11)
-- [x] **Phase 14: ObservabilityAdapter** — `ObservabilityAdapter` ABC with `PostHogAdapter` default covering Django + Celery + Next.js + Expo; `--without observability` removes it cleanly (completed 2026-03-11)
-- [x] **Phase 15: Health Probes + Celery Infrastructure** — `/api/health/live|ready|startup` probes; Celery Beat scaffold with example periodic task; Flower dev monitoring in Docker Compose (completed 2026-03-11)
-- [x] **Phase 16: Security Hardening** — Redis cache + session backend via `django-redis`; auth endpoint rate limiting via `django-ratelimit`; security headers via `django-csp` + HSTS + Next.js `headers()` (completed 2026-03-11)
-- [x] **Phase 17: Dev-Time Security Gates** — `detect-secrets` + `bandit` in pre-commit + CI; `pip-audit` + `pnpm audit` as CI merge gate; `django-debug-toolbar` for local query analysis (completed 2026-03-11)
-- [x] **Phase 18: Dev-Time Quality Gates** — `nplusone` N+1 detection as pytest fixture; `schemathesis` API contract fuzzing as CI job; `commitlint` conventional commits hook; ruff McCabe complexity gate (max=10) (completed 2026-03-11)
+Full archive: `.planning/milestones/v1.2-ROADMAP.md`
+
+</details>
 
 ## Phase Details
+
+> Phase details for v1.2 (Phases 13–18) archived to `.planning/milestones/v1.2-ROADMAP.md`
 
 ### Phase 13: Structured Logging + Distributed Tracing
 
@@ -175,23 +180,23 @@ Plans:
 
 ## Progress
 
-| Phase                            | Milestone | Plans Complete | Status     | Completed  |
-| -------------------------------- | --------- | -------------- | ---------- | ---------- |
-| 1. Monorepo Foundation           | v1.0      | 4/4            | Complete   | 2026-02-17 |
-| 2. API Core + Auth Backend       | v1.0      | 5/5            | Complete   | 2026-02-17 |
-| 3. Shared Packages + Types       | v1.0      | 6/6            | Complete   | 2026-02-17 |
-| 4. Web Application               | v1.0      | 5/5            | Complete   | 2026-02-17 |
-| 5. Mobile Application            | v1.0      | 4/4            | Complete   | 2026-02-17 |
-| 6. AI Module                     | v1.0      | 5/5            | Complete   | 2026-02-17 |
-| 7. DevEx + CI/CD                 | v1.0      | 4/4            | Complete   | 2026-02-17 |
-| 8. CLI Scaffolder                | v1.0      | 3/3            | Complete   | 2026-02-17 |
-| 9. Billing Scaffold              | v1.1      | 3/3            | Complete   | 2026-03-07 |
-| 10. Webhook Infra + Service      | v1.1      | 3/3            | Complete   | 2026-03-08 |
-| 11. API Endpoints + Frontend     | v1.1      | 8/8            | Complete   | 2026-03-10 |
-| 12. Invoice PDF + CLI            | v1.1      | 3/3            | Complete   | 2026-03-11 |
-| 13. Structured Logging + Tracing | v1.2      | 3/3            | Complete   | 2026-03-11 |
-| 14. ObservabilityAdapter         | v1.2      | 4/4            | Complete   | 2026-03-11 |
-| 15. Health Probes + Celery Infra | v1.2      | 3/3            | Complete   | 2026-03-11 |
-| 16. Security Hardening           | 3/3       | Complete       | 2026-03-11 | -          |
-| 17. Dev-Time Security Gates      | 3/3       | Complete       | 2026-03-11 | -          |
-| 18. Dev-Time Quality Gates       | 3/3       | Complete       | 2026-03-11 | -          |
+| Phase                            | Milestone | Plans Complete | Status   | Completed  |
+| -------------------------------- | --------- | -------------- | -------- | ---------- |
+| 1. Monorepo Foundation           | v1.0      | 4/4            | Complete | 2026-02-17 |
+| 2. API Core + Auth Backend       | v1.0      | 5/5            | Complete | 2026-02-17 |
+| 3. Shared Packages + Types       | v1.0      | 6/6            | Complete | 2026-02-17 |
+| 4. Web Application               | v1.0      | 5/5            | Complete | 2026-02-17 |
+| 5. Mobile Application            | v1.0      | 4/4            | Complete | 2026-02-17 |
+| 6. AI Module                     | v1.0      | 5/5            | Complete | 2026-02-17 |
+| 7. DevEx + CI/CD                 | v1.0      | 4/4            | Complete | 2026-02-17 |
+| 8. CLI Scaffolder                | v1.0      | 3/3            | Complete | 2026-02-17 |
+| 9. Billing Scaffold              | v1.1      | 3/3            | Complete | 2026-03-07 |
+| 10. Webhook Infra + Service      | v1.1      | 3/3            | Complete | 2026-03-08 |
+| 11. API Endpoints + Frontend     | v1.1      | 8/8            | Complete | 2026-03-10 |
+| 12. Invoice PDF + CLI            | v1.1      | 3/3            | Complete | 2026-03-11 |
+| 13. Structured Logging + Tracing | v1.2      | 3/3            | Complete | 2026-03-11 |
+| 14. ObservabilityAdapter         | v1.2      | 4/4            | Complete | 2026-03-11 |
+| 15. Health Probes + Celery Infra | v1.2      | 3/3            | Complete | 2026-03-11 |
+| 16. Security Hardening           | v1.2      | 3/3            | Complete | 2026-03-11 |
+| 17. Dev-Time Security Gates      | v1.2      | 3/3            | Complete | 2026-03-11 |
+| 18. Dev-Time Quality Gates       | v1.2      | 3/3            | Complete | 2026-03-11 |
