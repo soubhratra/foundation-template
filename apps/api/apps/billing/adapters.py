@@ -200,6 +200,10 @@ class PaymentAdapter(abc.ABC):
         Returns a dict with updated subscription state.
         """
 
+    @abc.abstractmethod
+    def delete_customer(self, customer_id: str) -> dict[str, Any]:
+        """Permanently delete a customer (GDPR cascade). Returns {"deleted": True}."""
+
 
 class StripeAdapter(PaymentAdapter):
     """Stripe implementation of PaymentAdapter using Stripe Python SDK v14.
@@ -433,3 +437,12 @@ class StripeAdapter(PaymentAdapter):
             "period_start": summary.period.start,
             "period_end": summary.period.end,
         }
+
+    def delete_customer(self, customer_id: str) -> dict[str, Any]:
+        """Permanently delete a Stripe customer (GDPR cascade).
+
+        Deletes the customer object from Stripe, which also deletes all
+        associated payment methods and subscriptions on Stripe's side.
+        """
+        result = self._client.customers.delete(customer_id)
+        return {"deleted": result.deleted}

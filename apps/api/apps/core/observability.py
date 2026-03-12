@@ -18,16 +18,19 @@ To switch providers:
 from __future__ import annotations
 
 import abc
+import logging
 from typing import Any
 
 from django.conf import settings
 from django.utils.module_loading import import_string
 
+logger = logging.getLogger(__name__)
+
 
 class ObservabilityAdapter(abc.ABC):
     """Abstract base class for all observability adapters.
 
-    Concrete subclasses must implement capture_exception and capture_event.
+    Concrete subclasses must implement capture_exception, capture_event, and delete_person.
     """
 
     @abc.abstractmethod
@@ -47,6 +50,16 @@ class ObservabilityAdapter(abc.ABC):
             event: Event name (e.g. "subscription_created").
             properties: Arbitrary properties dict. Must include "distinct_id"
                 for PostHogAdapter routing; omit for NoOpAdapter.
+        """
+
+    @abc.abstractmethod
+    def delete_person(self, distinct_id: str) -> None:
+        """Delete a person record from the observability provider (GDPR Article 17).
+
+        distinct_id is str(user.pk). Must be a no-op when no provider configured.
+
+        Args:
+            distinct_id: The user's distinct ID (str(user.pk)).
         """
 
 
@@ -77,6 +90,60 @@ class PostHogAdapter(ObservabilityAdapter):
         distinct_id = properties.pop("distinct_id", "anonymous")
         self._client.capture(distinct_id, event, properties)
 
+    def delete_person(self, distinct_id: str) -> None:
+        """Delete a PostHog person record (GDPR Article 17).
+
+        Uses the PostHog management REST API (requires POSTHOG_PERSONAL_API_KEY).
+        Steps:
+          1. Find person UUID by distinct_id.
+          2. DELETE person with delete_events=true.
+
+        If POSTHOG_PERSONAL_API_KEY is not configured, logs a warning and returns.
+        If the person is not found, logs info and returns (already deleted or never created).
+        """
+        import httpx
+
+        personal_api_key: str = getattr(settings, "POSTHOG_PERSONAL_API_KEY", "")
+        project_id: str = getattr(settings, "POSTHOG_PROJECT_ID", "")
+
+        if not personal_api_key:
+            logger.warning(
+                "posthog_delete_person_skipped",
+                reason="POSTHOG_PERSONAL_API_KEY not configured",
+                distinct_id=distinct_id,
+            )
+            return
+
+        # EU cloud management API differs from ingestion endpoint:
+        # ingestion: https://eu.i.posthog.com → management: https://eu.posthog.com
+        host: str = settings.POSTHOG_HOST.replace("i.posthog", "posthog")
+        headers = {"Authorization": f"Bearer {personal_api_key}"}
+
+        with httpx.Client(timeout=10) as client:
+            # Step 1: Find person by distinct_id
+            find_url = f"{host}/api/projects/{project_id}/persons/"
+            find_resp = client.get(find_url, params={"distinct_id": distinct_id}, headers=headers)
+            find_resp.raise_for_status()
+            results = find_resp.json().get("results", [])
+
+            if not results:
+                logger.info(
+                    "posthog_delete_person_not_found",
+                    distinct_id=distinct_id,
+                )
+                return
+
+            person_uuid = results[0]["uuid"]
+
+            # Step 2: Delete person and all their events
+            delete_url = f"{host}/api/projects/{project_id}/persons/{person_uuid}/"
+            delete_resp = client.delete(
+                delete_url, params={"delete_events": "true"}, headers=headers
+            )
+            delete_resp.raise_for_status()
+
+        logger.info("posthog_delete_person_ok", distinct_id=distinct_id, uuid=person_uuid)
+
 
 class NoOpAdapter(ObservabilityAdapter):
     """No-op adapter — all calls silently pass with zero overhead.
@@ -89,6 +156,9 @@ class NoOpAdapter(ObservabilityAdapter):
         pass
 
     def capture_event(self, event: str, properties: dict[str, Any]) -> None:
+        pass
+
+    def delete_person(self, distinct_id: str) -> None:
         pass
 
 
@@ -129,6 +199,11 @@ class SentryAdapter(ObservabilityAdapter):
             "SentryAdapter is a stub. See the migration guide in observability.py "
             "to implement using sentry-sdk."
         )
+
+    def delete_person(self, distinct_id: str) -> None:
+        # Sentry does not hold user records in the same way as PostHog.
+        # Person deletion for GDPR purposes is a no-op for Sentry.
+        pass
 
 
 def get_observability_adapter() -> ObservabilityAdapter:

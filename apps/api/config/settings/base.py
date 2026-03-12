@@ -84,6 +84,8 @@ OTEL_EXPORTER_OTLP_ENDPOINT = env("OTEL_EXPORTER_OTLP_ENDPOINT", default="")
 # ---------------------------------------------------------------------------
 POSTHOG_API_KEY: str = env("POSTHOG_API_KEY", default="")
 POSTHOG_HOST: str = env("POSTHOG_HOST", default="https://eu.i.posthog.com")
+POSTHOG_PROJECT_ID: str = env("POSTHOG_PROJECT_ID", default="")
+POSTHOG_PERSONAL_API_KEY: str = env("POSTHOG_PERSONAL_API_KEY", default="")
 OBSERVABILITY_ADAPTER: str = env(
     "OBSERVABILITY_ADAPTER",
     default="apps.core.observability.NoOpAdapter",

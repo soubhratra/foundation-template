@@ -121,3 +121,7 @@ class StubAdapter(PaymentAdapter):
             "status": "active",
             "cancel_at_period_end": False,
         }
+
+    def delete_customer(self, customer_id: str) -> dict[str, Any]:
+        """Permanently delete a customer (GDPR cascade). Returns {"deleted": True}."""
+        return {"deleted": True}
