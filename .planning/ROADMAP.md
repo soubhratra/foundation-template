@@ -246,7 +246,14 @@ Plans:
 2. A user who calls `GET /api/v1/account/export` receives a JSON document containing all personal data the app holds: profile fields, email addresses, social accounts, billing history, and subscription status
 3. A first-time visitor to the web app sees a cookie consent banner — PostHog does not initialise or set any tracking cookies until the user explicitly accepts; declining consent leaves PostHog in the opted-out state for the session and future visits
 
-**Plans**: TBD
+**Plans**: 4 plans
+
+Plans:
+
+- [ ] 21-01-PLAN.md — Wave 1: RED test stubs for GDPR-01 and GDPR-02 (test_deletion.py, test_export.py)
+- [ ] 21-02-PLAN.md — Wave 2: Backend — adapter extensions + UserDeletionService + AccountExportService + AccountController
+- [ ] 21-03-PLAN.md — Wave 2: Frontend — CookieConsentBanner + providers.tsx refactor + layout.tsx wiring
+- [ ] 21-04-PLAN.md — Wave 3: Frontend — /settings Danger Zone + DeleteAccountModal + Dialog install
 
 ### Phase 22: RBAC
 
@@ -298,6 +305,6 @@ Plans:
 | 18. Dev-Time Quality Gates       | v1.2      | 3/3            | Complete    | 2026-03-11 |
 | 19. Transactional Email          | 4/4       | Complete       | 2026-03-12  | -          |
 | 20. Social Auth                  | 6/6       | Complete       | 2026-03-12  | -          |
-| 21. GDPR Baseline                | v1.3      | 0/TBD          | Not started | -          |
+| 21. GDPR Baseline                | v1.3      | 0/4            | Not started | -          |
 | 22. RBAC                         | v1.3      | 0/TBD          | Not started | -          |
 | 23. Feature Entitlements         | v1.3      | 0/TBD          | Not started | -          |
