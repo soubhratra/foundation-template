@@ -5,6 +5,7 @@
 - ✅ **v1.0 Foundation Template** — Phases 1–8 (shipped 2026-03-07)
 - ✅ **v1.1 Billing & Payments Module** — Phases 9–12 (shipped 2026-03-11)
 - ✅ **v1.2 Observability & DevEx Hardening** — Phases 13–18 (shipped 2026-03-12)
+- 🚧 **v1.3 SaaS Functional Baseline** — Phases 19–23 (in progress)
 
 ## Phases
 
@@ -50,6 +51,16 @@ Full archive: `.planning/milestones/v1.2-ROADMAP.md`
 
 </details>
 
+### 🚧 v1.3 SaaS Functional Baseline (In Progress)
+
+**Milestone Goal:** Every scaffolded product starts with transactional email, social login, GDPR compliance, role-based access control, and plan-gated feature entitlements already wired in.
+
+- [ ] **Phase 19: Transactional Email** — `EmailAdapter` ABC with `ResendAdapter` default; Celery-queued async dispatch; HTML templates with inline CSS; `ConsoleAdapter` for dev; `--without email` scaffolder flag
+- [ ] **Phase 20: Social Auth** — Google + GitHub OAuth on web; Apple Sign In on iOS mobile; email-collision account merge; `--without social-auth` scaffolder flag
+- [ ] **Phase 21: GDPR Baseline** — Async account hard delete cascading all third-party data; JSON personal data export; cookie consent banner gating PostHog
+- [ ] **Phase 22: RBAC** — `@require_role("admin")` decorator; role assignment API; seeded `admin`/`member` groups via data migration
+- [ ] **Phase 23: Feature Entitlements** — `has_feature(user, key)` utility; Redis-cached results; billing-off fallback returns `True`
+
 ## Phase Details
 
 > Phase details for v1.2 (Phases 13–18) archived to `.planning/milestones/v1.2-ROADMAP.md`
@@ -70,9 +81,9 @@ Full archive: `.planning/milestones/v1.2-ROADMAP.md`
 
 Plans:
 
-- [ ] 13-01-PLAN.md — Wave 0 test stubs (test_logging, test_middleware, test_tracing)
-- [ ] 13-02-PLAN.md — structlog pipeline: logging.py + middleware.py + Django settings wiring
-- [ ] 13-03-PLAN.md — OTel tracing: tracing.py + Celery worker init + Jaeger in docker-compose
+- [x] 13-01-PLAN.md — Wave 0 test stubs (test_logging, test_middleware, test_tracing)
+- [x] 13-02-PLAN.md — structlog pipeline: logging.py + middleware.py + Django settings wiring
+- [x] 13-03-PLAN.md — OTel tracing: tracing.py + Celery worker init + Jaeger in docker-compose
 
 ### Phase 14: ObservabilityAdapter
 
@@ -91,10 +102,10 @@ Plans:
 
 Plans:
 
-- [ ] 14-01-PLAN.md — Wave 1: RED test stubs (test_observability.py + scaffolder removal test)
-- [ ] 14-02-PLAN.md — Wave 2: Django backend (observability.py + middleware + Celery signal + settings)
-- [ ] 14-03-PLAN.md — Wave 1: Frontend providers (Next.js PostHogProvider + Expo PostHogProvider)
-- [ ] 14-04-PLAN.md — Wave 1: CLI removal (removeObservability() + SelectedFeatures + index wiring)
+- [x] 14-01-PLAN.md — Wave 1: RED test stubs (test_observability.py + scaffolder removal test)
+- [x] 14-02-PLAN.md — Wave 2: Django backend (observability.py + middleware + Celery signal + settings)
+- [x] 14-03-PLAN.md — Wave 1: Frontend providers (Next.js PostHogProvider + Expo PostHogProvider)
+- [x] 14-04-PLAN.md — Wave 1: CLI removal (removeObservability() + SelectedFeatures + index wiring)
 
 ### Phase 15: Health Probes + Celery Infrastructure
 
@@ -113,9 +124,9 @@ Plans:
 
 Plans:
 
-- [ ] 15-01-PLAN.md — Wave 1: Install deps + RED test stubs (test_health_probes.py + test_periodic_tasks.py)
-- [ ] 15-02-PLAN.md — Wave 2: Health probe implementation (health.py + health_urls.py + URL wiring)
-- [ ] 15-03-PLAN.md — Wave 2: Celery Beat + Flower Docker Compose (tasks.py + settings + docker-compose)
+- [x] 15-01-PLAN.md — Wave 1: Install deps + RED test stubs (test_health_probes.py + test_periodic_tasks.py)
+- [x] 15-02-PLAN.md — Wave 2: Health probe implementation (health.py + health_urls.py + URL wiring)
+- [x] 15-03-PLAN.md — Wave 2: Celery Beat + Flower Docker Compose (tasks.py + settings + docker-compose)
 
 ### Phase 16: Security Hardening
 
@@ -134,9 +145,9 @@ Plans:
 
 Plans:
 
-- [ ] 16-01-PLAN.md — Wave 1: RED test stubs (test_security.py covering SEC-01, SEC-02, SEC-03)
-- [ ] 16-02-PLAN.md — Wave 2: Redis CACHES + session backend + AuthRateLimitMiddleware + ratelimited_error handler
-- [ ] 16-03-PLAN.md — Wave 2: django-csp middleware + HSTS in production + Next.js headers() config
+- [x] 16-01-PLAN.md — Wave 1: RED test stubs (test_security.py covering SEC-01, SEC-02, SEC-03)
+- [x] 16-02-PLAN.md — Wave 2: Redis CACHES + session backend + AuthRateLimitMiddleware + ratelimited_error handler
+- [x] 16-03-PLAN.md — Wave 2: django-csp middleware + HSTS in production + Next.js headers() config
 
 ### Phase 17: Dev-Time Security Gates
 
@@ -154,9 +165,9 @@ Plans:
 
 Plans:
 
-- [ ] 17-01-PLAN.md — Wave 1: RED test stubs (test_dev_gates.py — DEV-01, DEV-02, DEV-03, DEV-06)
-- [ ] 17-02-PLAN.md — Wave 1: Pre-commit hooks (detect-secrets + bandit) + CI gates (bandit, pip-audit, pnpm audit)
-- [ ] 17-03-PLAN.md — Wave 2: Install deps + generate .secrets.baseline + configure DDT + turn tests GREEN
+- [x] 17-01-PLAN.md — Wave 1: RED test stubs (test_dev_gates.py — DEV-01, DEV-02, DEV-03, DEV-06)
+- [x] 17-02-PLAN.md — Wave 1: Pre-commit hooks (detect-secrets + bandit) + CI gates (bandit, pip-audit, pnpm audit)
+- [x] 17-03-PLAN.md — Wave 2: Install deps + generate .secrets.baseline + configure DDT + turn tests GREEN
 
 ### Phase 18: Dev-Time Quality Gates
 
@@ -174,29 +185,103 @@ Plans:
 
 Plans:
 
-- [ ] 18-01-PLAN.md — Wave 1: RED test stubs (test_quality_gates.py — DEV-04, DEV-07, DEV-08)
-- [ ] 18-02-PLAN.md — Wave 2: Install nplusone + conftest fixture + commitlint hook + ruff McCabe config, turn tests GREEN
-- [ ] 18-03-PLAN.md — Wave 1: schemathesis dev dep + CI contract fuzzing job
+- [x] 18-01-PLAN.md — Wave 1: RED test stubs (test_quality_gates.py — DEV-04, DEV-07, DEV-08)
+- [x] 18-02-PLAN.md — Wave 2: Install nplusone + conftest fixture + commitlint hook + ruff McCabe config, turn tests GREEN
+- [x] 18-03-PLAN.md — Wave 1: schemathesis dev dep + CI contract fuzzing job
+
+### Phase 19: Transactional Email
+
+**Goal**: Every scaffolded product can send transactional emails asynchronously via a swappable adapter, with no credentials required in development
+**Depends on**: Phase 18 (v1.2 complete)
+**Requirements**: EMAIL-01, EMAIL-02, EMAIL-03, EMAIL-04, EMAIL-05
+**Success Criteria** (what must be TRUE):
+
+1. Application code calls `send_email(to, template, context)` without knowing which ESP is active — swapping from `ResendAdapter` to a future `MailgunAdapter` requires changing one Django setting
+2. An email triggered during an HTTP request is dispatched via Celery after the database transaction commits — no email is ever sent if the triggering transaction rolls back
+3. An HTML email received in an email client renders correctly without visible broken styles — CSS is inlined before dispatch, not left in `<style>` blocks
+4. Running the app locally with no `RESEND_API_KEY` set causes all outgoing emails to appear in the Django console log — no credentials, no error, no silent drop
+5. Running `create-foundation-app --without email` produces a project with no `notifications` app, no anymail in `INSTALLED_APPS`, and `manage.py check` passes clean
+
+**Plans**: TBD
+
+### Phase 20: Social Auth
+
+**Goal**: Users can sign up and log in via Google, GitHub, or Apple without creating a password, and existing password-account users are auto-merged on email match
+**Depends on**: Phase 19
+**Requirements**: SOCIAL-01, SOCIAL-02, SOCIAL-03, SOCIAL-04, SOCIAL-05
+**Success Criteria** (what must be TRUE):
+
+1. A user can click "Continue with Google" on the web app sign-in page, complete the OAuth flow, and land on the dashboard as a logged-in user — no manual account creation step
+2. A user can click "Continue with GitHub" on the web app sign-in page and complete sign-in — GitHub email is used as the account identifier
+3. A user on iOS can tap "Sign in with Apple" in the mobile app, authorize, and be logged into the app — the Apple-issued relay email is stored without triggering account merge with an existing Google/GitHub account
+4. A user who previously signed up with email/password can use "Continue with Google" with the same email and lands on their existing account — no duplicate account is created, no error shown
+5. Running `create-foundation-app --without social-auth` produces a project with no `SOCIALACCOUNT_PROVIDERS` config, no social provider apps in `INSTALLED_APPS`, and `manage.py check` passes clean
+
+**Plans**: TBD
+
+### Phase 21: GDPR Baseline
+
+**Goal**: Users have full control over their personal data — they can permanently erase their account or export everything they've given the app
+**Depends on**: Phase 20
+**Requirements**: GDPR-01, GDPR-02, GDPR-03
+**Success Criteria** (what must be TRUE):
+
+1. A user who calls `DELETE /api/v1/account/` receives HTTP 202 immediately — their Stripe customer record, PostHog person record, social accounts, and Django user row are all deleted asynchronously with no orphaned data in any system
+2. A user who calls `GET /api/v1/account/export` receives a JSON document containing all personal data the app holds: profile fields, email addresses, social accounts, billing history, and subscription status
+3. A first-time visitor to the web app sees a cookie consent banner — PostHog does not initialise or set any tracking cookies until the user explicitly accepts; declining consent leaves PostHog in the opted-out state for the session and future visits
+
+**Plans**: TBD
+
+### Phase 22: RBAC
+
+**Goal**: API endpoints can be guarded by role and administrators can assign roles to users — with `admin` and `member` available from the first deploy
+**Depends on**: Phase 21
+**Requirements**: RBAC-01, RBAC-02, RBAC-03
+**Success Criteria** (what must be TRUE):
+
+1. A request to an endpoint decorated with `@require_role("admin")` from a user without the `admin` group membership returns HTTP 403 with a JSON error body — no stack trace, no 500
+2. An authenticated admin user can call `POST /api/v1/users/{id}/roles` to assign or remove a role from another user — a non-admin calling this endpoint receives HTTP 403
+3. On a fresh database after running migrations, Django Groups named `admin` and `member` exist without any manual fixture loading or admin UI interaction
+
+**Plans**: TBD
+
+### Phase 23: Feature Entitlements
+
+**Goal**: Application code can gate features by billing plan using a single function call, with Redis-cached results and a safe fallback when billing is not installed
+**Depends on**: Phase 22
+**Requirements**: ENT-01, ENT-02, ENT-03
+**Success Criteria** (what must be TRUE):
+
+1. A developer can call `has_feature(user, "advanced_analytics")` anywhere in the application and receive `True` or `False` based on the user's active subscription plan and the `BILLING_PLANS` settings dict — no database query is made on the second call within the cache TTL
+2. When a Stripe `customer.subscription.updated` webhook is processed (plan upgrade or downgrade), the user's cached entitlement keys are invalidated immediately — the next `has_feature()` call reflects the new plan without waiting for TTL expiry
+3. In a project generated with `--without billing`, `has_feature(user, any_key)` returns `True` for every key — features are fully accessible and no import errors occur when the billing module is absent
+
+**Plans**: TBD
 
 ## Progress
 
-| Phase                            | Milestone | Plans Complete | Status   | Completed  |
-| -------------------------------- | --------- | -------------- | -------- | ---------- |
-| 1. Monorepo Foundation           | v1.0      | 4/4            | Complete | 2026-02-17 |
-| 2. API Core + Auth Backend       | v1.0      | 5/5            | Complete | 2026-02-17 |
-| 3. Shared Packages + Types       | v1.0      | 6/6            | Complete | 2026-02-17 |
-| 4. Web Application               | v1.0      | 5/5            | Complete | 2026-02-17 |
-| 5. Mobile Application            | v1.0      | 4/4            | Complete | 2026-02-17 |
-| 6. AI Module                     | v1.0      | 5/5            | Complete | 2026-02-17 |
-| 7. DevEx + CI/CD                 | v1.0      | 4/4            | Complete | 2026-02-17 |
-| 8. CLI Scaffolder                | v1.0      | 3/3            | Complete | 2026-02-17 |
-| 9. Billing Scaffold              | v1.1      | 3/3            | Complete | 2026-03-07 |
-| 10. Webhook Infra + Service      | v1.1      | 3/3            | Complete | 2026-03-08 |
-| 11. API Endpoints + Frontend     | v1.1      | 8/8            | Complete | 2026-03-10 |
-| 12. Invoice PDF + CLI            | v1.1      | 3/3            | Complete | 2026-03-11 |
-| 13. Structured Logging + Tracing | v1.2      | 3/3            | Complete | 2026-03-11 |
-| 14. ObservabilityAdapter         | v1.2      | 4/4            | Complete | 2026-03-11 |
-| 15. Health Probes + Celery Infra | v1.2      | 3/3            | Complete | 2026-03-11 |
-| 16. Security Hardening           | v1.2      | 3/3            | Complete | 2026-03-11 |
-| 17. Dev-Time Security Gates      | v1.2      | 3/3            | Complete | 2026-03-11 |
-| 18. Dev-Time Quality Gates       | v1.2      | 3/3            | Complete | 2026-03-11 |
+| Phase                            | Milestone | Plans Complete | Status      | Completed  |
+| -------------------------------- | --------- | -------------- | ----------- | ---------- |
+| 1. Monorepo Foundation           | v1.0      | 4/4            | Complete    | 2026-02-17 |
+| 2. API Core + Auth Backend       | v1.0      | 5/5            | Complete    | 2026-02-17 |
+| 3. Shared Packages + Types       | v1.0      | 6/6            | Complete    | 2026-02-17 |
+| 4. Web Application               | v1.0      | 5/5            | Complete    | 2026-02-17 |
+| 5. Mobile Application            | v1.0      | 4/4            | Complete    | 2026-02-17 |
+| 6. AI Module                     | v1.0      | 5/5            | Complete    | 2026-02-17 |
+| 7. DevEx + CI/CD                 | v1.0      | 4/4            | Complete    | 2026-02-17 |
+| 8. CLI Scaffolder                | v1.0      | 3/3            | Complete    | 2026-02-17 |
+| 9. Billing Scaffold              | v1.1      | 3/3            | Complete    | 2026-03-07 |
+| 10. Webhook Infra + Service      | v1.1      | 3/3            | Complete    | 2026-03-08 |
+| 11. API Endpoints + Frontend     | v1.1      | 8/8            | Complete    | 2026-03-10 |
+| 12. Invoice PDF + CLI            | v1.1      | 3/3            | Complete    | 2026-03-11 |
+| 13. Structured Logging + Tracing | v1.2      | 3/3            | Complete    | 2026-03-11 |
+| 14. ObservabilityAdapter         | v1.2      | 4/4            | Complete    | 2026-03-11 |
+| 15. Health Probes + Celery Infra | v1.2      | 3/3            | Complete    | 2026-03-11 |
+| 16. Security Hardening           | v1.2      | 3/3            | Complete    | 2026-03-11 |
+| 17. Dev-Time Security Gates      | v1.2      | 3/3            | Complete    | 2026-03-11 |
+| 18. Dev-Time Quality Gates       | v1.2      | 3/3            | Complete    | 2026-03-11 |
+| 19. Transactional Email          | v1.3      | 0/TBD          | Not started | -          |
+| 20. Social Auth                  | v1.3      | 0/TBD          | Not started | -          |
+| 21. GDPR Baseline                | v1.3      | 0/TBD          | Not started | -          |
+| 22. RBAC                         | v1.3      | 0/TBD          | Not started | -          |
+| 23. Feature Entitlements         | v1.3      | 0/TBD          | Not started | -          |
