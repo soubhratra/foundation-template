@@ -167,6 +167,8 @@ api.auto_discover_controllers()
 
 urlpatterns = [
     path("admin/", admin.site.urls),
+    # Health probes — mounted before Ninja api/ to avoid URL shadowing
+    path("api/health/", include("apps.core.health_urls")),
     path(
         "api/v1/auth/browser/v1/auth/session",
         HeadlessSessionView.as_api_view(client=Client.BROWSER),
@@ -184,3 +186,8 @@ urlpatterns = [
     path("api/v1/billing/webhooks/", billing_views.stripe_webhook, name="stripe-webhook"),
     # BILLING_END
 ]
+
+if settings.DEBUG:
+    from debug_toolbar.toolbar import debug_toolbar_urls
+
+    urlpatterns += debug_toolbar_urls()

@@ -345,3 +345,230 @@ export async function removeBillingModule(outputDir: string): Promise<void> {
 
   logger.info("✓ Billing module removed successfully");
 }
+
+/**
+ * Remove observability module from generated project
+ *
+ * Steps:
+ * 1. Delete apps/api/apps/core/observability.py
+ * 2. Remove ObservabilityMiddleware from MIDDLEWARE in base.py
+ * 3. Remove OBSERVABILITY MODULE settings block from base.py
+ * 4. Remove task_failure signal handler from apps/api/apps/core/apps.py
+ * 5. Remove posthog dep from apps/api/pyproject.toml
+ * 6. Remove PostHogProvider + posthog.init from apps/web/app/providers.tsx;
+ *    remove PostHog env vars from apps/web/.env.example
+ * 7. Remove PostHogProvider + PostHogScreenTracker from apps/mobile/app/_layout.tsx;
+ *    remove PostHog env var from apps/mobile/.env.example
+ */
+export async function removeObservability(outputDir: string): Promise<void> {
+  logger.info("Removing observability module...");
+
+  // 1. Delete apps/api/apps/core/observability.py
+  const observabilityPyPath = join(outputDir, "apps/api/apps/core/observability.py");
+  try {
+    await remove(observabilityPyPath);
+    logger.info(`  ✓ Deleted ${observabilityPyPath}`);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+      throw new Error(`Failed to delete observability.py: ${error}`);
+    }
+    logger.warning(`  ⚠ observability.py not found (already removed)`);
+  }
+
+  // 2 & 3. Modify base.py: remove ObservabilityMiddleware line + OBSERVABILITY MODULE block
+  const basePyPath = join(outputDir, "apps/api/config/settings/base.py");
+  try {
+    let basePyContent = await readFile(basePyPath, "utf-8");
+
+    // Remove "apps.core.middleware.ObservabilityMiddleware" line from MIDDLEWARE
+    basePyContent = basePyContent.replace(
+      /\s*"apps\.core\.middleware\.ObservabilityMiddleware",[^\n]*\n/g,
+      "",
+    );
+
+    // Remove the OBSERVABILITY MODULE settings block (delimited by dash comment lines)
+    basePyContent = basePyContent.replace(
+      /\n# -{10,}\n# OBSERVABILITY MODULE\n# -{10,}[\s\S]*?# -{10,}\n# END OBSERVABILITY MODULE\n# -{10,}/,
+      "",
+    );
+
+    await writeFile(basePyPath, basePyContent, "utf-8");
+    logger.info(`  ✓ Removed observability entries from base.py`);
+  } catch (error) {
+    throw new Error(`Failed to modify settings/base.py: ${error}`);
+  }
+
+  // 4. Remove task_failure signal handler from apps.py (added by Plan 02 — avoids
+  //    ImportError after observability.py is deleted)
+  const appsPyPath = join(outputDir, "apps/api/apps/core/apps.py");
+  try {
+    let appsPyContent = await readFile(appsPyPath, "utf-8");
+
+    // Remove the task_failure import line
+    appsPyContent = appsPyContent.replace(/^from celery\.signals import task_failure\n/m, "");
+
+    // Remove the @task_failure.connect decorated handler function block
+    // Matches: decorator line + def line + body lines up to get_observability_adapter call
+    appsPyContent = appsPyContent.replace(
+      /@task_failure\.connect[\s\S]*?get_observability_adapter\(\)\.capture_exception[\s\S]*?\n\n/,
+      "",
+    );
+
+    await writeFile(appsPyPath, appsPyContent, "utf-8");
+    logger.info(`  ✓ Removed task_failure signal handler from apps.py`);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+      throw new Error(`Failed to modify apps/core/apps.py: ${error}`);
+    }
+    logger.warning(`  ⚠ apps/core/apps.py not found (skipping task_failure removal)`);
+  }
+
+  // 5. Remove posthog dep from apps/api/pyproject.toml
+  const pyprojectPath = join(outputDir, "apps/api/pyproject.toml");
+  try {
+    let pyprojectContent = await readFile(pyprojectPath, "utf-8");
+
+    const depRegex = /^\s*"posthog[^"]*",?\s*$\n?/gm;
+    pyprojectContent = pyprojectContent.replace(depRegex, "");
+
+    await writeFile(pyprojectPath, pyprojectContent, "utf-8");
+    logger.info(`  ✓ Removed posthog from pyproject.toml`);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+      throw new Error(`Failed to modify pyproject.toml: ${error}`);
+    }
+    logger.warning(`  ⚠ pyproject.toml not found (skipping posthog dep removal)`);
+  }
+
+  // 6. Remove PostHog from apps/web/app/providers.tsx + env vars from apps/web/.env.example
+  const providersTsxPath = join(outputDir, "apps/web/app/providers.tsx");
+  try {
+    let providersContent = await readFile(providersTsxPath, "utf-8");
+
+    // Remove posthog-js import lines
+    providersContent = providersContent.replace(/^import posthog from "posthog-js";\n/m, "");
+    providersContent = providersContent.replace(
+      /^import \{ PostHogProvider, usePostHog \} from "posthog-js\/react";\n/m,
+      "",
+    );
+
+    // Remove posthog.init block (if (typeof window !== "undefined") { ... })
+    providersContent = providersContent.replace(
+      /^if \(typeof window !== "undefined"\) \{[\s\S]*?\n\}\n\n/m,
+      "",
+    );
+
+    // Remove PostHogPageView component definition
+    providersContent = providersContent.replace(
+      /^function PostHogPageView\(\) \{[\s\S]*?\n\}\n\n/m,
+      "",
+    );
+
+    // Remove <PostHogProvider client={posthog}> wrapper (outermost) — unwrap children
+    // Remove opening tag
+    providersContent = providersContent.replace(/^\s*<PostHogProvider client=\{posthog\}>\n/m, "");
+    // Remove <PostHogPageView /> line
+    providersContent = providersContent.replace(/^\s*<PostHogPageView \/>\n/m, "");
+    // Remove closing tag
+    providersContent = providersContent.replace(/^\s*<\/PostHogProvider>\n/m, "");
+
+    await writeFile(providersTsxPath, providersContent, "utf-8");
+    logger.info(`  ✓ Removed PostHog from providers.tsx`);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+      throw new Error(`Failed to modify apps/web/app/providers.tsx: ${error}`);
+    }
+    logger.warning(`  ⚠ providers.tsx not found (skipping PostHog web removal)`);
+  }
+
+  // Remove NEXT_PUBLIC_POSTHOG_KEY and NEXT_PUBLIC_POSTHOG_HOST from apps/web/.env.example
+  const webEnvExamplePath = join(outputDir, "apps/web/.env.example");
+  try {
+    let webEnvContent = await readFile(webEnvExamplePath, "utf-8");
+
+    // Remove the PostHog comment line and the two env var lines
+    webEnvContent = webEnvContent.replace(/^# PostHog analytics \(optional[^\n]*\)\n/m, "");
+    webEnvContent = webEnvContent.replace(/^NEXT_PUBLIC_POSTHOG_KEY=.*$\n?/m, "");
+    webEnvContent = webEnvContent.replace(/^NEXT_PUBLIC_POSTHOG_HOST=.*$\n?/m, "");
+
+    await writeFile(webEnvExamplePath, webEnvContent, "utf-8");
+    logger.info(`  ✓ Removed PostHog env vars from apps/web/.env.example`);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+      throw new Error(`Failed to modify apps/web/.env.example: ${error}`);
+    }
+    logger.warning(`  ⚠ apps/web/.env.example not found (skipping)`);
+  }
+
+  // 7. Remove PostHog from apps/mobile/app/_layout.tsx + env var from apps/mobile/.env.example
+  const layoutTsxPath = join(outputDir, "apps/mobile/app/_layout.tsx");
+  try {
+    let layoutContent = await readFile(layoutTsxPath, "utf-8");
+
+    // Remove posthog-react-native import line
+    layoutContent = layoutContent.replace(
+      /^import \{ PostHogProvider, usePostHog \} from "posthog-react-native";\n/m,
+      "",
+    );
+
+    // Remove useSegments from expo-router import (only if it was added for PostHog)
+    // The import line includes other things — remove just useSegments if it's the only extra item
+    // Pattern: ", useSegments" or "useSegments, " within the expo-router import
+    layoutContent = layoutContent.replace(/,\s*useSegments(?=\s*\})/, "");
+    layoutContent = layoutContent.replace(/useSegments,\s*/, "");
+
+    // Remove PostHogScreenTracker component definition
+    layoutContent = layoutContent.replace(
+      /^function PostHogScreenTracker\(\) \{[\s\S]*?\n\}\n\n/m,
+      "",
+    );
+
+    // Remove <PostHogProvider ...> wrapper — unwrap children
+    // Remove opening PostHogProvider tag (multi-line, safe string splice):
+    // Find the tag start, then find the closing standalone ">" line and slice out the whole range
+    {
+      const tagStart = layoutContent.indexOf("    <PostHogProvider");
+      if (tagStart !== -1) {
+        // Find the next line that is just whitespace + ">" (the JSX self-closing brace)
+        const closeArrow = layoutContent.indexOf("\n    >", tagStart);
+        if (closeArrow !== -1) {
+          // Remove from tagStart to end of the ">\n" line
+          layoutContent =
+            layoutContent.slice(0, tagStart) + layoutContent.slice(closeArrow + "\n    >\n".length);
+        }
+      }
+    }
+    // Remove <PostHogScreenTracker /> line
+    layoutContent = layoutContent.replace(/[ \t]*<PostHogScreenTracker \/>\n/, "");
+    // Remove closing </PostHogProvider> tag
+    layoutContent = layoutContent.replace(/[ \t]*<\/PostHogProvider>\n/, "");
+
+    await writeFile(layoutTsxPath, layoutContent, "utf-8");
+    logger.info(`  ✓ Removed PostHog from _layout.tsx`);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+      throw new Error(`Failed to modify apps/mobile/app/_layout.tsx: ${error}`);
+    }
+    logger.warning(`  ⚠ _layout.tsx not found (skipping PostHog mobile removal)`);
+  }
+
+  // Remove EXPO_PUBLIC_POSTHOG_KEY from apps/mobile/.env.example
+  const mobileEnvExamplePath = join(outputDir, "apps/mobile/.env.example");
+  try {
+    let mobileEnvContent = await readFile(mobileEnvExamplePath, "utf-8");
+
+    // Remove the PostHog comment line and the env var line
+    mobileEnvContent = mobileEnvContent.replace(/^# PostHog analytics \(optional[^\n]*\)\n/m, "");
+    mobileEnvContent = mobileEnvContent.replace(/^EXPO_PUBLIC_POSTHOG_KEY=.*$\n?/m, "");
+
+    await writeFile(mobileEnvExamplePath, mobileEnvContent, "utf-8");
+    logger.info(`  ✓ Removed PostHog env var from apps/mobile/.env.example`);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+      throw new Error(`Failed to modify apps/mobile/.env.example: ${error}`);
+    }
+    logger.warning(`  ⚠ apps/mobile/.env.example not found (skipping)`);
+  }
+
+  logger.info("✓ Observability module removed successfully");
+}

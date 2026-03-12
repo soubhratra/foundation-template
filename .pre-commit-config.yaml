@@ -26,3 +26,37 @@ repos:
       - id: check-added-large-files
         args: ["--maxkb=500"]
       - id: check-merge-conflict
+
+  # Secret detection — blocks secrets at commit time (DEV-01)
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.5.0
+    hooks:
+      - id: detect-secrets
+        args: ["--baseline", ".secrets.baseline"]
+
+  # Python security linting — HIGH severity only, excludes tests/ (DEV-02)
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.9.4
+    hooks:
+      - id: bandit
+        args: ["-lll", "-x", "tests/"]
+        files: ^apps/
+
+  # Conventional Commits enforcement — blocks non-conventional commit messages (DEV-07)
+  # NOTE: requires `pre-commit install --hook-type commit-msg` in addition to `pre-commit install`
+  - repo: https://github.com/compilerla/conventional-pre-commit
+    rev: v3.4.0
+    hooks:
+      - id: conventional-pre-commit
+        stages: [commit-msg]
+        args:
+          - feat
+          - fix
+          - docs
+          - refactor
+          - test
+          - chore
+          - perf
+          - ci
+          - build
+          - revert

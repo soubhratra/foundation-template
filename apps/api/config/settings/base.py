@@ -15,6 +15,83 @@ SECRET_KEY = env("SECRET_KEY", default="django-insecure-change-me-in-production"
 DEBUG = env.bool("DEBUG", default=False)
 ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["localhost", "127.0.0.1"])
 
+# --------------------------------------------------------------------------
+# Observability: Structured Logging (structlog) — Phase 13
+# --------------------------------------------------------------------------
+import structlog as _structlog  # noqa: E402
+
+_log_renderer = "plain_console" if DEBUG else "json_formatter"
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "json_formatter": {
+            "()": _structlog.stdlib.ProcessorFormatter,
+            "processor": _structlog.processors.JSONRenderer(),
+            "foreign_pre_chain": [
+                _structlog.contextvars.merge_contextvars,
+                _structlog.processors.TimeStamper(fmt="iso"),
+                _structlog.stdlib.add_logger_name,
+                _structlog.stdlib.add_log_level,
+                _structlog.stdlib.PositionalArgumentsFormatter(),
+            ],
+        },
+        "plain_console": {
+            "()": _structlog.stdlib.ProcessorFormatter,
+            "processor": _structlog.dev.ConsoleRenderer(),
+            "foreign_pre_chain": [
+                _structlog.contextvars.merge_contextvars,
+                _structlog.processors.TimeStamper(fmt="iso"),
+                _structlog.stdlib.add_logger_name,
+                _structlog.stdlib.add_log_level,
+                _structlog.stdlib.PositionalArgumentsFormatter(),
+            ],
+        },
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": _log_renderer,
+        },
+    },
+    "root": {"handlers": ["console"], "level": "INFO"},
+    "loggers": {
+        "django": {"handlers": ["console"], "level": "INFO", "propagate": False},
+        "django_structlog": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        "apps": {
+            "handlers": ["console"],
+            "level": "DEBUG" if DEBUG else "INFO",
+            "propagate": False,
+        },
+        "celery": {"handlers": ["console"], "level": "INFO", "propagate": False},
+    },
+}
+
+# Enable django-structlog Celery signal handlers for task context propagation.
+DJANGO_STRUCTLOG_CELERY_ENABLED = True
+
+# OTel OTLP endpoint — set to http://jaeger:4317 in docker-compose.yml (Phase 13-03).
+# Tracing is a no-op when empty — no overhead in CI, no failed connections when Jaeger is absent.
+OTEL_EXPORTER_OTLP_ENDPOINT = env("OTEL_EXPORTER_OTLP_ENDPOINT", default="")
+
+# ---------------------------------------------------------------------------
+# OBSERVABILITY MODULE
+# ---------------------------------------------------------------------------
+POSTHOG_API_KEY: str = env("POSTHOG_API_KEY", default="")
+POSTHOG_HOST: str = env("POSTHOG_HOST", default="https://eu.i.posthog.com")
+OBSERVABILITY_ADAPTER: str = env(
+    "OBSERVABILITY_ADAPTER",
+    default="apps.core.observability.NoOpAdapter",
+)
+# ---------------------------------------------------------------------------
+# END OBSERVABILITY MODULE
+# ---------------------------------------------------------------------------
+
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
@@ -25,7 +102,10 @@ INSTALLED_APPS = [
     "django.contrib.sites",
     "ninja_extra",
     "corsheaders",
+    "csp",
     "django_celery_results",
+    "django_celery_beat",
+    "django_structlog",
     "allauth",
     "allauth.account",
     "allauth.headless",
@@ -38,6 +118,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "csp.middleware.CSPMiddleware",  # SECURITY HEADERS — nonce generated per-request
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "corsheaders.middleware.CorsMiddleware",
@@ -45,6 +126,9 @@ MIDDLEWARE = [
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "allauth.account.middleware.AccountMiddleware",
+    "apps.core.middleware.RequestContextMiddleware",
+    "apps.core.middleware.ObservabilityMiddleware",  # OBSERVABILITY MODULE
+    "apps.core.middleware.AuthRateLimitMiddleware",  # RATE LIMITING MODULE
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
@@ -111,6 +195,94 @@ STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 REDIS_URL = env("REDIS_URL", default="redis://localhost:6379/0")
+CACHE_REDIS_URL = env("CACHE_REDIS_URL", default="redis://localhost:6379/1")
+SESSION_REDIS_URL = env("SESSION_REDIS_URL", default="redis://localhost:6379/2")
+
+# --- CACHE + SESSION BACKEND ---
+# django-redis: replaces LocMemCache in all non-test environments.
+# DB 0: Celery (CELERY_BROKER_URL)
+# DB 1: Django cache (CACHE_REDIS_URL)
+# DB 2: Django sessions (SESSION_REDIS_URL)
+# Tests override CACHES to LocMemCache via conftest test_isolation_settings fixture.
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": CACHE_REDIS_URL,
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+            "SOCKET_CONNECT_TIMEOUT": 5,
+            "SOCKET_TIMEOUT": 5,
+        },
+    },
+    "sessions": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": SESSION_REDIS_URL,
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+            "SOCKET_CONNECT_TIMEOUT": 5,
+            "SOCKET_TIMEOUT": 5,
+        },
+    },
+}
+
+SESSION_ENGINE = "django.contrib.sessions.backends.cache"
+SESSION_CACHE_ALIAS = "sessions"
+
+# --- RATE LIMITING ---
+# django-ratelimit: IP-based rate limiting on auth endpoints.
+# Auth endpoints are allauth headless views — rate limiting is applied via
+# AuthRateLimitMiddleware (path-prefix scoped) rather than @ratelimit decorator
+# (allauth views are not owned code; decorator cannot be applied directly).
+# RATELIMIT_FAIL_OPEN: pass through if Redis unreachable — auth availability > enforcement.
+# RATELIMIT_ENABLE: set to False in tests via conftest autouse fixture (not in development.py).
+RATELIMIT_AUTH_LOGIN: str = "5/m"
+RATELIMIT_ENABLE: bool = True
+RATELIMIT_FAIL_OPEN: bool = True
+RATELIMIT_USE_CACHE: str = "default"
+RATELIMIT_VIEW: str = "apps.core.ratelimit.ratelimited_error"
+
+# --- SECURITY HEADERS ---
+# django-csp 4.0 uses CONTENT_SECURITY_POLICY dict (NOT old CSP_* flat settings).
+# Old API (CSP_DEFAULT_SRC etc.) is silently ignored in 4.0 — do not mix APIs.
+#
+# NONCE sentinel: django-csp replaces "NONCE" with 'nonce-{unique_value}' per request.
+# request.csp_nonce is available in templates for inline scripts that must be whitelisted.
+#
+# Third-party sources:
+#   PostHog: eu.i.posthog.com and us.i.posthog.com (EU/US data regions)
+#   Stripe:  js.stripe.com (SDK), hooks.stripe.com (webhook ping JS)
+#
+# upgrade-insecure-requests omitted — HSTS in production.py handles upgrade-to-HTTPS.
+# Adding it here would break local HTTP development.
+CONTENT_SECURITY_POLICY = {
+    "DIRECTIVES": {
+        "default-src": ["'self'"],
+        "script-src": ["'self'", "NONCE", "https://js.stripe.com"],
+        "script-src-elem": ["'self'", "NONCE", "https://js.stripe.com"],
+        "style-src": ["'self'", "NONCE"],
+        "img-src": ["'self'", "data:", "blob:"],
+        "font-src": ["'self'"],
+        "connect-src": [
+            "'self'",
+            "https://eu.i.posthog.com",
+            "https://us.i.posthog.com",
+            "https://hooks.stripe.com",
+        ],
+        "frame-src": ["https://js.stripe.com"],
+        "object-src": ["'none'"],
+        "base-uri": ["'self'"],
+        "form-action": ["'self'"],
+        "frame-ancestors": ["'none'"],
+    },
+}
+
+# X-Frame-Options: Django's XFrameOptionsMiddleware reads X_FRAME_OPTIONS.
+# "DENY" is the Django default but we set it explicitly for auditability.
+X_FRAME_OPTIONS = "DENY"
+
+# Referrer-Policy: Django SecurityMiddleware reads SECURE_REFERRER_POLICY.
+# "strict-origin-when-cross-origin" sends full URL on same-origin, origin only cross-origin.
+SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
 
 FRONTEND_URL = env("FRONTEND_URL", default="http://localhost:3000")
 
@@ -121,6 +293,23 @@ CELERY_BROKER_URL = env("CELERY_BROKER_URL", default="redis://localhost:6379/0")
 CELERY_RESULT_BACKEND = "django-db"
 CELERY_TASK_TRACK_STARTED = True
 CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 minutes
+
+# --------------------------------------------------------------------------
+# Celery Beat Schedule — Phase 15
+# --------------------------------------------------------------------------
+# DatabaseScheduler reads schedule from DB (django_celery_beat tables).
+# Add tasks here for initial seeding; operators can edit via admin or API.
+CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
+
+from celery.schedules import crontab  # noqa: E402, F401
+
+CELERY_BEAT_SCHEDULE = {
+    "example-periodic-task": {
+        "task": "apps.core.tasks.example_periodic_task",
+        "schedule": 60.0,  # every 60 seconds — change to crontab() for cron expressions
+        "options": {"expires": 30},  # drop if no worker picks it up in 30s
+    },
+}
 
 # --------------------------------------------------------------------------
 # OpenAI Configuration

@@ -1,5 +1,24 @@
 # Milestones
 
+## v1.2 Observability & DevEx Hardening (Shipped: 2026-03-12)
+
+**Phases completed:** 6 phases, 19 plans | **Phases:** 13–18
+**Files:** ~55 files modified/created | **Timeline:** 2026-03-11 (1 day) | **Commits:** ~30
+**Verifications:** Phase 13 (12/12) + Phase 14 (13/13) + Phase 15 (12/12) + Phase 16 (9/9) + Phase 17 (11/11) + Phase 18 (9/9) = 66/66 truths
+
+**Key accomplishments:**
+
+1. structlog JSON logging pipeline — `request_id`, `user_id`, `duration_ms` auto-injected on every Django request; OpenTelemetry auto-instrumentation (Django + Celery + PostgreSQL + Redis); Jaeger in Docker Compose for distributed trace visualization
+2. `ObservabilityAdapter` ABC with `PostHogAdapter` default — exceptions, analytics, and feature flags across Django (middleware), Celery (task_failure signal), Next.js, and Expo; `NoOpAdapter` for zero-overhead CI/test; swappable via one `OBSERVABILITY_ADAPTER` Django setting; `--without observability` removes all 7 touch points cleanly
+3. `/api/health/live|ready|startup` plain Django health probes (no Ninja, no auth); Celery Beat with `DatabaseScheduler` scaffold + example periodic task; Flower dev-only monitoring in Docker Compose; celery-worker added to dev compose so beat-dispatched tasks have a consumer
+4. Redis-backed rate limiting via `django-ratelimit` on all auth endpoints (HTTP 429 + `Retry-After`); Redis cache + session backend via `django-redis`; CSP (`django-csp` 4.0 nonce API) + HSTS (production only) + `X-Frame-Options` on both Django and Next.js
+5. `detect-secrets` + `bandit` in pre-commit + CI; `pip-audit` + `pnpm audit` as CI merge gates; `django-debug-toolbar` for local query analysis (absent in test/prod); 2 HIGH-priority integration breaks fixed post-audit (stale test URL + Docker Compose Redis env vars)
+6. `nplusone` N+1 detection as autouse pytest fixture (blinker signal with explicit teardown); `schemathesis` API contract fuzzing CI job (30 examples, 5s timeout, billing/auth excluded); `commitlint` conventional commits pre-commit hook; ruff McCabe complexity gate max=10
+
+**Archive:** `.planning/milestones/v1.2-ROADMAP.md` | `.planning/milestones/v1.2-REQUIREMENTS.md`
+
+---
+
 ## v1.1 Billing & Payments Module (Shipped: 2026-03-11)
 
 **Phases completed:** 4 phases, 17 plans | **Phases:** 9–12

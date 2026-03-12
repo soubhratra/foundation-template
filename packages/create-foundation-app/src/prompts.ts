@@ -4,7 +4,9 @@ import { validateProjectName, validateOutputDir } from "./validate.js";
 /**
  * Selected features configuration
  */
-export type SelectedFeatures = Array<"web" | "mobile" | "landing" | "ai" | "billing">;
+export type SelectedFeatures = Array<
+  "web" | "mobile" | "landing" | "ai" | "billing" | "observability"
+>;
 
 /**
  * Prompts for project name with npm package validation
@@ -70,8 +72,12 @@ export async function promptFeatures(): Promise<SelectedFeatures> {
         value: "billing",
         label: "Billing Module (Stripe payments + invoice PDFs)",
       },
+      {
+        value: "observability",
+        label: "Observability (PostHog analytics + error tracking)",
+      },
     ],
-    initialValues: ["web", "mobile", "landing", "ai", "billing"],
+    initialValues: ["web", "mobile", "landing", "ai", "billing", "observability"],
     required: true,
   });
 

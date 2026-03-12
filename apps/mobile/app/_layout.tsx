@@ -1,7 +1,9 @@
-import { type ReactNode, useEffect, useMemo } from "react";
+import { type ReactNode, useEffect, useMemo, useRef } from "react";
 
-import { SplashScreen, Stack as ExpoStack } from "expo-router";
+import { SplashScreen, Stack as ExpoStack, useSegments } from "expo-router";
 import * as SecureStore from "expo-secure-store";
+
+import { PostHogProvider, usePostHog } from "posthog-react-native";
 
 import {
   AuthProvider,
@@ -47,6 +49,22 @@ Stack.Protected = function ProtectedRoute({ guard, children }: ProtectedScreenPr
   return <>{children}</>;
 };
 
+function PostHogScreenTracker() {
+  const segments = useSegments();
+  const posthog = usePostHog();
+  const prevSegmentsRef = useRef<string | null>(null);
+  const screenName = segments.join("/") || "(index)";
+
+  useEffect(() => {
+    if (prevSegmentsRef.current !== screenName) {
+      prevSegmentsRef.current = screenName;
+      posthog.screen(screenName);
+    }
+  }, [screenName, posthog]);
+
+  return null;
+}
+
 export default function RootLayout() {
   const tokenStorage = useMemo(() => createSecureStoreTokenStorage(secureStoreAdapter), []);
 
@@ -57,23 +75,30 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <AuthProvider
-      baseUrl={buildApiBaseUrl(env.EXPO_PUBLIC_API_URL)}
-      tokenStorage={tokenStorage}
-      enableDevtools={false}
+    <PostHogProvider
+      apiKey={process.env.EXPO_PUBLIC_POSTHOG_KEY ?? ""}
+      options={{ host: process.env.EXPO_PUBLIC_POSTHOG_HOST ?? "https://eu.i.posthog.com" }}
+      autocapture={{ captureScreens: false }}
     >
-      <PreferencesProvider>
-        <AuthGate>
-          <Stack screenOptions={{ headerShown: false }}>
-            <Stack.Protected guard={true}>
-              <Stack.Screen name="(tabs)" />
-            </Stack.Protected>
-            <Stack.Protected guard={true}>
-              <Stack.Screen name="(auth)" />
-            </Stack.Protected>
-          </Stack>
-        </AuthGate>
-      </PreferencesProvider>
-    </AuthProvider>
+      <PostHogScreenTracker />
+      <AuthProvider
+        baseUrl={buildApiBaseUrl(env.EXPO_PUBLIC_API_URL)}
+        tokenStorage={tokenStorage}
+        enableDevtools={false}
+      >
+        <PreferencesProvider>
+          <AuthGate>
+            <Stack screenOptions={{ headerShown: false }}>
+              <Stack.Protected guard={true}>
+                <Stack.Screen name="(tabs)" />
+              </Stack.Protected>
+              <Stack.Protected guard={true}>
+                <Stack.Screen name="(auth)" />
+              </Stack.Protected>
+            </Stack>
+          </AuthGate>
+        </PreferencesProvider>
+      </AuthProvider>
+    </PostHogProvider>
   );
 }

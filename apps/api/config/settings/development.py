@@ -14,3 +14,8 @@ ACCOUNT_EMAIL_VERIFICATION = "optional"
 # Use StubAdapter in development/testing — no Stripe API keys required.
 # Switch to StripeAdapter in production settings.
 BILLING_ADAPTER = "apps.billing.stub_adapter.StubAdapter"
+
+# --- django-debug-toolbar (DEV-06) — development only ---
+INSTALLED_APPS = [*INSTALLED_APPS, "debug_toolbar"]  # noqa: F405
+MIDDLEWARE = ["debug_toolbar.middleware.DebugToolbarMiddleware", *MIDDLEWARE]  # noqa: F405
+INTERNAL_IPS = ["127.0.0.1"]
