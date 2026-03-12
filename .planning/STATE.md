@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: SaaS Functional Baseline
 status: planning
-stopped_at: Completed 24-social-auth-oauth-callback-pages-24-02-PLAN.md
-last_updated: "2026-03-12T23:34:04.283Z"
+stopped_at: Completed 25-gdpr-export-plan-id-accuracy-25-01-PLAN.md
+last_updated: "2026-03-12T23:50:08.888Z"
 last_activity: 2026-03-11 — v1.3 roadmap created; all 19 requirements mapped across Phases 19–23
 progress:
   total_phases: 13
-  completed_phases: 12
-  total_plans: 41
-  completed_plans: 41
+  completed_phases: 13
+  total_plans: 42
+  completed_plans: 42
   percent: 0
 ---
 
@@ -69,6 +69,7 @@ _Updated after each plan completion_
 | Phase 23-feature-entitlements P03 | 4 | 1 tasks | 2 files |
 | Phase 24-social-auth-oauth-callback-pages P01 | 4 | 2 tasks | 2 files |
 | Phase 24-social-auth-oauth-callback-pages P02 | 4 | 2 tasks | 3 files |
+| Phase 25-gdpr-export-plan-id-accuracy P01 | 3 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -124,6 +125,7 @@ _Updated after each plan completion_
 - [Phase 24-social-auth-oauth-callback-pages]: Test import path for Next.js app dir is ../../../../app/ (4 levels from src/**tests**/app/(auth)/) — app/ is at web root not under src/
 - [Phase 24-social-auth-oauth-callback-pages]: Vitest alias layered: @/app/_ -> ./app/_ before @/_ -> ./src/_ — Next.js app/ dir is outside src/, tests importing @/app/... require specific alias
 - [Phase 24-social-auth-oauth-callback-pages]: OAuth error page: Record<string,string> lookup with ?? fallback — simpler than switch/case, easy to extend with new allauth error codes
+- [Phase 25-gdpr-export-plan-id-accuracy]: GDPR export plan_id: read sub.plan_id from ORM (Subscription.plan_id added Phase 23 migration 0004); hardcoded None was GDPR Article 20 accuracy violation
 
 ### Pending Todos
 
@@ -143,6 +145,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-12T23:31:38.762Z
-Stopped at: Completed 24-social-auth-oauth-callback-pages-24-02-PLAN.md
+Last session: 2026-03-12T23:50:08.883Z
+Stopped at: Completed 25-gdpr-export-plan-id-accuracy-25-01-PLAN.md
 Resume file: None

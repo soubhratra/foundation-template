@@ -61,7 +61,7 @@ Full archive: `.planning/milestones/v1.2-ROADMAP.md`
 - [x] **Phase 22: RBAC** — `@require_role("admin")` decorator; role assignment API; seeded `admin`/`member` groups via data migration (completed 2026-03-12)
 - [x] **Phase 23: Feature Entitlements** — `has_feature(user, key)` utility; Redis-cached results; billing-off fallback returns `True` (completed 2026-03-12)
 - [x] **Phase 24: Social Auth OAuth Callback Pages** — Create missing `(auth)/callback/page.tsx` and `(auth)/error/page.tsx` in Next.js web app; closes INT-01 and INT-02; unblocks Google/GitHub OAuth E2E flows (completed 2026-03-12)
-- [ ] **Phase 25: GDPR Export plan_id Accuracy** — Update `AccountExportService.export()` to read `Subscription.plan_id` from ORM instead of hard-coding `None`; closes INT-03
+- [x] **Phase 25: GDPR Export plan_id Accuracy** — Update `AccountExportService.export()` to read `Subscription.plan_id` from ORM instead of hard-coding `None`; closes INT-03 (completed 2026-03-12)
 
 ## Phase Details
 
@@ -360,4 +360,4 @@ Plans:
 | 22. RBAC                         | 3/3       | Complete       | 2026-03-12 | -          |
 | 23. Feature Entitlements         | 3/3       | Complete       | 2026-03-12 | -          |
 | 24. Social Auth OAuth Callback   | 2/2       | Complete       | 2026-03-12 | -          |
-| 25. GDPR Export plan_id Accuracy | v1.3      | 0/1            | Pending    | -          |
+| 25. GDPR Export plan_id Accuracy | 1/1       | Complete       | 2026-03-12 | -          |
