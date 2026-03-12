@@ -46,6 +46,8 @@ env/
 .coverage
 htmlcov/
 *.sqlite3
+coverage.xml
+.hypothesis/
 
 # Env files
 .env
@@ -53,6 +55,9 @@ htmlcov/
 .env.*.local
 .env.*
 !.env.example
+
+# GSD / planning backups
+.planning/STATE.md.bak-*
 
 # Local agent/tool folders
 .agent/
