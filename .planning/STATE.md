@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: SaaS Functional Baseline
 status: planning
-stopped_at: Phase 22 context gathered
-last_updated: "2026-03-12T20:35:15.330Z"
+stopped_at: Completed 22-rbac-01-PLAN.md
+last_updated: "2026-03-12T20:54:45.836Z"
 last_activity: 2026-03-11 — v1.3 roadmap created; all 19 requirements mapped across Phases 19–23
 progress:
   total_phases: 11
   completed_phases: 9
-  total_plans: 33
-  completed_plans: 33
+  total_plans: 36
+  completed_plans: 34
   percent: 0
 ---
 
@@ -61,6 +61,7 @@ _Updated after each plan completion_
 | Phase 21-gdpr-baseline P02 | 25 | 2 tasks | 9 files |
 | Phase 21-gdpr-baseline P03 | 3 | 2 tasks | 4 files |
 | Phase 21-gdpr-baseline P04 | 4 | 2 tasks | 4 files |
+| Phase 22-rbac P01 | 252 | 1 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -100,6 +101,7 @@ _Updated after each plan completion_
 - [Phase 21-gdpr-baseline]: posthog.init() moved out of providers.tsx into CookieConsentBanner — PostHogProvider wrapper stays but init is consent-gated (GDPR-03)
 - [Phase 21-gdpr-baseline]: deleteAccountAction uses direct fetch (not createApiClient) — DELETE /api/v1/account/ not in generated OpenAPI client; raw fetch with cookie forwarding matches createUpstreamFetcher pattern
 - [Phase 21-gdpr-baseline]: DangerZone session clear uses useAuth().logout.mutate() — calls DELETE /api/v1/auth/browser/v1/auth/session, same path as header Sign Out button
+- [Phase 22-rbac]: Inline helper functions for admin_user/member_user in test bodies — fixture-level Group.DoesNotExist produces ERROR not FAIL; helpers catch DoesNotExist and call pytest.fail() for readable RED output
 
 ### Pending Todos
 
@@ -119,6 +121,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-12T20:35:15.326Z
-Stopped at: Phase 22 context gathered
-Resume file: .planning/phases/22-rbac/22-CONTEXT.md
+Last session: 2026-03-12T20:54:45.832Z
+Stopped at: Completed 22-rbac-01-PLAN.md
+Resume file: None

@@ -312,5 +312,5 @@ Plans:
 | 19. Transactional Email          | 4/4       | Complete       | 2026-03-12  | -          |
 | 20. Social Auth                  | 6/6       | Complete       | 2026-03-12  | -          |
 | 21. GDPR Baseline                | 4/4       | Complete       | 2026-03-12  | -          |
-| 22. RBAC                         | v1.3      | 0/3            | Not started | -          |
+| 22. RBAC                         | 1/3       | In Progress    |             | -          |
 | 23. Feature Entitlements         | v1.3      | 0/TBD          | Not started | -          |

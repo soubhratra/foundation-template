@@ -31,9 +31,9 @@ Requirements for v1.3. Each maps to roadmap phases starting at phase 19.
 
 ### RBAC
 
-- [ ] **RBAC-01**: API endpoints can be protected with a `@require_role("admin")` decorator that returns HTTP 403 for users without the role
-- [ ] **RBAC-02**: Authenticated admin user can assign or remove roles from other users via `POST /api/v1/users/{id}/roles`
-- [ ] **RBAC-03**: Default roles (`admin`, `member`) are seeded via data migration on first deploy
+- [x] **RBAC-01**: API endpoints can be protected with a `@require_role("admin")` decorator that returns HTTP 403 for users without the role
+- [x] **RBAC-02**: Authenticated admin user can assign or remove roles from other users via `POST /api/v1/users/{id}/roles`
+- [x] **RBAC-03**: Default roles (`admin`, `member`) are seeded via data migration on first deploy
 
 ### Entitlements
 
@@ -93,9 +93,9 @@ Requirements for v1.3. Each maps to roadmap phases starting at phase 19.
 | GDPR-01     | Phase 21 | Complete |
 | GDPR-02     | Phase 21 | Complete |
 | GDPR-03     | Phase 21 | Complete |
-| RBAC-01     | Phase 22 | Pending  |
-| RBAC-02     | Phase 22 | Pending  |
-| RBAC-03     | Phase 22 | Pending  |
+| RBAC-01     | Phase 22 | Complete |
+| RBAC-02     | Phase 22 | Complete |
+| RBAC-03     | Phase 22 | Complete |
 | ENT-01      | Phase 23 | Pending  |
 | ENT-02      | Phase 23 | Pending  |
 | ENT-03      | Phase 23 | Pending  |
