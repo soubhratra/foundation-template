@@ -1,316 +1,460 @@
-# Stack Research: Billing & Payments Module (v1.1)
+# Stack Research: SaaS Functional Baseline (v1.3)
 
-**Project:** Foundation Template — billing/payments milestone
-**Domain:** SaaS billing — subscriptions, one-time charges, usage-based billing, PDF invoices
-**Researched:** 2026-03-07
+**Project:** Foundation Template — v1.3 milestone
+**Domain:** SaaS functional baseline — transactional email, social auth, GDPR, RBAC, feature entitlements
+**Researched:** 2026-03-11
 **Overall confidence:** HIGH for library choices; MEDIUM for exact patch versions (verify at install time)
 
-> **Scope note:** This document covers ONLY the net-new libraries needed for the billing/payments
-> module. The core stack (Django Ninja Extra, Next.js 15+, Expo SDK 53+, LangGraph, Django Allauth,
-> Turborepo, pnpm, pytest, Vitest, etc.) is already decided and is NOT re-researched here.
-> The v1.0 foundation stack research is archived in `.planning/phases/` phase CONTEXT files.
+> **Scope note:** This document covers ONLY the net-new libraries needed for v1.3.
+> The core stack (Django Ninja Extra, Next.js 15+, Expo SDK 53+, Django Allauth headless,
+> Celery + Redis, structlog, OpenTelemetry, PostHog, Stripe, WeasyPrint, Turborepo, pnpm,
+> pytest, Vitest, etc.) is already decided and is NOT re-researched here.
+> See `.planning/research/STACK.md` (v1.1 edition) and `.planning/phases/` CONTEXT files
+> for the validated prior-milestone stack decisions.
 
 ---
 
 ## Decision Summary
 
-| Concern                       | Chosen Library                       | Version Pin                | Confidence |
-| ----------------------------- | ------------------------------------ | -------------------------- | ---------- |
-| Stripe Python SDK             | `stripe`                             | `>=14.4,<15`               | HIGH       |
-| Django Stripe sync layer      | raw `stripe` SDK only (no dj-stripe) | —                          | HIGH       |
-| PDF invoice generation        | `weasyprint`                         | `>=68.1,<69`               | HIGH       |
-| Django template to PDF bridge | `django-weasyprint`                  | `>=2.4,<3`                 | MEDIUM     |
-| Stripe JS (web)               | `@stripe/stripe-js`                  | `^8.9.0`                   | HIGH       |
-| Stripe React components (web) | `@stripe/react-stripe-js`            | `^5.6.0`                   | HIGH       |
-| Stripe React Native (mobile)  | `@stripe/stripe-react-native`        | Expo-SDK-53-compatible pin | MEDIUM     |
+| Feature                              | Chosen Library / Approach                        | Version Pin                          | Confidence |
+| ------------------------------------ | ------------------------------------------------ | ------------------------------------ | ---------- |
+| Transactional email backend          | `django-anymail`                                 | `>=14.0,<15`                         | HIGH       |
+| Default email provider               | SendGrid via anymail                             | `sendgrid` not installed directly    | HIGH       |
+| Email HTML templating + CSS inlining | `premailer`                                      | `>=3.10,<4`                          | MEDIUM     |
+| Social auth (web: Google + GitHub)   | `django-allauth` socialaccount providers         | already installed; add provider apps | HIGH       |
+| Social auth token exchange (mobile)  | `django-allauth` headless provider token flow    | built into allauth 65.x              | HIGH       |
+| Google Sign In (mobile)              | `@react-native-google-signin/google-signin`      | `^16.1.2`                            | MEDIUM     |
+| Apple Sign In (mobile)               | `expo-apple-authentication`                      | `~55.0.8` (SDK 53 bundled)           | HIGH       |
+| GDPR: account deletion               | Django ORM cascade (built-in) + custom service   | no new library                       | HIGH       |
+| GDPR: data export                    | Django serialization framework (built-in)        | no new library                       | HIGH       |
+| GDPR: cookie consent (web)           | Custom component — shadcn/ui primitives          | no new library                       | HIGH       |
+| RBAC                                 | Django Groups + custom `BasePermission` subclass | built into django-ninja-extra        | HIGH       |
+| Feature entitlements                 | Custom `has_feature()` — settings-driven config  | no new library                       | HIGH       |
 
-**One-liner:** `stripe` (Python v14) + `weasyprint` + `@stripe/react-stripe-js` v5 — no dj-stripe,
-no server-side invoice rendering via Stripe's hosted portal.
-
----
-
-## Python / Backend
-
-### Core Stripe SDK
-
-| Technology | Version      | Purpose                                                                     | Why                                                                                                                                                                                                                                                                                                                                          |
-| ---------- | ------------ | --------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `stripe`   | `>=14.4,<15` | All Stripe API calls — subscriptions, charges, meters, webhook verification | Official Stripe Python SDK, maintained by Stripe. v14.4 pins API version `2026-02-25.clover` (confirmed via stripe-python releases, March 6, 2026). v8+ introduced `StripeClient` — the modern object-oriented pattern replacing legacy module-level calls. Async support available via `pip install stripe[async]` (uses httpx internally). |
-
-**Why not dj-stripe:**
-dj-stripe mirrors Stripe's object graph into Django models (Subscription, Invoice, Customer, etc.)
-and auto-syncs them via webhooks. This creates three concrete problems for this module:
-
-1. **Adapter pattern conflict.** The requirement is a `PaymentAdapter` ABC with Stripe as one
-   implementation. dj-stripe is itself an opinionated Stripe-specific layer — wrapping it behind
-   a generic adapter produces an adapter around an adapter, with dj-stripe's model assumptions
-   leaking through. Any second payment provider would need its own dj-stripe-equivalent, which
-   defeats the abstraction.
-
-2. **Removal coupling.** dj-stripe's migrations live in Django's migration graph. When the billing
-   module is removed via the CLI scaffolder, dj-stripe's ~40 migration files and all their
-   ForeignKey references to your User model must be surgically cleaned. dj-stripe 2.10.0 reset
-   its entire migration history (requiring a two-step upgrade via 2.9.x) — a signal that the
-   migration graph is not stable. Raw `stripe` + our own thin models means we control exactly
-   which tables exist and can drop them cleanly.
-
-3. **Version constraints.** dj-stripe 2.10+ requires Django >=5.0 exclusively. This imposes a
-   hard Django version floor on every product using this template, even if the product has no
-   payments feature.
-
-**Why not django-payments (jazzband):**
-django-payments provides a provider ABC but does not support Stripe's Meter API (usage-based
-billing). Subscription lifecycle (upgrade/downgrade/cancel with proration) requires custom code
-against the Stripe SDK regardless, so the abstraction buys little while adding a dependency.
-
-### PDF Invoice Generation
-
-| Technology          | Version      | Purpose                                            | Why                                                                                                                                                                                                                                                                                                  |
-| ------------------- | ------------ | -------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `weasyprint`        | `>=68.1,<69` | Render HTML+CSS Django templates to PDF bytes      | Actively maintained (latest release February 2026, Production/Stable on PyPI). Supports Python 3.10-3.13. HTML+CSS input means invoice templates use standard Django templates — no proprietary layout DSL. Pure Python (no external browser process). WeasyPrint 68.x is the current stable series. |
-| `django-weasyprint` | `>=2.4,<3`   | `WeasyTemplateResponseMixin` for class-based views | Thin wrapper (single mixin class). Wires Django's template renderer directly into WeasyPrint's HTML class. Returns `application/pdf` responses from CBVs. v2.4 is current. No additional abstraction beyond what we need.                                                                            |
-
-**System dependencies (Docker image must include):**
-WeasyPrint requires Cairo, Pango, and GDK-PixBuf native libraries. Add to `apps/api/Dockerfile`
-before the Python install step:
-
-```dockerfile
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    libcairo2 \
-    libpango-1.0-0 \
-    libpangocairo-1.0-0 \
-    libgdk-pixbuf-2.0-0 \
-    libffi-dev \
-    shared-mime-info \
-    && rm -rf /var/lib/apt/lists/*
-```
-
-This is the primary operational complexity WeasyPrint adds — native libs in Docker. It is a
-known, well-documented requirement and does not add a new service or external process.
-
-**Why not ReportLab:**
-ReportLab uses a Python-code layout API (Platypus/canvas), not HTML/CSS. Invoice templates would
-be written in ReportLab's proprietary drawing primitives, creating a second templating system
-alongside Django templates. WeasyPrint with HTML+CSS is faster to develop and universally
-understood by anyone with web skills.
-
-**Why not Stripe-hosted invoices:**
-The requirement explicitly states vendor-agnostic, server-side PDF generation. Stripe-hosted
-invoices are provider-locked and cannot be reused if the payment adapter switches to a different
-provider.
-
-**Why not wkhtmltopdf / PDFKit:**
-wkhtmltopdf requires a headless browser binary in Docker (much heavier image). The project is
-effectively unmaintained since 2023. WeasyPrint is pure Python and actively maintained.
-
-### Webhook Infrastructure (no additional library)
-
-No library beyond `stripe` is needed for webhook handling. The pattern for Django Ninja Extra:
-
-```python
-# apps/api/billing/api.py  (illustrative -- exact code written during implementation)
-from django.http import HttpRequest, HttpResponse
-from django.views.decorators.csrf import csrf_exempt
-from ninja_extra import api_controller, route
-import stripe
-
-@api_controller("/webhooks", tags=["billing"])
-class BillingWebhookController:
-    @route.post("/stripe", auth=None)  # auth=None bypasses Ninja JWT auth
-    @csrf_exempt
-    def stripe_webhook(self, request: HttpRequest):
-        payload = request.body          # raw bytes -- do NOT parse before verification
-        sig_header = request.META.get("HTTP_STRIPE_SIGNATURE", "")
-        try:
-            event = stripe.Webhook.construct_event(
-                payload, sig_header, settings.STRIPE_WEBHOOK_SECRET
-            )
-        except stripe.error.SignatureVerificationError:
-            return HttpResponse(status=400)
-        # dispatch to signal/handler...
-        return HttpResponse(status=200)
-```
-
-Critical constraint: `request.body` must be read before any JSON body parsing. If Django Ninja's
-default body parsing is invoked on this endpoint (e.g., by declaring a Ninja schema parameter),
-the raw bytes stream is consumed and `construct_event` will fail with a signature mismatch. Use
-`HttpRequest` directly and return `HttpResponse` (not a Ninja schema response) for this endpoint.
+**One-liner:** `django-anymail` v14 (SendGrid adapter) + `premailer` + allauth social providers
+(already installed) + two mobile social auth packages + zero new libraries for GDPR/RBAC/entitlements.
 
 ---
 
-## JavaScript / TypeScript — Web (apps/web/)
+## 1. Transactional Email
 
-### Stripe Frontend Libraries
+### Backend: django-anymail
 
-| Technology                | Version  | Purpose                                                                                    | Why                                                                                                                                                                                                              |
-| ------------------------- | -------- | ------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `@stripe/stripe-js`       | `^8.9.0` | Load Stripe.js, create Elements instance                                                   | Required peer dep for react-stripe-js. v8.9.0 confirmed current (npm, published March 3, 2026). The `loadStripe` helper loads the hosted Stripe.js script — the npm package contributes TypeScript types only.   |
-| `@stripe/react-stripe-js` | `^5.6.0` | React `<Elements>` provider, `<PaymentElement>` component, `useStripe`/`useElements` hooks | Official Stripe React bindings. v5.6.1 published March 4, 2026. `PaymentElement` is the current component (replaces deprecated `CardElement`) and supports 18+ global payment methods from a single integration. |
+| Technology       | Version      | Purpose                                                                                                         | Why                                                                                                                                                                                                                                                                                                                                                |
+| ---------------- | ------------ | --------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `django-anymail` | `>=14.0,<15` | Django `EMAIL_BACKEND` implementation for multiple ESPs; replaces `django.core.mail.backends.smtp.EmailBackend` | Provides a single unified Django email backend interface for 14+ providers (SendGrid, Mailgun, Resend, SES, Postmark, Brevo, etc.). v14.0 released December 18, 2025. Works with standard `django.core.mail.send_mail` — no API calls to Anymail in application code. Swapping ESPs requires changing one `EMAIL_BACKEND` setting and credentials. |
+| `premailer`      | `>=3.10,<4`  | Inline CSS in HTML email templates before sending                                                               | Email clients (Gmail, Outlook) strip `<style>` blocks from HTML emails. `premailer.transform()` converts CSS rules to inline `style=""` attributes before the message is handed to Anymail. v3.10.0 is the current stable release (Production/Stable on PyPI). Pure Python; no native dependencies.                                                |
 
-**Integration constraint — server vs. client components:**
-`loadStripe` and all Elements components must run client-side. In Next.js 15 App Router, billing
-pages must split into:
+**Why django-anymail over direct sendgrid SDK:**
 
-- **Server component** — fetch subscription data from `apps/api` (plan tier, status, invoice
-  list). No Stripe imports.
-- **Client component** (`"use client"`) — render `<Elements>` and `<PaymentElement>`. Import
-  `@stripe/react-stripe-js` here only.
+The `sendgrid` Python SDK (v6.12.5, September 2025) is a full REST client for SendGrid's API.
+Using it directly means:
 
-The `publishableKey` is passed as a prop from server to client (safe — it is a public key).
+1. Application code imports `sendgrid` — if the ESP changes, every call site changes.
+2. Template rendering, HTML construction, and attachment handling are reimplemented per-provider.
 
-**What NOT to add on the web side:**
+`django-anymail` maps SendGrid (and every other supported ESP) onto Django's standard
+`EmailMessage` / `EmailMultiAlternatives` interface. Application code calls
+`send_mail(...)` or constructs `EmailMultiAlternatives` — the ESP is a configuration concern only.
+The `EmailAdapter` ABC described in the v1.3 requirements wraps `django.core.mail` (not anymail
+directly), meaning anymail fulfills the SendGrid-specific transport layer while the adapter ABC
+provides the application-level interface with Celery queuing, template resolution, and retry logic.
 
-- Do NOT install the `stripe` npm package (Node.js server SDK) in `apps/web/`. All Stripe API
-  calls requiring the secret key must route through `apps/api/`. Next.js Server Actions that call
-  `stripe` directly risk secret key leakage into the client bundle and violate the single-backend
-  architecture rule.
-- Do NOT use the Stripe Customer Portal as the primary billing management UI. A custom Next.js
-  page is required per the feature spec. The Stripe Customer Portal may be used as a fallback
-  escape hatch for edge cases (e.g., updating payment methods during an active dispute) but must
-  not be the primary surface.
+**Why not django-sendgrid-v5 (`django-sendgrid-v5` 1.3.0, May 2025):**
+SendGrid-only. Locks the backend to SendGrid at the Django settings level. If a project uses
+Resend or Mailgun, the entire backend swap requires finding a different package. Anymail handles
+all ESPs with one integration.
 
----
+**Why not plain SMTP (`django.core.mail.backends.smtp.EmailBackend`):**
+SMTP through SendGrid works but lacks transactional features: no per-message delivery tracking,
+no batch send metadata, no webhook correlation IDs, no dynamic template support. Anymail exposes
+these as optional attributes on `EmailMessage` via the `esp_extra` dict — accessible if needed
+but not required.
 
-## JavaScript / TypeScript — Mobile (apps/mobile/)
+**SendGrid as default ESP (not Mailgun or Resend):**
+All three are viable. SendGrid chosen as the default because:
 
-### Stripe React Native
+- Widest market recognition — most developers expect it as the default example
+- Template system (Dynamic Templates) is well-documented
+- Anymail adapter exists and is actively maintained
 
-| Technology                    | Version                    | Purpose                                                    | Why                                                                                                                                                                                                                                                                  |
-| ----------------------------- | -------------------------- | ---------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `@stripe/stripe-react-native` | Expo-SDK-53-compatible pin | `<StripeProvider>`, `usePaymentSheet`, `useConfirmPayment` | Official Stripe React Native SDK. Expo SDK 53 requires a specific pinned version — check stripe-react-native CHANGELOG at install time for the Expo-SDK-53 mapping row. Uses Expo config plugin (add to `plugins` in `app.json`; no ejecting from managed workflow). |
+Mailgun and Resend are drop-in swaps via anymail — no code changes needed in the email module,
+only `EMAIL_BACKEND` + credentials in settings. Per Mailtrap's March 2025 deliverability study,
+Mailgun has higher inbox placement (71.4% vs 61.0%) — individual projects should evaluate and swap.
 
-**Scope boundary for mobile billing:**
-The mobile app handles one-time purchases and displays current subscription status. Full
-subscription lifecycle management (upgrade/downgrade/cancel) should direct users to the web app
-or open a WebView pointing to the web billing page. Do not reimplement subscription management UI
-natively — it duplicates logic and diverges from the web surface.
-
-Native in-app-purchase (Apple IAP / Google Play Billing) is explicitly out of scope for this
-module. Those require separate entitlements, App Store review processes, and revenue share rules
-that are orthogonal to the Stripe integration.
-
-**Expo Go limitation:**
-Google Pay does not work in Expo Go. Use a development build (`eas build --profile development`)
-when testing Google Pay or Apple Pay flows.
-
----
-
-## Infrastructure / Environment
+**CSS inlining with premailer:**
+`premailer.transform(html_string)` is called inside the `EmailAdapter` service layer before
+the message is constructed. This keeps the template files clean (standard CSS in `<style>` blocks)
+while ensuring email client compatibility. The `allow_network=False` option prevents premailer
+from downloading external stylesheets — always pass this in production.
 
 ### Net-New Environment Variables
 
-| Variable                 | Where                                     | Notes                                                  |
-| ------------------------ | ----------------------------------------- | ------------------------------------------------------ |
-| `STRIPE_SECRET_KEY`      | `apps/api/.env`                           | Never exposed to frontend. `sk_live_` or `sk_test_`.   |
-| `STRIPE_PUBLISHABLE_KEY` | `apps/web/.env.local`, `apps/mobile/.env` | Public key, safe for client. `pk_live_` or `pk_test_`. |
-| `STRIPE_WEBHOOK_SECRET`  | `apps/api/.env`                           | From Stripe Dashboard > Webhooks. `whsec_`.            |
-| `STRIPE_PRICE_ID_<TIER>` | `apps/api/.env`                           | One var per plan tier (e.g., `STRIPE_PRICE_ID_PRO`).   |
-| `BILLING_ENABLED`        | `apps/api/.env`                           | Feature flag controlling INSTALLED_APPS inclusion.     |
+| Variable             | Where           | Notes                                                        |
+| -------------------- | --------------- | ------------------------------------------------------------ |
+| `SENDGRID_API_KEY`   | `apps/api/.env` | Anymail reads this via `ANYMAIL["SENDGRID_API_KEY"]` setting |
+| `DEFAULT_FROM_EMAIL` | `apps/api/.env` | Django standard setting; anymail passes it through           |
+| `EMAIL_ENABLED`      | `apps/api/.env` | Feature flag for `--without email` CLI scaffolder removal    |
 
-### Docker Compose
+---
 
-No new services. Billing runs within the existing `api` container. WeasyPrint native libs are
-added to the `api` Dockerfile (see above). No separate queue worker is required for synchronous
-webhook processing; if event handling becomes slow, route to the existing task queue (already
-decided in the core stack).
+## 2. Social Auth
 
-### Stripe CLI (development tooling only)
+### Backend: django-allauth socialaccount providers (no new Python package)
 
-```bash
-brew install stripe/stripe-cli/stripe
-stripe login
-stripe listen --forward-to localhost:8000/api/webhooks/stripe
+django-allauth 65.15.0 (released March 9, 2026, verified via PyPI) is already installed. Social
+authentication requires only activating the provider apps in `INSTALLED_APPS` — no additional
+Python package installs.
+
+**Providers needed:**
+
+| Provider | INSTALLED_APPS entry                     | Notes                                                 |
+| -------- | ---------------------------------------- | ----------------------------------------------------- |
+| Google   | `allauth.socialaccount.providers.google` | OAuth2 + PKCE recommended; `OAUTH_PKCE_ENABLED: True` |
+| GitHub   | `allauth.socialaccount.providers.github` | OAuth2; minimal scope `['user', 'email']`             |
+| Apple    | `allauth.socialaccount.providers.apple`  | Apple-specific JWT signing (P8 private key)           |
+
+**Key configuration decision — Apple requires two client IDs:**
+Apple distinguishes between the "Services ID" (used by web browsers) and the "Bundle ID" (used
+by iOS apps). Configure two separate `APPS` entries in `SOCIALACCOUNT_PROVIDERS['apple']`:
+one for web with the Services ID, one for mobile with the Bundle ID and `"hidden": True`.
+The hidden entry is excluded from web login button rendering but is active for the headless
+provider token endpoint.
+
+**Headless mobile token exchange (allauth built-in, no extra package):**
+allauth 65.x ships `allauth.headless` with a "provider token" flow. The mobile app obtains an
+identity token natively (via `expo-apple-authentication` or `@react-native-google-signin`) and
+POSTs it to `/_allauth/app/v1/auth/provider/token`. allauth validates the token server-side,
+creates or retrieves the user, and returns a session token or JWT. This flow is documented in
+allauth's headless integrations page and requires no additional library.
+
+**Django Ninja security class for headless session tokens:**
+allauth 65.x ships `allauth.headless.tokens.sessions.x_session_token_auth` — a Django Ninja
+security class that authenticates requests carrying the `X-Session-Token` header. Add to
+Ninja API controllers where mobile-origin requests need authentication.
+
+**Why not `social-auth-app-django` (Python Social Auth):**
+PSA is a separate, full-featured social auth library unrelated to allauth. Installing it alongside
+allauth creates two parallel user identity management systems. allauth is already the decided
+auth framework and its social account support is production-grade — adding PSA adds complexity
+and model coupling with no benefit.
+
+**Why not Clerk or Auth0 for social auth:**
+Both are external auth-as-a-service products. The template's architecture decision is to own
+authentication via Django Allauth — no external auth service dependency. Social providers in
+allauth are configuration (client ID + secret), not infrastructure.
+
+### Mobile: Google Sign In
+
+| Technology                                  | Version   | Purpose                                                     | Why                                                                                                                                                                                                                                                                                                                                                                                       |
+| ------------------------------------------- | --------- | ----------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@react-native-google-signin/google-signin` | `^16.1.2` | Native Google Sign In button + ID token for iOS and Android | Official, actively maintained Google Sign In library for React Native. Works with Expo managed workflow via config plugin (no ejecting required). Returns an ID token that is POSTed to allauth's headless provider token endpoint. v16.1.2 is the current release (npm, March 2026). Provides GoogleSignin.hasPlayServices(), signIn(), getTokens() — the token flow is well-documented. |
+
+**Critical limitation:** Cannot be used in Expo Go. Requires a development build (`eas build --profile development`) or `npx expo run:ios` / `npx expo run:android`. Document this prominently in `apps/mobile/README.md`.
+
+**Why not `expo-auth-session/providers/google`:**
+`expo-auth-session` uses an OAuth web redirect flow (browser modal) — not a native Google Sign In
+sheet. The UX is inferior (redirects to a webview) and does not use the native Google SDK. For
+template-quality defaults, the native library is preferred.
+
+### Mobile: Apple Sign In
+
+| Technology                  | Version   | Purpose                                          | Why                                                                                                                                                                                                                                                                                              |
+| --------------------------- | --------- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `expo-apple-authentication` | `~55.0.8` | Native Apple Sign In button + credential for iOS | First-party Expo package (SDK 53 bundled). v55.0.8 confirmed via npm. Config plugin sets `ios.usesAppleSignIn: true` automatically. Returns a credential with an `identityToken` (JWT) that is POSTed to allauth's headless provider token endpoint. iOS only — conditionally render the button. |
+
+**App Store requirement:** Apple Sign In is mandatory in any iOS app that offers any third-party
+social sign-in option. If Google Sign In ships, Apple Sign In must also ship. This is an App Store
+Review guideline — not optional.
+
+**Configuration:** Add `"ios.usesAppleSignIn": true` to `app.json`. EAS Build handles the
+capability entitlement automatically.
+
+### Net-New Environment Variables
+
+| Variable                               | Where              | Notes                                                |
+| -------------------------------------- | ------------------ | ---------------------------------------------------- |
+| `GOOGLE_CLIENT_ID`                     | `apps/api/.env`    | OAuth2 client ID from Google Cloud Console           |
+| `GOOGLE_CLIENT_SECRET`                 | `apps/api/.env`    | OAuth2 client secret                                 |
+| `GITHUB_CLIENT_ID`                     | `apps/api/.env`    | OAuth app client ID from GitHub settings             |
+| `GITHUB_CLIENT_SECRET`                 | `apps/api/.env`    | OAuth app client secret                              |
+| `APPLE_CLIENT_ID`                      | `apps/api/.env`    | Services ID (web)                                    |
+| `APPLE_MOBILE_CLIENT_ID`               | `apps/api/.env`    | Bundle ID (iOS)                                      |
+| `APPLE_SECRET`                         | `apps/api/.env`    | Key ID from Apple Developer Console                  |
+| `APPLE_KEY`                            | `apps/api/.env`    | Member ID / App ID Prefix                            |
+| `APPLE_CERTIFICATE_KEY`                | `apps/api/.env`    | P8 private key (multi-line; use base64 or file path) |
+| `SOCIAL_AUTH_ENABLED`                  | `apps/api/.env`    | Feature flag for `--without social-auth` CLI removal |
+| `EXPO_PUBLIC_GOOGLE_CLIENT_ID_IOS`     | `apps/mobile/.env` | iOS OAuth client ID (from Google Cloud Console)      |
+| `EXPO_PUBLIC_GOOGLE_CLIENT_ID_ANDROID` | `apps/mobile/.env` | Android OAuth client ID                              |
+
+---
+
+## 3. GDPR Baseline
+
+No new Python or JavaScript library is needed. All three GDPR requirements are implemented
+using existing capabilities in the stack.
+
+### Account Hard Delete + Cascade
+
+Django ORM's `on_delete=CASCADE` on all ForeignKey fields referencing `User` handles cascade
+deletion of related records when `user.delete()` is called. The implementation is:
+
+1. A `DELETE /api/v1/account/` endpoint that calls `request.user.delete()` after confirmation.
+2. A Celery task for any cleanup that must happen asynchronously (e.g., canceling Stripe
+   subscription before deleting the user record).
+3. An allauth signal (`user_logged_out`) to invalidate sessions before deletion.
+
+**Why not `django-gdpr-assist`:**
+`django-gdpr-assist` (last meaningful release 2021, v1.4.2) provides anonymization helpers but
+adds a separate middleware/mixin system on top of Django's ORM. For a template providing hard
+delete (not anonymization), the ORM cascade is sufficient and cleaner. Adding a third-party GDPR
+library for a feature Django already handles natively would be premature abstraction.
+
+### JSON Data Export
+
+Django's built-in serialization framework (`django.core.serializers.serialize('json', queryset)`)
+produces JSON from any QuerySet. For a user data export, a service function collects all
+user-owned model instances and serializes them into a structured JSON payload. No external library
+is required. The endpoint returns a `Content-Disposition: attachment; filename=data-export.json`
+response with the serialized payload.
+
+**Pattern:**
+
+```python
+# apps/api/gdpr/services.py
+import json
+from django.core import serializers
+
+def export_user_data(user) -> dict:
+    return {
+        "user": json.loads(serializers.serialize("json", [user])),
+        "profile": json.loads(serializers.serialize("json", user.profile_set.all())),
+        # Add other user-owned models here per product
+    }
 ```
 
-The Stripe CLI is a development convenience for local webhook forwarding. It is not a production
-dependency and must not appear in `pyproject.toml` or `package.json`. Document its use in
-`apps/api/README.md` only.
+### Cookie Consent Banner (Next.js)
+
+A custom component built from shadcn/ui primitives (`Card`, `Button`) with `localStorage`-backed
+consent state. The project's PostHog integration already provides `posthog.opt_out_capturing()`
+and `posthog.opt_in_capturing()` — the consent banner calls these on accept/decline.
+
+**Why not a consent library (e.g., `shadcn-cookie-consent`, `@consent-manager`):**
+Third-party consent libraries ship opinionated UI that conflicts with the project's Shadcn/ui
+design system. A custom component is 60-80 lines, avoids a new dependency, and integrates
+cleanly with the PostHog adapter's existing opt-out API. The shadcn/ui registry has
+community examples (`shadcn-cookie-consent`) that serve as reference implementations.
+
+---
+
+## 4. RBAC
+
+No new library. Django Groups + Django Ninja Extra's `BasePermission` system cover the full
+requirement.
+
+### Pattern
+
+Django's `auth_group` and `auth_user_groups` tables are already created by `django.contrib.auth`
+(always installed). Groups are the role carrier:
+
+```python
+# apps/api/core/permissions.py
+from ninja_extra.permissions import BasePermission
+
+class RequireRole(BasePermission):
+    """Parameterized permission class — use as @require_role("admin")."""
+    def __init__(self, *roles: str):
+        self.roles = set(roles)
+
+    def has_permission(self, request, controller) -> bool:
+        if not request.user or not request.user.is_authenticated:
+            return False
+        return request.user.groups.filter(name__in=self.roles).exists()
+```
+
+Usage in controllers:
+
+```python
+@api_controller("/admin", permissions=[RequireRole("admin")])
+class AdminController(ControllerBase):
+    ...
+```
+
+**Built-in permission classes already in django-ninja-extra:**
+`AllowAny`, `IsAuthenticated`, `IsAuthenticatedOrReadOnly`, `IsAdminUser`. The `RequireRole`
+class above is the only new code — no library install.
+
+**Role assignment API:** A `POST /api/v1/admin/users/{id}/roles` endpoint using
+`user.groups.set([...])`. Requires `IsAdminUser` or `RequireRole("admin")` on the controller.
+
+**Why not `django-rbac` or `django-guardian`:**
+`django-guardian` adds row-level object permissions — not needed for role-based endpoint
+access control. `django-rbac` on PyPI has not been updated since 2018. Django Groups + custom
+`BasePermission` is 30 lines and has zero migration overhead beyond what `django.contrib.auth`
+already provides.
+
+**Why not `django-rules`:**
+`django-rules` is excellent for complex predicate-based permissions but adds a DSL on top of
+Django's permission system. For template-level RBAC, the requirement is group membership checks
+— not predicates. Groups are simpler and universally understood.
+
+---
+
+## 5. Feature Entitlements
+
+No new library. A settings-driven `has_feature(user, feature_key)` function checks the user's
+active plan tier against a plan-feature config dict in Django settings.
+
+### Pattern
+
+```python
+# apps/api/entitlements/services.py
+from django.conf import settings
+
+PLAN_FEATURES: dict[str, set[str]] = getattr(settings, "PLAN_FEATURES", {})
+
+def has_feature(user, feature_key: str) -> bool:
+    """Check if user's active billing plan includes feature_key."""
+    plan = getattr(user, "active_plan_tier", "free")  # from billing module
+    allowed_features = PLAN_FEATURES.get(plan, set())
+    return feature_key in allowed_features
+```
+
+```python
+# settings/base.py
+PLAN_FEATURES = {
+    "free": {"basic_analytics"},
+    "pro": {"basic_analytics", "advanced_reports", "api_access"},
+    "enterprise": {"basic_analytics", "advanced_reports", "api_access", "sso", "audit_log"},
+}
+```
+
+This is pure Django settings — no database query, no migration, no new library. Invalidation
+requires a settings redeploy (acceptable for a template). Individual products that need
+dynamic plan features (e.g., per-customer feature flags) should add django-waffle or PostHog
+feature flags on top — both are already partially available in the v1.2 stack.
+
+**Why not django-waffle (`5.0.0`):**
+django-waffle provides database-backed feature flags with per-user, per-group, and percentage
+rollout controls. It is the right tool when feature availability needs to change without a
+redeploy or when A/B testing is needed. For the template baseline, the requirement is
+plan-tier entitlements — a static mapping that changes with billing plan changes, not runtime
+toggles. The settings-driven pattern is simpler and has zero additional dependencies.
+
+**Why not PostHog feature flags:**
+PostHog feature flags are already available via the ObservabilityAdapter. They add network
+latency (one HTTP call per flag evaluation or a cached SDK call) and are appropriate for
+gradual rollouts. Plan-based entitlements are deterministic (user's plan → feature set) and
+should be evaluated locally without a network call.
 
 ---
 
 ## Alternatives Considered
 
-| Category             | Recommended                              | Alternative                   | Why Not                                                                                  |
-| -------------------- | ---------------------------------------- | ----------------------------- | ---------------------------------------------------------------------------------------- |
-| Django Stripe sync   | Raw `stripe` SDK                         | `dj-stripe`                   | Conflicts with PaymentAdapter ABC; migration coupling; hard CLI-removal; Django 5+ floor |
-| PDF generation       | `weasyprint`                             | ReportLab                     | Proprietary layout DSL; no HTML/CSS templates                                            |
-| PDF generation       | `weasyprint`                             | wkhtmltopdf / PDFKit          | Unmaintained; headless browser binary in Docker                                          |
-| PDF generation       | `weasyprint`                             | Stripe-hosted invoices        | Provider-locked; violates vendor-agnostic requirement                                    |
-| Frontend payment UI  | `@stripe/react-stripe-js` PaymentElement | Stripe Checkout (hosted page) | Requirement is custom Next.js UI                                                         |
-| Mobile billing       | `@stripe/stripe-react-native`            | RevenueCat                    | RevenueCat wraps IAP -- not applicable to web subscriptions billed via Stripe            |
-| Webhook verification | `stripe.Webhook.construct_event`         | dj-stripe webhook signals     | dj-stripe not used; raw verification is 10 lines with zero additional dependencies       |
+| Category                    | Recommended                                 | Alternative                          | Why Not                                                                               |
+| --------------------------- | ------------------------------------------- | ------------------------------------ | ------------------------------------------------------------------------------------- |
+| Transactional email backend | `django-anymail`                            | `sendgrid` SDK directly              | Direct SDK = provider lock-in in app code; anymail keeps code provider-agnostic       |
+| Transactional email backend | `django-anymail`                            | `django-sendgrid-v5`                 | SendGrid-only; anymail supports 14+ providers with identical API                      |
+| Email CSS inlining          | `premailer`                                 | `inlinestyler`                       | inlinestyler is unmaintained; premailer is the standard                               |
+| Social auth library         | allauth (already installed)                 | `social-auth-app-django` (PSA)       | Two parallel identity systems; allauth is the decided framework                       |
+| Mobile Google Sign In       | `@react-native-google-signin/google-signin` | `expo-auth-session/providers/google` | Web redirect UX (webview modal) vs native Google Sign In sheet; native is better UX   |
+| GDPR data export            | Built-in Django serializers                 | `django-gdpr-assist`                 | Last updated 2021; overkill for hard-delete + JSON export; Django ORM covers the need |
+| Cookie consent              | Custom shadcn/ui component                  | `shadcn-cookie-consent` npm package  | Third-party UI conflicts with design system; custom is 60-80 lines                    |
+| RBAC                        | Django Groups + `BasePermission`            | `django-guardian`                    | Object-level permissions not needed; group membership is the requirement              |
+| RBAC                        | Django Groups + `BasePermission`            | `django-rules`                       | Predicate DSL overkill for role membership checks                                     |
+| Feature entitlements        | Settings-driven `has_feature()`             | `django-waffle`                      | Runtime toggles not needed; plan-tier mapping is deterministic                        |
+| Feature entitlements        | Settings-driven `has_feature()`             | PostHog feature flags                | Network latency; not appropriate for synchronous entitlement checks                   |
 
 ---
 
-## Adapter Pattern Notes (for requirements team)
+## What NOT to Add
 
-The `PaymentAdapter` ABC lives in `apps/api/billing/adapters/base.py`. The Stripe implementation
-lives in `apps/api/billing/adapters/stripe_adapter.py`. Minimum interface methods:
-
-- `create_customer(user)` -> `str` (external ID)
-- `create_subscription(customer_id, price_id)` -> subscription dict
-- `cancel_subscription(subscription_id)` -> `None`
-- `change_subscription_plan(subscription_id, new_price_id)` -> `None`
-- `create_one_time_charge(customer_id, amount_cents, currency, description)` -> charge dict
-- `record_usage(subscription_item_id, quantity, timestamp)` -> `None` (metered billing)
-- `create_billing_portal_session(customer_id, return_url)` -> `str` (session URL, escape hatch)
-- `construct_webhook_event(payload_bytes, sig_header, secret)` -> event dict
-
-This interface is narrow enough that a second provider (Paddle, LemonSqueezy) could implement it
-without importing any Stripe-specific types.
+| Avoid                                           | Why                                                               | Use Instead                                                 |
+| ----------------------------------------------- | ----------------------------------------------------------------- | ----------------------------------------------------------- |
+| `sendgrid` Python SDK as a direct dependency    | Creates provider lock-in in application code; anymail wraps it    | `django-anymail` with `ANYMAIL["SENDGRID_API_KEY"]` setting |
+| `dj-rest-auth` for social auth token exchange   | Not using DRF; allauth headless has native Ninja integration      | allauth headless provider token endpoint                    |
+| `python-social-auth` / `social-auth-app-django` | Parallel identity system to allauth; conflicts with existing auth | allauth social providers (already installed)                |
+| `django-gdpr-assist`                            | Last updated 2021; anonymization-focused, not hard-delete         | Django ORM cascade + custom service                         |
+| `django-guardian`                               | Row-level object permissions — not the requirement                | Django Groups + `RequireRole(BasePermission)`               |
+| `django-waffle` (for entitlements)              | Adds DB queries and admin UI overhead for a static mapping        | Settings-based `PLAN_FEATURES` dict                         |
 
 ---
 
 ## Module Removability (CLI Scaffolder Contract)
 
-For the billing module to be cleanly removable — same pattern as the AI module:
+### `--without email`
 
-1. All billing models live in `apps/api/billing/` (single Django app).
-2. App registered in `INSTALLED_APPS` conditionally via `BILLING_ENABLED` settings flag.
-3. App URL routes included conditionally in `urls.py`.
-4. `weasyprint` and `django-weasyprint` listed in a `[billing]` extras group in
-   `pyproject.toml` (or a separate `requirements-billing.txt`).
-5. Frontend: billing pages live in `apps/web/app/(billing)/`. Removing the module means deleting
-   that route group and removing `@stripe/stripe-js` + `@stripe/react-stripe-js` from
-   `apps/web/package.json`.
-6. CLI scaffolder `--without billing` removes: Django app directory, env var stubs, Docker apt
-   packages, frontend route group, mobile StripeProvider wrapper.
+Remove: `django-anymail` + `premailer` from `pyproject.toml`. Remove `apps/api/email/` directory.
+Remove `EMAIL_BACKEND`, `ANYMAIL`, `DEFAULT_FROM_EMAIL` from settings. Remove email templates
+from `apps/api/templates/email/`.
+
+### `--without social-auth`
+
+Remove: `allauth.socialaccount.providers.google`, `allauth.socialaccount.providers.github`,
+`allauth.socialaccount.providers.apple` from `INSTALLED_APPS`. Remove social credential env vars.
+On mobile: remove `@react-native-google-signin/google-signin` and `expo-apple-authentication`.
+Remove social login buttons from `apps/web/` and `apps/mobile/` auth screens.
+Note: `allauth.socialaccount` core app can remain installed (it adds the `socialaccount_*` tables
+but causes no harm). Removing it would require running `migrate --prune` — leave it installed,
+just remove provider-specific apps.
 
 ---
 
 ## Installation Commands
 
 ```bash
-# Python -- inside apps/api/
-uv add "stripe>=14.4,<15"
-uv add "weasyprint>=68.1,<69"
-uv add "django-weasyprint>=2.4,<3"
-# Optional: async Stripe calls (only if using ASGI async views)
-uv add "stripe[async]>=14.4,<15"
+# Python — inside apps/api/
+uv add "django-anymail>=14.0,<15"
+uv add "premailer>=3.10,<4"
 
-# Web -- from monorepo root
-pnpm --filter web add @stripe/stripe-js@^8.9.0 @stripe/react-stripe-js@^5.6.0
+# No new Python packages for GDPR, RBAC, or feature entitlements.
+# No new Python packages for social auth (allauth is already installed; add provider apps
+# to INSTALLED_APPS only).
 
-# Mobile -- verify Expo SDK 53 compatible version in stripe-react-native CHANGELOG first
-pnpm --filter mobile add @stripe/stripe-react-native
-# Then add to apps/mobile/app.json plugins:
-# ["@stripe/stripe-react-native", { "merchantIdentifier": "merchant.com.yourapp" }]
+# Mobile — from monorepo root
+pnpm --filter mobile add @react-native-google-signin/google-signin@^16.1.2
+pnpm --filter mobile add expo-apple-authentication@~55.0.8
+
+# No new web packages for social auth (OAuth redirects are backend-initiated).
+# No new web packages for cookie consent (custom shadcn/ui component, no install).
 ```
+
+---
+
+## Version Compatibility
+
+| Package                                     | Version   | Django  | Python | Notes                                                                        |
+| ------------------------------------------- | --------- | ------- | ------ | ---------------------------------------------------------------------------- |
+| `django-anymail`                            | `14.0`    | 4.0–6.0 | ≥3.8   | Verified December 2025                                                       |
+| `premailer`                                 | `3.10.0`  | any     | 3.5+   | Production/Stable; last release August 2021 — no concerns for stable utility |
+| `django-allauth`                            | `65.15.0` | 4.2–6.0 | ≥3.10  | Already installed; v65.15.0 March 9, 2026                                    |
+| `@react-native-google-signin/google-signin` | `16.1.2`  | —       | —      | Expo SDK 53 managed workflow: requires dev build, not Expo Go                |
+| `expo-apple-authentication`                 | `55.0.8`  | —       | —      | SDK 53 bundled version; iOS only                                             |
 
 ---
 
 ## Sources
 
-- [stripe PyPI](https://pypi.org/project/stripe/) — v14.4.0, API version 2026-02-25.clover, release March 6, 2026 (MEDIUM — PyPI page metadata)
-- [stripe-python GitHub releases](https://github.com/stripe/stripe-python/releases) — StripeClient in v8+, async in v13+, changelog (HIGH — official Stripe repo)
-- [Stripe webhook docs Python](https://docs.stripe.com/webhooks?lang=python) — `Webhook.construct_event` pattern, raw body requirement (HIGH — official Stripe docs)
-- [dj-stripe 2.10.0 release notes](https://dj-stripe.dev/docs/dev/changes/2_10_0) — migration reset, Django 5+ only, architecture shift (HIGH — official dj-stripe docs)
-- [WeasyPrint PyPI](https://pypi.org/project/weasyprint/) — v68.1, Python 3.10-3.13, February 2026 release (HIGH — PyPI metadata)
-- [WeasyPrint 68.1 docs](https://doc.courtbouillon.org/weasyprint/stable/) — system dependency list (HIGH — official docs)
-- [django-weasyprint PyPI](https://pypi.org/project/django-weasyprint/) — v2.4.0, WeasyTemplateResponseMixin (MEDIUM — PyPI metadata)
-- [@stripe/stripe-js npm](https://www.npmjs.com/package/@stripe/stripe-js) — v8.9.0, March 3, 2026 (HIGH — npm registry)
-- [@stripe/react-stripe-js npm](https://www.npmjs.com/package/@stripe/react-stripe-js) — v5.6.1, March 4, 2026 (HIGH — npm registry)
-- [React Stripe.js reference](https://docs.stripe.com/sdks/stripejs-react) — PaymentElement, Elements provider (HIGH — official Stripe docs)
-- [Stripe React Native Expo docs](https://docs.expo.dev/versions/latest/sdk/stripe/) — Expo managed workflow config plugin (MEDIUM — Expo docs; SDK-53 pin requires verification at install time)
-- [Stripe usage-based billing docs](https://docs.stripe.com/billing/subscriptions/usage-based/recording-usage-api) — Meter API, usage recording pattern (HIGH — official Stripe docs)
-- [Stripe versioning policy](https://docs.stripe.com/sdks/versioning) — SDK major version cadence (HIGH — official Stripe docs)
+- [django-anymail PyPI](https://pypi.org/project/django-anymail/) — v14.0, December 18, 2025; 14 supported ESPs (HIGH — PyPI metadata)
+- [django-anymail GitHub](https://github.com/anymail/django-anymail) — provider list, backend pattern, mixing backends docs (HIGH — official repo)
+- [sendgrid PyPI](https://pypi.org/project/sendgrid/) — v6.12.5, September 19, 2025 (HIGH — PyPI metadata)
+- [premailer PyPI](https://pypi.org/project/premailer/) — v3.10.0, August 2021, Production/Stable (HIGH — PyPI metadata)
+- [django-allauth PyPI JSON](https://pypi.org/pypi/django-allauth/json) — v65.15.0, March 9, 2026 (HIGH — PyPI JSON API)
+- [django-allauth Google provider docs](https://docs.allauth.org/en/latest/socialaccount/providers/google.html) — PKCE, scope, OAuth2 setup (HIGH — official docs)
+- [django-allauth GitHub provider docs](https://docs.allauth.org/en/latest/socialaccount/providers/github.html) — scope, callback URL (HIGH — official docs)
+- [django-allauth Apple provider docs](https://docs.allauth.org/en/latest/socialaccount/providers/apple.html) — two client IDs (Services ID vs Bundle ID), POST flow, SameSite cookie warning (HIGH — official docs)
+- [django-allauth headless integrations](https://docs.allauth.org/en/latest/headless/integrations.html) — `x_session_token_auth` Django Ninja security class (HIGH — official docs)
+- [django-allauth recent release notes](https://docs.allauth.org/en/dev/release-notes/recent.html) — v65.13.1 JWT token strategy, v65.x Django Ninja support, provider token flow (HIGH — official docs)
+- [expo-apple-authentication Expo docs](https://docs.expo.dev/versions/latest/sdk/apple-authentication/) — managed workflow config, App Store requirement for Apple Sign In, `ios.usesAppleSignIn` setting (HIGH — official Expo docs)
+- [Expo Google authentication guide](https://docs.expo.dev/guides/google-authentication/) — `@react-native-google-signin/google-signin` as recommended library (HIGH — official Expo docs)
+- [react-native-google-signin Expo setup](https://react-native-google-signin.github.io/docs/setting-up/expo) — config plugin, dev build requirement (HIGH — official library docs)
+- [@react-native-google-signin/google-signin npm](https://www.npmjs.com/package/@react-native-google-signin/google-signin) — v16.1.2 current (MEDIUM — npm registry, confirmed via `npm show`)
+- [expo-apple-authentication npm](https://www.npmjs.com/package/expo-apple-authentication) — v55.0.8 current (MEDIUM — confirmed via `npm show`)
+- [django-ninja-extra permissions docs](https://eadwincode.github.io/django-ninja-extra/api_controller/api_controller_permission/) — `BasePermission`, `has_permission`, combining with `&`/`|`/`~` (HIGH — official docs)
+- [Mailtrap deliverability study March 2025](https://mailtrap.io/blog/sendgrid-vs-mailgun/) — Mailgun 71.4% vs SendGrid 61.0% inbox placement (MEDIUM — third-party study)
+- [django-gdpr-assist PyPI](https://pypi.org/project/django-gdpr-assist/) — v1.4.2, last release 2021 (HIGH — PyPI metadata; used to confirm staleness)
+
+---
+
+_Stack research for: Foundation Template v1.3 — SaaS Functional Baseline_
+_Researched: 2026-03-11_

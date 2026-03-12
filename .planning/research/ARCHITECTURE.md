@@ -1,887 +1,730 @@
-# Architecture Patterns: Billing & Payments Module
+# Architecture Research: v1.3 SaaS Functional Baseline
 
-**Domain:** Billing and payments integration for Foundation Template monorepo
-**Researched:** 2026-03-07
-**Milestone context:** Subsequent milestone — adding billing module to existing system (apps/api/ Django Ninja Extra + apps/web/ Next.js 15 + apps/mobile/ Expo + packages/api-client/ auto-generated types)
-**Overall confidence:** HIGH — grounded in actual codebase inspection (accounts/models.py, ai/controllers.py, config/urls.py, config/settings/base.py, cli-scaffolder.md) plus Stripe official documentation patterns
-
----
-
-## How This Module Fits the Existing System
-
-The billing module is a new Django app at `apps/api/apps/billing/` following the exact same structural pattern as `apps/api/apps/ai/`. It registers via `api.auto_discover_controllers()` (already present in `config/urls.py`), gets added to `INSTALLED_APPS` in `config/settings/base.py`, and is designed for clean removal by the CLI scaffolder — just like the AI module.
-
-The module introduces:
-
-- **2 new Django models:** `Customer` (OneToOne to User), `Subscription` (FK to Customer)
-- **1 payment adapter ABC** with a Stripe concrete implementation
-- **6–8 new API endpoints** under `/api/v1/billing/`
-- **1 webhook endpoint** registered as a plain Django view (not a Ninja controller — raw body required)
-- **4 new billing pages** in `apps/web/app/(dashboard)/billing/`
-- **New types** automatically propagated through the OpenAPI pipeline to `packages/api-client/`
+**Domain:** Full-stack SaaS monorepo — five cross-cutting features layered onto an existing Django Ninja Extra + Next.js 15 + Expo template
+**Researched:** 2026-03-11
+**Confidence:** HIGH — grounded in direct codebase inspection plus official documentation verification
 
 ---
 
-## 1. Directory Structure: `apps/api/apps/billing/`
+## Standard Architecture
+
+### System Overview (Current v1.2 State)
 
 ```
-apps/api/apps/billing/
+┌──────────────────────────────────────────────────────────────────────┐
+│  CLIENT LAYER                                                        │
+│  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐   │
+│  │  apps/web/       │  │  apps/mobile/    │  │  apps/landing/   │   │
+│  │  Next.js 15 AR   │  │  Expo SDK 53     │  │  Static Next.js  │   │
+│  │  Shadcn/ui       │  │  Expo Router     │  │  No API calls    │   │
+│  └────────┬─────────┘  └────────┬─────────┘  └──────────────────┘   │
+│           │                     │                                    │
+│           │  packages/api-client (generated TS types + fetch hooks)  │
+│           │  packages/business-logic, packages/ui, packages/validation│
+└───────────┼─────────────────────┼────────────────────────────────────┘
+            │ REST + Session/JWT  │ REST + JWT (Bearer)
+┌───────────┼─────────────────────┼────────────────────────────────────┐
+│  API LAYER│                     │                                    │
+│  ┌────────┴─────────────────────┴──────────────────────────────┐    │
+│  │  apps/api/  (Django Ninja Extra)                             │    │
+│  │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐        │    │
+│  │  │ accounts │ │ billing  │ │   core   │ │   ai     │        │    │
+│  │  │ (auth)   │ │ (plans)  │ │(infra)   │ │(optional)│        │    │
+│  │  └──────────┘ └──────────┘ └──────────┘ └──────────┘        │    │
+│  │  allauth headless + Celery + structlog + OTel + Redis cache  │    │
+│  └─────────────────────────────────────────────────────────────┘    │
+└──────────────────────────────────────────────────────────────────────┘
+            │
+┌───────────┴──────────────────────────────────────────────────────────┐
+│  DATA LAYER                                                          │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────────────────┐   │
+│  │  PostgreSQL  │  │    Redis     │  │  External Services        │   │
+│  │  + PGVector  │  │  DB 0 Celery │  │  Stripe, PostHog, SendGrid│  │
+│  │              │  │  DB 1 Cache  │  │  Google OAuth, GitHub     │   │
+│  │              │  │  DB 2 Sessions│  │  Apple Sign In (mobile)  │   │
+│  └──────────────┘  └──────────────┘  └──────────────────────────┘   │
+└──────────────────────────────────────────────────────────────────────┘
+```
+
+### Existing Component Responsibilities
+
+| Component                 | Responsibility                                                         | Files                                                           |
+| ------------------------- | ---------------------------------------------------------------------- | --------------------------------------------------------------- |
+| `apps/api/apps/accounts/` | Auth, user model, session + JWT via allauth headless                   | models.py, headless.py, services.py, sessions.py                |
+| `apps/api/apps/billing/`  | Subscriptions, payments via PaymentAdapter ABC                         | adapters.py, decorators.py, models.py, services.py, webhooks.py |
+| `apps/api/apps/core/`     | Infra: middleware, observability, health, rate limiting                | middleware.py, observability.py, tracing.py, ratelimit.py       |
+| `apps/api/apps/ai/`       | Optional LangGraph agents, vector search (removable)                   | models.py, controllers.py, tasks.py                             |
+| `config/settings/base.py` | Central config: adapter class paths, feature flags                     | Single settings file, split dev/prod                            |
+| `config/urls.py`          | URL routing: allauth, Ninja, health probes, plain Django webhook views | urlpatterns with comment-delimited removal blocks               |
+| `apps/web/src/`           | Next.js App Router pages, Shadcn/ui components, React Query hooks      | Components in src/components/, pages in app/                    |
+| `apps/mobile/`            | Expo SDK 53 managed workflow, Expo Router navigation                   | app/, components/, lib/                                         |
+| `packages/api-client/`    | Auto-generated TypeScript types + fetch client                         | Generated from Django Ninja OpenAPI spec                        |
+
+---
+
+## v1.3 Features: Integration Mapping
+
+Five features are being added. This section maps each to the existing architecture — which components change, which are new, and what the data flow looks like.
+
+---
+
+### Feature 1: Transactional Email — EmailAdapter ABC
+
+**Pattern:** Mirrors existing `PaymentAdapter` and `ObservabilityAdapter` ABCs exactly.
+
+**New components:**
+
+```
+apps/api/apps/notifications/       ← NEW Django app
 ├── __init__.py
-├── apps.py                    # BillingConfig: name = "apps.billing"
-├── admin.py                   # CustomerAdmin, SubscriptionAdmin
-├── models.py                  # Customer (OneToOne → User), Subscription
-├── schemas.py                 # Pydantic request/response schemas
-├── controllers.py             # BillingController (Ninja Extra) — CSRF-protected routes
-├── services.py                # BillingService — all business logic, no HTTP
-├── adapters.py                # PaymentAdapter ABC + StripeAdapter concrete class
-├── webhooks.py                # Raw Django view for Stripe webhook (NOT a Ninja controller)
-├── signals.py                 # post_save signal: create Customer when User created
-└── migrations/
-    └── 0001_initial.py
+├── apps.py                        # NotificationsConfig
+├── adapters.py                    # EmailAdapter ABC + SendGridAdapter + ConsoleAdapter
+├── tasks.py                       # Celery tasks: send_transactional_email.delay()
+├── templates/email/               # Jinja2 HTML + plain-text templates
+│   ├── base.html
+│   ├── welcome.html
+│   └── password_reset.html
+└── migrations/                    # (empty — no models needed if no DB logging)
 ```
 
-### Why `webhooks.py` is a separate plain Django view, not a Ninja controller
+**Modified components:**
 
-Stripe webhook signature verification (`stripe.Webhook.construct_event()`) requires the **raw, unmodified request body bytes**. Django Ninja parses the request body as part of its request processing, which can corrupt the raw bytes. Registering the webhook as a plain `@csrf_exempt` function view in `config/urls.py` with `request.body` gives guaranteed access to the raw bytes.
+| File                       | Change                                                                                                                                                                       |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `config/settings/base.py`  | Add `EMAIL_ADAPTER = "apps.notifications.adapters.SendGridAdapter"` + `SENDGRID_API_KEY` env var. Add `# EMAIL_START` / `# EMAIL_END` comment blocks for scaffolder removal. |
+| `INSTALLED_APPS`           | Add `"apps.notifications"`                                                                                                                                                   |
+| `apps/accounts/signals.py` | Hook `post_save` signal to dispatch `send_transactional_email` Celery task after signup                                                                                      |
+| `.env.example`             | Add `SENDGRID_API_KEY` in `# EMAIL MODULE` block                                                                                                                             |
 
-Source: [Stripe webhook signature documentation](https://docs.stripe.com/webhooks/signature), [Stripe Django integration 2025](https://www.paritydeals.com/blog/how-to-integrate-stripe-with-django-a-step-by-step-guide-2025/)
+**EmailAdapter ABC structure:**
+
+```python
+class EmailAdapter(abc.ABC):
+    @abc.abstractmethod
+    def send(self, to: str, subject: str, html_body: str, text_body: str) -> None: ...
+
+class SendGridAdapter(EmailAdapter):
+    # Uses sendgrid-python SDK; reads SENDGRID_API_KEY from settings
+    ...
+
+class ConsoleAdapter(EmailAdapter):
+    # Writes to stdout — default in development and tests
+    ...
+```
+
+**Data flow:**
+
+```
+User signs up
+    → allauth post_save signal fires
+    → send_transactional_email.delay(to=email, template="welcome") queued in Celery
+    → Celery worker picks up task
+    → get_email_adapter() resolves SendGridAdapter (or ConsoleAdapter in dev)
+    → adapter.send(to, subject, rendered_html, rendered_text)
+    → SendGrid HTTP API (or stdout)
+```
+
+**Scaffolder flag:** `--without email` — removes `apps/notifications/`, INSTALLED_APPS entry, env vars, and signal hookup.
+
+**Confidence:** HIGH — pattern directly clones PaymentAdapter/ObservabilityAdapter structure already validated in codebase.
 
 ---
 
-## 2. PaymentAdapter ABC Pattern
+### Feature 2: Social Auth — Google + GitHub (web), Apple (mobile)
 
-### Abstract Base Class (`apps/billing/adapters.py`)
+**Pattern:** Django Allauth already has `allauth.socialaccount` in INSTALLED_APPS (confirmed in `config/settings/base.py`). Social auth activates by adding provider subpackages and SOCIALACCOUNT_PROVIDERS config.
 
-```python
-from abc import ABC, abstractmethod
-from dataclasses import dataclass
-from typing import Any
+**New components:**
 
-
-@dataclass
-class CheckoutResult:
-    session_id: str
-    checkout_url: str
-
-
-@dataclass
-class PortalResult:
-    portal_url: str
-
-
-@dataclass
-class WebhookEvent:
-    event_type: str          # e.g. "customer.subscription.updated"
-    stripe_event_id: str
-    data: dict[str, Any]
-
-
-class PaymentAdapter(ABC):
-    """
-    Abstract interface for payment processor integration.
-
-    Concrete implementations: StripeAdapter (shipped), others possible.
-    The adapter is never imported by controllers directly — BillingService
-    resolves it via settings (BILLING_ADAPTER setting).
-    """
-
-    @abstractmethod
-    def create_customer(self, email: str, name: str) -> str:
-        """Create a customer in the payment processor. Returns external customer ID."""
-        ...
-
-    @abstractmethod
-    def create_checkout_session(
-        self,
-        customer_external_id: str,
-        price_id: str,
-        success_url: str,
-        cancel_url: str,
-    ) -> CheckoutResult:
-        """Create a hosted checkout session. Returns session_id + redirect URL."""
-        ...
-
-    @abstractmethod
-    def create_portal_session(
-        self,
-        customer_external_id: str,
-        return_url: str,
-    ) -> PortalResult:
-        """Create a self-serve billing portal session. Returns redirect URL."""
-        ...
-
-    @abstractmethod
-    def cancel_subscription(self, subscription_external_id: str) -> None:
-        """Cancel a subscription immediately or at period end."""
-        ...
-
-    @abstractmethod
-    def construct_webhook_event(
-        self,
-        payload: bytes,
-        signature_header: str,
-        webhook_secret: str,
-    ) -> WebhookEvent:
-        """
-        Verify and parse an inbound webhook payload.
-        Raises ValueError on invalid signature.
-        """
-        ...
+```
+apps/api/apps/accounts/social.py   ← NEW (optional, for custom adapter overrides)
+apps/mobile/lib/auth/apple.ts      ← NEW (expo-apple-authentication flow)
+apps/web/src/components/auth/social-buttons.tsx  ← NEW
+apps/web/src/lib/auth/social.ts    ← NEW (initiates allauth social flow)
 ```
 
-### Stripe Concrete Implementation (`StripeAdapter`)
+**Modified components:**
+
+| File                                         | Change                                                                                                                                         |
+| -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `config/settings/base.py`                    | Add `allauth.socialaccount.providers.google` + `.github` to INSTALLED_APPS. Add `SOCIALACCOUNT_PROVIDERS` dict with client_id/secret from env. |
+| `.env.example`                               | Add `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` in `# SOCIAL_AUTH MODULE` block                     |
+| `apps/web/src/components/auth/auth-form.tsx` | Add social login buttons below email/password form                                                                                             |
+| `apps/mobile/app/(auth)/sign-in.tsx`         | Add Apple Sign In button (iOS-only, via `expo-apple-authentication`)                                                                           |
+
+**Settings additions:**
 
 ```python
-import stripe
+# config/settings/base.py — SOCIAL_AUTH_START
+SOCIALACCOUNT_PROVIDERS = {
+    "google": {
+        "APPS": [{"client_id": env("GOOGLE_CLIENT_ID", default=""), "secret": env("GOOGLE_CLIENT_SECRET", default="")}],
+        "SCOPE": ["profile", "email"],
+        "AUTH_PARAMS": {"access_type": "online"},
+        "VERIFIED_EMAIL": True,
+    },
+    "github": {
+        "APPS": [{"client_id": env("GITHUB_CLIENT_ID", default=""), "secret": env("GITHUB_CLIENT_SECRET", default="")}],
+        "SCOPE": ["user:email"],
+        "VERIFIED_EMAIL": False,  # GitHub may not verify email
+    },
+}
+# SOCIAL_AUTH_END
+```
+
+**How allauth headless social auth works:** Allauth headless exposes `/_allauth/{client}/v1/auth/provider/redirect` and `/_allauth/{client}/v1/auth/provider/token` endpoints. The web client initiates the OAuth redirect through allauth, which manages the callback and creates a session. The existing `SessionAwareJWTTokenStrategy` in `apps/accounts/headless.py` applies to social logins without modification.
+
+**Mobile Apple Sign In flow:**
+
+```
+iOS app
+    → expo-apple-authentication.signInAsync()
+    → Apple returns identityToken (JWT)
+    → POST /_allauth/app/v1/auth/provider/token { provider: "apple", token: identityToken }
+    → allauth verifies token, creates/finds User, issues session + JWT
+```
+
+This requires `allauth.socialaccount.providers.apple` in INSTALLED_APPS and Apple developer credentials (Team ID, Key ID, private key).
+
+**Boundary: web vs. mobile social auth providers:**
+
+- Web: Google + GitHub (OAuth2 redirect flow via allauth browser client)
+- Mobile: Apple only (expo-apple-authentication native SDK; required by App Store for apps with other social logins)
+- Google on mobile: deferred (expo-auth-session works, but PKCE + Android complexity; Apple is required first)
+
+**Scaffolder flag:** `--without social-auth` — removes provider INSTALLED_APPS entries, SOCIALACCOUNT_PROVIDERS settings, env vars, social buttons from web/mobile auth forms.
+
+**Confidence:** HIGH for web (allauth already configured, provider packages straightforward). MEDIUM for mobile Apple (requires Apple developer account credentials; flow verified via Expo docs but not tested against this codebase).
+
+---
+
+### Feature 3: GDPR Baseline
+
+Three distinct components with minimal coupling.
+
+**New backend components:**
+
+```
+apps/api/apps/accounts/gdpr.py    ← NEW (account delete + data export logic)
+```
+
+**New frontend components:**
+
+```
+apps/web/src/components/consent/cookie-banner.tsx   ← NEW (client component)
+apps/web/src/lib/consent/store.ts                   ← NEW (Zustand store for consent state)
+apps/web/app/(dashboard)/account/delete/page.tsx    ← NEW (delete confirmation flow)
+```
+
+**Modified components:**
+
+| File                                    | Change                                                                                          |
+| --------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `apps/api/apps/accounts/controllers.py` | Add `DELETE /api/v1/accounts/me/` (hard delete) and `GET /api/v1/accounts/me/export/` endpoints |
+| `apps/api/apps/accounts/services.py`    | Add `AccountDeletionService.delete_user(user)` — cascade via Django ORM, no raw SQL             |
+| `apps/web/app/layout.tsx`               | Add `<CookieBanner />` client component                                                         |
+
+**Account deletion cascade:**
+
+Django's ORM handles cascade deletion via `on_delete=models.CASCADE` on all existing OneToOne / FK relations. The delete service calls `user.delete()` — the ORM collector removes Customer, Subscription, EmailAddress, and all other related records in the correct dependency order. No explicit cascade code is needed.
+
+```python
+# apps/accounts/services.py (addition)
+class AccountDeletionService:
+    def delete_user(self, user: User) -> None:
+        """Hard delete user and all cascade-related data.
+
+        Relies on Django ORM cascade (on_delete=CASCADE on all FK relations).
+        Invalidates sessions before deletion to prevent stale auth state.
+        """
+        invalidate_user_sessions(user.id)
+        user.delete()  # ORM collector handles cascade
+```
+
+**Data export endpoint:**
+
+```python
+# Returns JSON blob of all user-owned data
+GET /api/v1/accounts/me/export/
+→ { "user": {...}, "subscription": {...}, "payments": [...] }
+```
+
+The service aggregates data from all owned models. No new models required. Export is synchronous at this baseline level — async Celery task with email delivery is a future enhancement if exports become large.
+
+**Cookie consent banner:**
+
+- Client component (`"use client"`) rendered in `app/layout.tsx`
+- Consent state stored in `localStorage` via Zustand with persist middleware
+- On accept: sets consent flag, PostHog capture unblocked
+- On reject: PostHog stays disabled; session cookie still exists (functional, not tracking)
+- No third-party consent library needed — custom implementation with ~50 lines
+
+**No new models required.** Consent preference stored client-side only (localStorage). GDPR does not require server-side consent storage for the baseline implementation.
+
+**Scaffolder flag:** GDPR features are not behind a `--without` flag. GDPR compliance is expected for any SaaS product and should be present by default. The cookie banner is a standard pattern; deleting it would require product-level awareness.
+
+**Confidence:** HIGH for account deletion (standard Django ORM pattern). HIGH for data export (simple aggregation). MEDIUM for cookie banner (implementation is custom; PostHog integration behavior verified via PostHog docs).
+
+---
+
+### Feature 4: RBAC — Django Groups + @require_role Decorator
+
+**Pattern:** Mirrors existing `@require_active_subscription` decorator in `apps/billing/decorators.py` exactly.
+
+**New components:**
+
+```
+apps/api/apps/accounts/rbac.py    ← NEW
+├── require_role("admin") decorator
+├── IsInGroup permission class (for Ninja Extra)
+└── role_assignment utilities
+```
+
+**Modified components:**
+
+| File                                    | Change                                                                                                                    |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `apps/api/apps/accounts/controllers.py` | Add `POST /api/v1/accounts/{user_id}/roles/` and `DELETE /api/v1/accounts/{user_id}/roles/{role}/` (admin-only endpoints) |
+| `apps/api/apps/accounts/schemas.py`     | Add `RoleAssignmentIn`, `RoleOut` schemas                                                                                 |
+
+**RBAC implementation strategy:**
+
+Django Groups (built-in `django.contrib.auth.models.Group`) are the role carrier. No custom role model needed at this baseline level.
+
+```python
+# apps/accounts/rbac.py
+import functools
+from django.core.exceptions import PermissionDenied
+
+
+def require_role(*roles: str):
+    """Decorator that gates a view behind group membership.
+
+    Usage: @require_role("admin") or @require_role("admin", "editor")
+    Raises PermissionDenied (HTTP 403) if user lacks all specified roles.
+    """
+    def decorator(view_func):
+        @functools.wraps(view_func)
+        def wrapper(request, *args, **kwargs):
+            if not request.user.is_authenticated:
+                raise PermissionDenied("Authentication required.")
+            user_groups = set(request.user.groups.values_list("name", flat=True))
+            if not user_groups.intersection(set(roles)):
+                raise PermissionDenied(f"Role required: {', '.join(roles)}")
+            return view_func(request, *args, **kwargs)
+        return wrapper
+    return decorator
+
+
+class IsInGroup:
+    """Django Ninja Extra permission class for group-based access control.
+
+    Usage: @api_controller(permissions=[IsInGroup("admin")])
+    """
+    def __init__(self, group_name: str) -> None:
+        self.group_name = group_name
+
+    def __call__(self, request) -> bool:
+        if not request.user.is_authenticated:
+            return False
+        return request.user.groups.filter(name=self.group_name).exists()
+```
+
+**Role assignment API** (admin-only, guarded by `IsAdminUser` Ninja permission):
+
+```
+POST  /api/v1/accounts/{user_id}/roles/        # Assign role (group) to user
+DELETE /api/v1/accounts/{user_id}/roles/{role}/ # Remove role from user
+GET   /api/v1/accounts/{user_id}/roles/         # List user roles
+```
+
+**Group seeding:** Groups are created via a data migration (`0002_seed_default_groups.py` in `apps/accounts/migrations/`) that creates `admin`, `moderator`, and `viewer` groups at deploy time. Products add their own groups in product-specific migrations.
+
+**No new models.** Django's built-in `Group` and `User.groups` ManyToMany are sufficient. No custom Role model is needed at this level.
+
+**Scaffolder flag:** RBAC is not behind a `--without` flag. Groups are built into Django; the decorator adds minimal overhead and is universally useful.
+
+**Confidence:** HIGH — Django Groups are battle-tested. Django Ninja Extra permission class pattern is verified via official docs. Decorator mirrors existing `@require_active_subscription` which is already in the codebase.
+
+---
+
+### Feature 5: Feature Entitlements — has_feature() + BILLING_PLANS Config
+
+**Pattern:** Stateless utility function that reads the existing `BILLING_PLANS` dict in `config/settings/base.py` against the user's active subscription.
+
+**New components:**
+
+```
+apps/api/apps/billing/entitlements.py   ← NEW (has_feature utility)
+```
+
+**No new models.** Feature flags are configuration, not database state. The `BILLING_PLANS` dict already exists in `config/settings/base.py` with a `"features"` list per plan. Entitlements reads this dict.
+
+**Implementation:**
+
+```python
+# apps/billing/entitlements.py
 from django.conf import settings
 
 
-class StripeAdapter(PaymentAdapter):
+def has_feature(user, feature_key: str) -> bool:
+    """Check if user's active subscription plan includes a feature.
+
+    Reads BILLING_PLANS from settings. Returns False if:
+    - User has no active subscription
+    - User is on free plan
+    - Feature key not in plan's feature list
+
+    Usage: if has_feature(request.user, "api_access"): ...
     """
-    Stripe implementation of PaymentAdapter.
+    try:
+        subscription = user.billing_customer.subscription
+    except Exception:
+        return _free_plan_has_feature(feature_key)
 
-    Uses stripe.StripeClient (v8+ API). Configured via STRIPE_SECRET_KEY setting.
-    """
+    if subscription.status not in {"active", "trialing"}:
+        return _free_plan_has_feature(feature_key)
 
-    def __init__(self) -> None:
-        self._client = stripe.StripeClient(api_key=settings.STRIPE_SECRET_KEY)
+    # Resolve plan from subscription's price_id via PlanProviderMapping
+    from apps.billing.models import PlanProviderMapping
+    mapping = PlanProviderMapping.objects.filter(
+        price_id=subscription.stripe_subscription_id,  # mapped via provider
+        is_active=True,
+    ).first()
 
-    def create_customer(self, email: str, name: str) -> str:
-        customer = self._client.customers.create({"email": email, "name": name})
-        return customer.id
+    if not mapping:
+        return _free_plan_has_feature(feature_key)
 
-    def create_checkout_session(
-        self,
-        customer_external_id: str,
-        price_id: str,
-        success_url: str,
-        cancel_url: str,
-    ) -> CheckoutResult:
-        session = self._client.checkout.sessions.create({
-            "customer": customer_external_id,
-            "mode": "subscription",
-            "line_items": [{"price": price_id, "quantity": 1}],
-            "success_url": success_url,
-            "cancel_url": cancel_url,
-        })
-        return CheckoutResult(session_id=session.id, checkout_url=session.url)
+    plan_config = settings.BILLING_PLANS.get(mapping.plan_id, {})
+    return feature_key in plan_config.get("features", [])
 
-    def create_portal_session(
-        self,
-        customer_external_id: str,
-        return_url: str,
-    ) -> PortalResult:
-        session = self._client.billing_portal.sessions.create({
-            "customer": customer_external_id,
-            "return_url": return_url,
-        })
-        return PortalResult(portal_url=session.url)
 
-    def cancel_subscription(self, subscription_external_id: str) -> None:
-        self._client.subscriptions.cancel(subscription_external_id)
-
-    def construct_webhook_event(
-        self,
-        payload: bytes,
-        signature_header: str,
-        webhook_secret: str,
-    ) -> WebhookEvent:
-        # stripe.WebhookSignature.verify_header raises SignatureVerificationError
-        # if signature is invalid — propagate as ValueError per ABC contract.
-        try:
-            event = stripe.WebhookSignature.verify_header(
-                payload.decode("utf-8"),
-                signature_header,
-                webhook_secret,
-            )
-        except stripe.error.SignatureVerificationError as exc:
-            raise ValueError("Invalid Stripe webhook signature") from exc
-
-        return WebhookEvent(
-            event_type=event["type"],
-            stripe_event_id=event["id"],
-            data=event["data"]["object"],
-        )
+def _free_plan_has_feature(feature_key: str) -> bool:
+    free_plan = settings.BILLING_PLANS.get("free", {})
+    return feature_key in free_plan.get("features", [])
 ```
 
-### Adapter Registration (settings-driven)
+**Note on plan resolution:** The existing `PlanProviderMapping` model (already in `apps/billing/models.py`) maps internal plan IDs to provider price IDs. The entitlements utility uses this table to resolve the user's current plan from their subscription's price ID. This avoids hardcoding Stripe price IDs in the entitlements code — consistent with the existing billing module's provider-agnostic design.
+
+**BILLING_PLANS config** (already exists in `config/settings/base.py`, add feature keys):
 
 ```python
-# config/settings/base.py (additions for billing module)
-BILLING_ADAPTER = "apps.billing.adapters.StripeAdapter"
-STRIPE_SECRET_KEY = env("STRIPE_SECRET_KEY", default="")
-STRIPE_PUBLISHABLE_KEY = env("STRIPE_PUBLISHABLE_KEY", default="")
-STRIPE_WEBHOOK_SECRET = env("STRIPE_WEBHOOK_SECRET", default="")
+BILLING_PLANS = {
+    "free":       {"name": "Free",       "features": ["basic_dashboard"]},
+    "pro":        {"name": "Pro",        "features": ["basic_dashboard", "api_access", "priority_support"]},
+    "enterprise": {"name": "Enterprise", "features": ["basic_dashboard", "api_access", "priority_support", "custom_contracts", "sla"]},
+}
 ```
 
-```python
-# apps/billing/services.py
-from django.conf import settings
-from django.utils.module_loading import import_string
-from .adapters import PaymentAdapter
+**No scaffolder flag.** Feature entitlements depend on the billing module. The `--without billing` flag in the scaffolder already removes billing; entitlements goes with it. No separate flag needed.
 
-def get_payment_adapter() -> PaymentAdapter:
-    """Resolve adapter from settings. Instantiated fresh per call (stateless)."""
-    adapter_class = import_string(settings.BILLING_ADAPTER)
+**Confidence:** HIGH for the utility function. MEDIUM for plan resolution via PlanProviderMapping — the mapping model is present but the price_id lookup path requires verification against actual subscription data shape during implementation.
+
+---
+
+## Recommended Project Structure (v1.3 additions)
+
+```
+apps/api/apps/
+├── accounts/
+│   ├── [existing files unchanged]
+│   ├── gdpr.py          ← NEW: delete_user, export_user_data
+│   └── rbac.py          ← NEW: require_role, IsInGroup
+├── billing/
+│   ├── [existing files unchanged]
+│   └── entitlements.py  ← NEW: has_feature()
+├── notifications/       ← NEW DJANGO APP
+│   ├── __init__.py
+│   ├── apps.py
+│   ├── adapters.py      # EmailAdapter ABC, SendGridAdapter, ConsoleAdapter
+│   ├── tasks.py         # send_transactional_email Celery task
+│   └── templates/email/ # Jinja2 templates
+└── core/
+    └── [existing files unchanged]
+
+apps/web/src/
+├── components/
+│   ├── auth/
+│   │   ├── [existing files]
+│   │   └── social-buttons.tsx     ← NEW
+│   └── consent/
+│       └── cookie-banner.tsx      ← NEW
+├── lib/
+│   ├── auth/
+│   │   ├── [existing]
+│   │   └── social.ts              ← NEW
+│   └── consent/
+│       └── store.ts               ← NEW (Zustand)
+└── app/(dashboard)/account/
+    └── delete/
+        └── page.tsx               ← NEW
+
+apps/mobile/lib/auth/
+├── [existing files]
+└── apple.ts                       ← NEW (expo-apple-authentication)
+```
+
+---
+
+## Architectural Patterns
+
+### Pattern 1: Adapter ABC (existing, repeated for email)
+
+**What:** Abstract base class defines interface; concrete classes implement per-provider; settings contain the dotted-path class name; a `get_X_adapter()` factory resolves and instantiates on demand.
+
+**When to use:** Any external service integration where the provider may change or need stubbing in tests.
+
+**Trade-offs:** One extra indirection; trivially worth it for testability and provider independence.
+
+```python
+# Resolution factory (same pattern as get_payment_adapter, get_observability_adapter)
+def get_email_adapter() -> EmailAdapter:
+    adapter_class = import_string(settings.EMAIL_ADAPTER)
     return adapter_class()
 ```
 
-This lets a future payment processor swap in by changing one settings value, without touching controllers or services. It also makes unit testing trivial: mock `get_payment_adapter()` to return a stub.
+### Pattern 2: Comment-Delimited Scaffolder Blocks (existing, extended for email + social)
+
+**What:** Feature-specific code blocks in `config/settings/base.py`, `config/urls.py`, and `.env.example` are wrapped in `# FEATURE_START` / `# FEATURE_END` comment markers. The CLI scaffolder uses regex to strip these blocks when `--without feature` is requested.
+
+**When to use:** Any optional module that needs to be removed by the scaffolder without breaking other modules.
+
+**Trade-offs:** Requires discipline in code placement; implementation is straightforward and already proven in billing module.
+
+### Pattern 3: Service-Layer Isolation (existing standard)
+
+**What:** Controllers are thin (auth check, schema validation, response serialization). Services own business logic. Models own data persistence. No cross-layer leakage.
+
+**When to use:** Always. Every new endpoint follows this pattern.
+
+**Trade-offs:** More files, cleaner separation.
+
+### Pattern 4: Signal-Driven Side Effects (existing, extended for email)
+
+**What:** Django signals (`post_save`, `post_delete`) trigger side effects like auto-creating related records or dispatching Celery tasks. Signal handlers are registered in `AppConfig.ready()`.
+
+**When to use:** When a side effect should always happen in response to a model event, regardless of which code path triggered the event.
+
+**Trade-offs:** Implicit coupling; document signal connections clearly in `signals.py`.
 
 ---
 
-## 3. Frontend Route Structure (`apps/web/`)
+## Data Flow
 
-### App Router pages
+### New Data Flows in v1.3
 
-```
-apps/web/app/
-└── (dashboard)/
-    └── billing/
-        ├── page.tsx                   # Billing overview (current plan, usage, next renewal)
-        ├── checkout/
-        │   └── page.tsx               # Plan selection → Stripe Checkout redirect
-        ├── success/
-        │   └── page.tsx               # Post-checkout confirmation (Stripe redirects here)
-        └── portal/
-            └── page.tsx               # Redirect to Stripe Customer Portal (server component)
-```
-
-### Next.js API route for Stripe webhook
+**1. Social Login (web: Google):**
 
 ```
-apps/web/app/
-└── api/
-    └── billing/
-        └── webhook/
-            └── route.ts               # POST /api/billing/webhook — proxy to Django
+User clicks "Sign in with Google" (apps/web/src/components/auth/social-buttons.tsx)
+    ↓
+Browser redirects to /_allauth/browser/v1/auth/provider/redirect?provider=google
+    ↓
+Allauth initiates OAuth2 redirect to Google
+    ↓
+Google → callback → /_allauth/browser/v1/auth/provider/callback
+    ↓
+Allauth: find/create User, create SocialAccount record, create session
+    ↓
+Email notification: send_transactional_email.delay(template="welcome") (if new user)
+    ↓
+Browser: redirected to /dashboard with session cookie set
 ```
 
-The Next.js webhook route exists as a stable public URL that Stripe can target. It reads the raw body and the `Stripe-Signature` header and proxies both to Django's webhook endpoint (`/api/v1/billing/webhook/`). This separation means Stripe always sends to a Next.js URL, and Django handles verification and processing — consistent with the "Next.js API routes as thin proxies" constraint in the foundation architecture.
-
-**Alternative considered:** Register webhook directly with Django (`/api/v1/billing/webhook/`). This is also valid but requires the Django server to be publicly accessible from Stripe. Both patterns are acceptable; the Next.js proxy is preferred when using Vercel (which naturally exposes a public URL) with Railway/Fly for Django (which may be internal-only). If Django is publicly exposed, skip the proxy and register the Django URL directly with Stripe.
-
-### Component locations
+**2. Transactional Email (Celery):**
 
 ```
-apps/web/
-├── app/(dashboard)/billing/
-│   └── [pages as above]
-├── components/billing/
-│   ├── plan-card.tsx                  # Displays a pricing plan
-│   ├── subscription-status.tsx        # Badge: active / past_due / canceled
-│   ├── billing-overview.tsx           # Current plan summary card
-│   └── upgrade-button.tsx             # Initiates checkout session
-└── lib/billing/
-    └── hooks.ts                       # useSubscription(), useCheckout() React Query hooks
+Trigger event (signup, password reset, etc.)
+    ↓
+Celery task: send_transactional_email(to, template, context)
+    ↓
+Load Jinja2 template → render HTML + plaintext
+    ↓
+get_email_adapter() → SendGridAdapter (production) or ConsoleAdapter (dev)
+    ↓
+adapter.send(to, subject, html, text) → SendGrid API or stdout
 ```
 
----
+**3. Account Deletion (GDPR):**
 
-## 4. Customer Model — Relation to Existing User Model
-
-### Decision: OneToOne extension via separate `Customer` model
-
-```python
-# apps/billing/models.py
-from django.conf import settings
-from django.db import models
-
-
-class Customer(models.Model):
-    """
-    Billing profile for a user. Created automatically via post_save signal.
-
-    Relationship: One User → One Customer (always exists after User creation).
-    The User model itself is NOT modified. This preserves the accounts app's
-    auth-only responsibility and keeps billing cleanly removable.
-    """
-
-    user = models.OneToOneField(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name="billing_customer",
-    )
-    stripe_customer_id = models.CharField(
-        max_length=255,
-        blank=True,
-        db_index=True,
-        help_text="Stripe customer ID (cus_xxx). Empty until first billing interaction.",
-    )
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        db_table = "billing_customers"
-
-    def __str__(self) -> str:
-        return f"Customer({self.user.email})"
-
-
-class Subscription(models.Model):
-    """
-    Active subscription record. Kept in sync with Stripe via webhooks.
-    """
-
-    STATUS_ACTIVE = "active"
-    STATUS_PAST_DUE = "past_due"
-    STATUS_CANCELED = "canceled"
-    STATUS_TRIALING = "trialing"
-    STATUS_INCOMPLETE = "incomplete"
-
-    STATUS_CHOICES = [
-        (STATUS_ACTIVE, "Active"),
-        (STATUS_PAST_DUE, "Past Due"),
-        (STATUS_CANCELED, "Canceled"),
-        (STATUS_TRIALING, "Trialing"),
-        (STATUS_INCOMPLETE, "Incomplete"),
-    ]
-
-    customer = models.OneToOneField(
-        Customer,
-        on_delete=models.CASCADE,
-        related_name="subscription",
-        help_text="One active subscription per customer.",
-    )
-    stripe_subscription_id = models.CharField(
-        max_length=255,
-        unique=True,
-        db_index=True,
-    )
-    stripe_price_id = models.CharField(
-        max_length=255,
-        help_text="Stripe Price ID (price_xxx) for the active plan.",
-    )
-    status = models.CharField(
-        max_length=20,
-        choices=STATUS_CHOICES,
-        default=STATUS_INCOMPLETE,
-        db_index=True,
-    )
-    current_period_start = models.DateTimeField(null=True, blank=True)
-    current_period_end = models.DateTimeField(null=True, blank=True)
-    cancel_at_period_end = models.BooleanField(default=False)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        db_table = "billing_subscriptions"
-
-    def __str__(self) -> str:
-        return f"Subscription({self.customer.user.email}, {self.status})"
+```
+User: DELETE /api/v1/accounts/me/ (authenticated)
+    ↓
+Controller: verify identity (re-auth or password confirmation)
+    ↓
+AccountDeletionService.delete_user(user)
+    ↓
+invalidate_user_sessions(user.id) — clears Redis session store
+    ↓
+user.delete() — Django ORM cascade removes: EmailAddress, Customer, Subscription,
+                  Payment, ProcessedWebhookEvent, SocialAccount (if any)
+    ↓
+Return 204 No Content (session already invalid)
 ```
 
-### Why OneToOne and not AbstractUser subclass
+**4. Feature Entitlement Check:**
 
-- The existing `apps/accounts/models.py` already defines a minimal `User(AbstractUser)`. Django requires the custom user model to be set before the first migration — changing it after is a database recreation. Subclassing again is not possible without replacing accounts entirely.
-- OneToOne keeps billing completely isolated. Removing the billing module requires only deleting `apps/billing/` and the `"apps.billing"` INSTALLED_APPS entry — no schema changes to the users table.
-- The `related_name="billing_customer"` avoids naming collision with any future `profile` or other OneToOne extensions.
-- `stripe_customer_id` is initially blank. It is populated lazily on first billing interaction via `BillingService.get_or_create_stripe_customer()`. This avoids unnecessary Stripe API calls for users who never touch billing.
-
-### Auto-creation via signal (`apps/billing/signals.py`)
-
-```python
-from django.conf import settings
-from django.db.models.signals import post_save
-from django.dispatch import receiver
-
-
-@receiver(post_save, sender=settings.AUTH_USER_MODEL)
-def create_billing_customer(sender, instance, created, **kwargs):
-    """
-    Auto-create a Customer record whenever a new User is created.
-    The Stripe customer ID is populated lazily on first billing interaction.
-    """
-    if created:
-        from apps.billing.models import Customer
-        Customer.objects.get_or_create(user=instance)
 ```
-
-Signal registered in `BillingConfig.ready()` in `apps.py`:
-
-```python
-# apps/billing/apps.py
-from django.apps import AppConfig
-
-
-class BillingConfig(AppConfig):
-    default_auto_field = "django.db.models.BigAutoField"
-    name = "apps.billing"
-
-    def ready(self) -> None:
-        import apps.billing.signals  # noqa: F401
+Request arrives at protected endpoint
+    ↓
+@require_role("admin") OR endpoint logic calls has_feature(user, "api_access")
+    ↓
+has_feature():
+    → user.billing_customer.subscription (DB read, cached if Redis is warm)
+    → PlanProviderMapping.objects.get(price_id=...) (DB read)
+    → settings.BILLING_PLANS[plan_id]["features"] (in-memory dict lookup)
+    ↓
+Returns True/False → endpoint proceeds or raises PermissionDenied
 ```
 
 ---
 
-## 5. Webhook Endpoint Registration in Django Ninja Extra
+## Build Order
 
-### Why the webhook is NOT a Ninja controller
+Dependencies drive the sequence. Each feature group can be built semi-independently, but the ordering below minimizes rework.
 
-Stripe requires the **raw, unmodified request body bytes** for HMAC verification. Django Ninja parses the request body during its processing pipeline, which breaks `request.body` access for raw bytes. The webhook must be a plain Django view exempted from CSRF.
-
-### Registration pattern
-
-```python
-# config/urls.py (additions — alongside existing urlpatterns)
-from django.views.decorators.csrf import csrf_exempt
-from apps.billing.webhooks import stripe_webhook_view
-
-urlpatterns = [
-    # ... existing patterns ...
-    path("api/v1/billing/webhook/", csrf_exempt(stripe_webhook_view)),
-]
 ```
+Phase A: Transactional Email (no deps on other v1.3 features)
+  A1. Create apps/notifications/ app (adapters.py, tasks.py, apps.py)
+  A2. Add ConsoleAdapter (dev/test default), SendGridAdapter (production)
+  A3. Add EMAIL_ADAPTER setting + SENDGRID_API_KEY to base.py + .env.example
+  A4. Add "apps.notifications" to INSTALLED_APPS
+  A5. Hook signup signal → send_transactional_email.delay()
+  A6. CLI scaffolder: --without email flag
+  WHY FIRST: No dependencies on other v1.3 features. Provides foundation
+             for welcome emails that social auth (Phase B) will trigger.
 
-This is added BEFORE `path("api/v1/", api.urls)` to ensure it is matched first.
+Phase B: Social Auth (depends on allauth already configured + email for welcome)
+  B1. Add allauth.socialaccount.providers.google + .github to INSTALLED_APPS
+  B2. Add SOCIALACCOUNT_PROVIDERS to settings (env-backed client_id/secret)
+  B3. Add social auth env vars to .env.example
+  B4. Add social login buttons to apps/web auth form (social-buttons.tsx)
+  B5. Add Apple Sign In to apps/mobile sign-in screen (expo-apple-authentication)
+  B6. Add allauth.socialaccount.providers.apple + Apple credentials to settings
+  B7. CLI scaffolder: --without social-auth flag
+  WHY SECOND: Allauth is already present. Social providers are additive.
+              Must come before RBAC and GDPR so social users are also
+              subject to same deletion/role policies.
 
-### Webhook view (`apps/billing/webhooks.py`)
+Phase C: RBAC (depends on User model + groups existing — no new v1.3 deps)
+  C1. Create apps/accounts/rbac.py (require_role decorator + IsInGroup class)
+  C2. Add data migration 0002_seed_default_groups.py
+  C3. Add role assignment endpoints to accounts/controllers.py
+  C4. Add RoleAssignmentIn/RoleOut schemas to accounts/schemas.py
+  WHY THIRD: RBAC can be built independently of email and social auth.
+             Placed here because GDPR (Phase D) benefits from admin role
+             check on the data export endpoint.
 
-```python
-import json
-import logging
+Phase D: GDPR Baseline (depends on RBAC for admin guard on export)
+  D1. Create apps/accounts/gdpr.py (AccountDeletionService, data_export)
+  D2. Add DELETE /api/v1/accounts/me/ endpoint (authenticated users)
+  D3. Add GET /api/v1/accounts/me/export/ endpoint (admin or self)
+  D4. Create apps/web/src/components/consent/cookie-banner.tsx
+  D5. Create apps/web/src/lib/consent/store.ts (Zustand)
+  D6. Wire <CookieBanner /> into apps/web/app/layout.tsx
+  D7. Add account deletion confirmation page to web app
+  WHY FOURTH: Deletion service benefits from session invalidation utilities
+              already in accounts/services.py. RBAC IsAdminUser is available.
 
-from django.conf import settings
-from django.http import HttpRequest, HttpResponse
-from django.views.decorators.http import require_POST
-
-from apps.billing.services import BillingService
-
-logger = logging.getLogger(__name__)
-
-
-@require_POST
-def stripe_webhook_view(request: HttpRequest) -> HttpResponse:
-    """
-    Receives Stripe webhook events.
-
-    - Must NOT be a Ninja controller (raw body required for signature verification).
-    - Registered with @csrf_exempt in urls.py.
-    - Signature verification happens inside BillingService.handle_webhook_event().
-    - Returns 200 immediately after dispatching. Idempotent: duplicate events are no-ops.
-    """
-    payload: bytes = request.body
-    sig_header: str = request.headers.get("Stripe-Signature", "")
-
-    if not sig_header:
-        logger.warning("Stripe webhook received without Stripe-Signature header")
-        return HttpResponse(status=400)
-
-    service = BillingService()
-    try:
-        service.handle_webhook_event(
-            payload=payload,
-            signature_header=sig_header,
-            webhook_secret=settings.STRIPE_WEBHOOK_SECRET,
-        )
-    except ValueError:
-        logger.warning("Stripe webhook signature verification failed")
-        return HttpResponse(status=400)
-    except Exception:
-        logger.exception("Stripe webhook processing error")
-        return HttpResponse(status=500)
-
-    return HttpResponse(status=200)
+Phase E: Feature Entitlements (depends on billing module — last because it's
+         a read-only layer on top of existing billing state)
+  E1. Create apps/billing/entitlements.py (has_feature utility)
+  E2. Update BILLING_PLANS in settings with explicit feature key lists
+  E3. Add has_feature() call to any protected endpoints (example usage)
+  E4. No migration needed — reads existing PlanProviderMapping table
+  WHY LAST: Pure read-only logic on top of existing billing data.
+            No schema changes. Safe to add after all other features.
 ```
-
-### Webhook event routing inside `BillingService`
-
-```python
-# apps/billing/services.py (partial)
-HANDLED_EVENTS = {
-    "customer.subscription.created",
-    "customer.subscription.updated",
-    "customer.subscription.deleted",
-    "invoice.payment_succeeded",
-    "invoice.payment_failed",
-}
-
-def handle_webhook_event(self, payload: bytes, signature_header: str, webhook_secret: str) -> None:
-    adapter = get_payment_adapter()
-    event = adapter.construct_webhook_event(payload, signature_header, webhook_secret)
-
-    if event.event_type not in HANDLED_EVENTS:
-        logger.debug(f"Ignoring unhandled Stripe event: {event.event_type}")
-        return
-
-    handler = getattr(self, f"_handle_{event.event_type.replace('.', '_')}", None)
-    if handler:
-        handler(event.data)
-```
-
-### Nginx header forwarding (production pitfall)
-
-Nginx drops headers containing underscores by default. The `Stripe-Signature` header uses a hyphen (not underscore) and is safe. However, verify nginx config does not set `underscores_in_headers off` globally — this would affect custom headers. The header name itself is safe, but document this in PITFALLS.
 
 ---
 
-## 6. Removable Module Pattern — CLI Scaffolder Compatibility
+## Integration Points Summary
 
-The billing module follows the exact same isolation pattern as the AI module. The CLI scaffolder spec defines `removeAIModule()` as the template. A parallel `removeBillingModule()` function removes billing with the same four steps.
-
-### Isolation requirements (mirrors AI module spec)
-
-1. All billing code resides in `apps/api/apps/billing/`. No other Django app imports from `apps.billing`.
-2. `"apps.billing"` is conditionally present in `INSTALLED_APPS` — the scaffolder strips the line.
-3. Billing Python dependencies (`stripe`) are in a dedicated optional group in `pyproject.toml`.
-4. Billing env vars (`STRIPE_SECRET_KEY`, etc.) are in a `# BILLING MODULE` section in `.env.example` — the scaffolder strips the section.
-5. The billing webhook URL registration in `config/urls.py` is wrapped in a comment block that the scaffolder can identify and remove.
-6. Frontend billing pages in `apps/web/app/(dashboard)/billing/` are in a self-contained directory — the scaffolder deletes the directory.
-
-### Scaffolder function pattern
-
-```typescript
-// packages/create-foundation-app/src/features/removeBillingModule.ts
-async function removeBillingModule(outputDir: string): Promise<void> {
-  // 1. Delete Django app directory
-  await remove(join(outputDir, "apps/api/apps/billing"));
-
-  // 2. Remove from INSTALLED_APPS
-  const settingsPath = join(outputDir, "apps/api/config/settings/base.py");
-  let settings = await readFile(settingsPath, "utf-8");
-  settings = settings.replace(/^\s*"apps\.billing",?\s*$/gm, "");
-  await writeFile(settingsPath, settings, "utf-8");
-
-  // 3. Remove Python dependency
-  const pyprojectPath = join(outputDir, "apps/api/pyproject.toml");
-  let pyproject = await readFile(pyprojectPath, "utf-8");
-  pyproject = pyproject.replace(/^stripe.*$/gm, "");
-  await writeFile(pyprojectPath, pyproject, "utf-8");
-
-  // 4. Remove webhook URL from urls.py (comment-delimited block)
-  const urlsPath = join(outputDir, "apps/api/config/urls.py");
-  let urls = await readFile(urlsPath, "utf-8");
-  urls = urls.replace(/# BILLING_START[\s\S]*?# BILLING_END\n?/gm, "");
-  await writeFile(urlsPath, urls, "utf-8");
-
-  // 5. Remove billing env vars from .env.example
-  const envPath = join(outputDir, "apps/api/.env.example");
-  let env = await readFile(envPath, "utf-8");
-  env = env.replace(/# BILLING MODULE[\s\S]*?# END BILLING MODULE\n?/gm, "");
-  await writeFile(envPath, env, "utf-8");
-
-  // 6. Remove frontend billing pages
-  await remove(join(outputDir, "apps/web/app/(dashboard)/billing"));
-}
-```
-
-### URL registration template block (in `config/urls.py`)
-
-```python
-# BILLING_START
-from django.views.decorators.csrf import csrf_exempt
-from apps.billing.webhooks import stripe_webhook_view
-# BILLING_END
-
-urlpatterns = [
-    # ... existing ...
-    # BILLING_START
-    path("api/v1/billing/webhook/", csrf_exempt(stripe_webhook_view)),
-    # BILLING_END
-    path("api/v1/", api.urls),
-]
-```
-
-The `BILLING_START` / `BILLING_END` comment delimiters are the scaffolder's surgical removal markers, identical in spirit to how the AI module uses `"apps.ai"` as its identifier.
-
----
-
-## 7. Impact on `packages/api-client/` and Shared Types
-
-### How billing types propagate automatically
-
-The billing module's Pydantic schemas in `apps/billing/schemas.py` are exposed through Ninja Extra controllers. `api.auto_discover_controllers()` in `config/urls.py` picks them up automatically. Running the existing type generation pipeline produces billing types with zero extra configuration:
-
-```bash
-# No new steps needed — existing pipeline handles billing
-turbo generate:api-types
-```
-
-### New schemas that become TypeScript types
-
-```python
-# apps/billing/schemas.py (new file)
-from pydantic import BaseModel
-from datetime import datetime
-
-
-class CustomerOut(BaseModel):
-    id: int
-    stripe_customer_id: str
-    created_at: datetime
-
-
-class SubscriptionOut(BaseModel):
-    id: int
-    stripe_subscription_id: str
-    stripe_price_id: str
-    status: str                          # "active" | "past_due" | "canceled" | ...
-    current_period_start: datetime | None
-    current_period_end: datetime | None
-    cancel_at_period_end: bool
-
-
-class CheckoutSessionOut(BaseModel):
-    checkout_url: str
-
-
-class PortalSessionOut(BaseModel):
-    portal_url: str
-
-
-class CreateCheckoutIn(BaseModel):
-    price_id: str
-    success_url: str
-    cancel_url: str
-```
-
-### Generated TypeScript types (from OpenAPI pipeline)
-
-After running `turbo generate:api-types`, `packages/api-client/gen/v1/types.d.ts` will contain:
-
-```typescript
-// Auto-generated — do not edit
-export interface CustomerOut { ... }
-export interface SubscriptionOut { ... }
-export interface CheckoutSessionOut { checkout_url: string }
-export interface PortalSessionOut { portal_url: string }
-```
-
-### `packages/schemas/` additions (Zod validation schemas)
-
-The existing `packages/schemas/src/` contains Zod schemas for cross-platform form validation. Add:
-
-```
-packages/schemas/src/billing.ts    # Zod schemas matching billing Pydantic schemas
-```
-
-These are used by `apps/web/` and `apps/mobile/` for client-side form validation (e.g., validating that a price_id is non-empty before initiating checkout). They are maintained separately from the generated OpenAPI types because they encode client-side business rules (e.g., acceptable price IDs) that are not expressible in the OpenAPI spec.
-
----
-
-## 8. Component Boundaries and Data Flow
-
-### Complete data flow: User upgrades to paid plan
-
-```
-[Browser: /billing/checkout?plan=pro]
-    |
-    v
-[apps/web/app/(dashboard)/billing/checkout/page.tsx]
-    |  Server Component: calls GET /api/v1/billing/plans/
-    |  (or static price config from env — preferred to avoid round-trip)
-    |
-    v
-[Client Component: upgrade-button.tsx]
-    |  onClick → POST /api/v1/billing/checkout/
-    |  body: { price_id: "price_xxx", success_url, cancel_url }
-    |
-    v
-[apps/api/apps/billing/controllers.py: BillingController.create_checkout_session()]
-    |  IsAuthenticated permission
-    |  delegates to BillingService
-    |
-    v
-[apps/api/apps/billing/services.py: BillingService]
-    |  1. get_or_create_stripe_customer(user)
-    |     → if Customer.stripe_customer_id is empty:
-    |         call adapter.create_customer()
-    |         save stripe_customer_id to Customer
-    |  2. adapter.create_checkout_session(...)
-    |  3. return CheckoutSessionOut(checkout_url=...)
-    |
-    v
-[Stripe API]
-    |  Returns hosted checkout URL
-    |
-    v
-[Browser: redirected to Stripe checkout URL]
-    |
-    v
-[User completes payment on Stripe]
-    |
-    v
-[Stripe POSTs webhook to /api/v1/billing/webhook/]
-    |
-    v
-[apps/api/apps/billing/webhooks.py: stripe_webhook_view()]
-    |  1. Reads request.body (raw bytes)
-    |  2. adapter.construct_webhook_event() — verifies HMAC signature
-    |  3. service.handle_webhook_event() routes to handler
-    |     _handle_customer_subscription_created():
-    |       - Creates/updates Subscription record
-    |       - Sets status = "active"
-    |
-    v
-[Browser: redirected to /billing/success?session_id=xxx]
-    |
-    v
-[apps/web/app/(dashboard)/billing/success/page.tsx]
-    |  Server Component: GET /api/v1/billing/subscription/
-    |  Displays confirmation (subscription may already be active via webhook)
-```
-
-### Component responsibilities
-
-| Component                         | Responsibility                                               | Does NOT do                                      |
-| --------------------------------- | ------------------------------------------------------------ | ------------------------------------------------ |
-| `apps/billing/models.py`          | Customer and Subscription data persistence                   | Any Stripe API calls                             |
-| `apps/billing/adapters.py`        | Stripe API calls, webhook signature verification             | Business rules, DB writes                        |
-| `apps/billing/services.py`        | Business rules, orchestrates adapter + models                | HTTP request/response handling                   |
-| `apps/billing/controllers.py`     | HTTP layer: auth, request validation, response serialization | Business logic                                   |
-| `apps/billing/webhooks.py`        | Raw webhook ingestion, signature verification dispatch       | Processing webhook events (delegates to service) |
-| `apps/billing/signals.py`         | Auto-create Customer on User creation                        | Any billing business logic                       |
-| `apps/web/.../billing/` pages     | UI for billing management                                    | Any Stripe API calls or business logic           |
-| `packages/schemas/src/billing.ts` | Client-side form validation for billing inputs               | API calls, rendering                             |
-
----
-
-## 9. Suggested Build Order
-
-Dependencies drive the sequence. Each step requires all prior steps.
-
-```
-Step 1: Django models + migration
-  - Customer model (OneToOne → User)
-  - Subscription model (FK → Customer)
-  - Initial migration: 0001_initial.py
-  WHY FIRST: All other billing components depend on these tables existing.
-
-Step 2: PaymentAdapter ABC + StripeAdapter
-  - adapters.py (ABC + StripeAdapter class)
-  - Add stripe to pyproject.toml (uv add stripe)
-  - Add STRIPE_* settings to base.py + .env.example
-  WHY SECOND: Services and webhooks depend on the adapter interface.
-
-Step 3: BillingService (core logic, no HTTP)
-  - services.py
-  - get_or_create_stripe_customer()
-  - create_checkout_session()
-  - create_portal_session()
-  - handle_webhook_event() dispatcher
-  - Individual webhook handlers (_handle_customer_subscription_*)
-  WHY THIRD: Can be unit-tested in isolation before HTTP layer exists.
-
-Step 4: Pydantic schemas
-  - schemas.py
-  - CustomerOut, SubscriptionOut, CheckoutSessionOut, PortalSessionOut
-  - CreateCheckoutIn
-  WHY FOURTH: Ninja controllers require schemas. Schemas can reference models.
-
-Step 5: BillingController (Ninja Extra)
-  - controllers.py
-  - GET /billing/customer/ → current customer
-  - GET /billing/subscription/ → current subscription
-  - POST /billing/checkout/ → create checkout session
-  - POST /billing/portal/ → create portal session
-  - DELETE /billing/subscription/ → cancel subscription
-  WHY FIFTH: Controllers depend on schemas (Step 4) and services (Step 3).
-
-Step 6: Webhook view registration
-  - webhooks.py (stripe_webhook_view)
-  - config/urls.py addition (comment-delimited block)
-  WHY SIXTH: Depends on BillingService (Step 3) and adapter (Step 2).
-
-Step 7: Auto-create signal
-  - signals.py (post_save → create Customer)
-  - apps.py BillingConfig.ready() registers signal
-  WHY SEVENTH: Depends on Customer model (Step 1). Can be done after Step 1
-    but placed here to avoid confusion with initial migration state.
-
-Step 8: INSTALLED_APPS + auto_discover
-  - Add "apps.billing" to INSTALLED_APPS
-  - Run makemigrations + migrate
-  WHY EIGHTH: Signals and controllers only need registration after all code exists.
-
-Step 9: OpenAPI type regeneration
-  - turbo generate:api-types
-  - Commit updated openapi.json + gen/v1/types.d.ts
-  WHY NINTH: Requires the Django API to be running with billing endpoints registered.
-
-Step 10: Frontend billing pages
-  - apps/web/app/(dashboard)/billing/page.tsx
-  - apps/web/app/(dashboard)/billing/checkout/page.tsx
-  - apps/web/app/(dashboard)/billing/success/page.tsx
-  - apps/web/app/(dashboard)/billing/portal/page.tsx
-  - apps/web/components/billing/*.tsx
-  - packages/schemas/src/billing.ts
-  WHY TENTH: Requires generated types (Step 9) and working API endpoints (Steps 5-8).
-
-Step 11: CLI scaffolder integration
-  - removeBillingModule() in create-foundation-app
-  - Add billing to feature selection prompt
-  WHY LAST: Scaffolder should only be extended after the module is stable.
-```
+| Existing Component                           | Feature       | Change Type                                          | Notes                              |
+| -------------------------------------------- | ------------- | ---------------------------------------------------- | ---------------------------------- |
+| `config/settings/base.py`                    | Email         | ADD: EMAIL_ADAPTER setting, SENDGRID_API_KEY env     | Wrapped in # EMAIL_START/END       |
+| `config/settings/base.py`                    | Social Auth   | ADD: SOCIALACCOUNT_PROVIDERS dict, provider env vars | Wrapped in # SOCIAL_AUTH_START/END |
+| `config/settings/base.py`                    | BILLING_PLANS | MODIFY: add feature key lists to each plan           | Enhances existing dict             |
+| `INSTALLED_APPS`                             | Email         | ADD: "apps.notifications"                            | Wrapped for scaffolder removal     |
+| `INSTALLED_APPS`                             | Social Auth   | ADD: 3 provider packages                             | Wrapped for scaffolder removal     |
+| `apps/accounts/signals.py`                   | Email         | ADD: post_save → send_transactional_email.delay()    | Existing signals.py                |
+| `apps/accounts/controllers.py`               | GDPR + RBAC   | ADD: delete, export, role assignment endpoints       | Additive to existing controller    |
+| `apps/accounts/services.py`                  | GDPR          | ADD: AccountDeletionService class                    | Additive                           |
+| `apps/billing/models.py`                     | Entitlements  | NO CHANGE                                            | Read-only via PlanProviderMapping  |
+| `apps/billing/utils.py`                      | Entitlements  | NONE — new file                                      | entitlements.py is a new file      |
+| `apps/web/app/layout.tsx`                    | GDPR          | ADD: <CookieBanner /> import + render                | Single line addition               |
+| `apps/web/src/components/auth/auth-form.tsx` | Social Auth   | ADD: social-buttons.tsx below form                   | Additive component                 |
+| `apps/mobile/app/(auth)/sign-in.tsx`         | Social Auth   | ADD: Apple Sign In button (iOS only)                 | Platform conditional               |
+| `packages/api-client/`                       | All           | REGENERATE: after each backend endpoint addition     | Standard pipeline                  |
 
 ---
 
 ## Anti-Patterns to Avoid
 
-### Anti-Pattern 1: Stripe API calls in controllers
+### Anti-Pattern 1: Social Auth State Management in the URL
 
-**What goes wrong:** Controllers import `stripe` directly and call `stripe.Customer.create()` inline.
+**What people do:** Pass OAuth tokens or social account state through URL query parameters in the redirect flow.
 
-**Why bad:** Cannot be unit-tested without real Stripe credentials. Cannot swap payment processor. Business logic leaks into the HTTP layer.
+**Why it's wrong:** Tokens in URLs appear in server logs, browser history, and referrer headers. PKCE mitigates some risks but URL exposure is still a vulnerability.
 
-**Instead:** All Stripe calls go through `PaymentAdapter`. Controllers call `BillingService`, which calls the adapter. Controllers never import `stripe`.
+**Do this instead:** Let allauth manage the OAuth state entirely. The callback is handled server-side by allauth's views. The web client only needs to initiate the redirect (`/_allauth/browser/v1/auth/provider/redirect`) and handle the resulting session.
 
-### Anti-Pattern 2: Modifying the User model for billing fields
+### Anti-Pattern 2: Implementing RBAC with a Custom Role Model
 
-**What goes wrong:** Adding `stripe_customer_id` directly to `apps/accounts/models.py User(AbstractUser)`.
+**What people do:** Create a `Role` model with a ManyToMany to `User`, bypassing Django's built-in `Group` system.
 
-**Why bad:** Accounts app is auth-only. Billing fields in the User model make the billing module non-removable. The CLI scaffolder cannot cleanly strip fields from an AbstractUser subclass without risk.
+**Why it's wrong:** Django Groups are battle-tested, integrated with the admin, and already present. A custom Role model duplicates this with none of the built-in benefits.
 
-**Instead:** OneToOne Customer model in `apps/billing/models.py`. Auto-created via signal.
+**Do this instead:** Use Django Groups as roles. The `require_role("admin")` decorator checks group membership. Group names are strings — no enum or constant model needed.
 
-### Anti-Pattern 3: Parsing request.body in a Ninja controller for webhooks
+### Anti-Pattern 3: Synchronous Email Sending in Request Cycle
 
-**What goes wrong:** Registering the webhook as a `@api_controller` endpoint and accessing `request.body`.
+**What people do:** Call `adapter.send()` directly in a controller or signal handler, blocking the HTTP response until the email API responds.
 
-**Why bad:** Django Ninja processes the request body for JSON parsing. After Ninja reads it, `request.body` may be empty or already-decoded. Stripe signature verification requires raw bytes, causing `SignatureVerificationError` for all valid events.
+**Why it's wrong:** Email APIs introduce 100-500ms latency per call. Errors in the email provider cause HTTP 500s. Request timeout kills in-flight emails.
 
-**Instead:** Register as a plain Django view in `config/urls.py` with `@csrf_exempt`. Access `request.body` (raw bytes) directly. Delegate signature verification to the adapter.
+**Do this instead:** Always dispatch `send_transactional_email.delay()` as a Celery task. The HTTP response returns immediately. Failed emails are retried by Celery. Email delivery is decoupled from request success.
 
-### Anti-Pattern 4: Processing webhook events synchronously in the view
+### Anti-Pattern 4: Storing Feature Flags in the Database
 
-**What goes wrong:** Running all business logic (database updates, email sends) synchronously in `stripe_webhook_view()`. If this takes more than ~5 seconds, Stripe retries the webhook, causing duplicate processing.
+**What people do:** Create a `Feature` model with a ManyToMany to subscription plans, managed via admin.
 
-**Instead:** For heavy webhook processing, dispatch a Celery task from the view and return 200 immediately. For lightweight operations (simple DB updates), synchronous processing in the service is fine. Add idempotency checks using `stripe_event_id` if needed.
+**Why it's wrong:** Feature configuration becomes fragmented across database state and code. Deployments require database migrations to change features. Testability requires database fixtures for feature data.
 
-### Anti-Pattern 5: Storing plan metadata in the Subscription model
+**Do this instead:** `BILLING_PLANS` in settings is the single source of truth. Feature keys are strings in a list. `has_feature()` is a pure function of user subscription + settings — no extra DB models, no extra migrations.
 
-**What goes wrong:** Adding fields like `plan_name`, `monthly_price`, `feature_limits` to the Subscription model.
+### Anti-Pattern 5: Soft-Delete for GDPR Account Deletion
 
-**Why bad:** Plan metadata belongs in configuration (environment variables or a static `BILLING_PLANS` dict in settings), not in the database. Storing it creates synchronization problems when plans are updated in Stripe.
+**What people do:** Add `deleted_at` field to User model and filter it in queries (soft delete).
 
-**Instead:** Keep Subscription lean: only `stripe_subscription_id`, `stripe_price_id`, `status`, and period dates. Resolve plan name and features at query time by mapping `stripe_price_id` to a `BILLING_PLANS` settings dict.
+**Why it's wrong:** GDPR Article 17 (Right to Erasure) requires actual deletion of personal data, not just hiding it. Soft-deleted records still contain PII and are subject to regulatory compliance.
+
+**Do this instead:** Hard delete via `user.delete()`. Django ORM cascade handles all related records. If audit logging is needed, log the deletion event (timestamp, hashed user ID) before the delete — not the user data itself.
 
 ---
 
-## Integration Points with Existing Codebase
+## Scaling Considerations
 
-| Existing element                        | How billing touches it                                         | Change required                               |
-| --------------------------------------- | -------------------------------------------------------------- | --------------------------------------------- |
-| `config/urls.py`                        | Adds webhook URL path + imports                                | ADD comment-delimited block before `api.urls` |
-| `config/settings/base.py`               | Adds `"apps.billing"` to INSTALLED*APPS + 4 STRIPE*\* settings | ADD                                           |
-| `apps/accounts/models.py`               | No changes                                                     | NONE — OneToOne from billing side             |
-| `api.auto_discover_controllers()`       | Picks up BillingController automatically                       | NONE — already works                          |
-| `packages/api-client/openapi.json`      | New billing endpoints appear after type regen                  | REGENERATE after Step 8                       |
-| `packages/api-client/gen/v1/types.d.ts` | New billing types auto-generated                               | REGENERATE after Step 8                       |
-| `apps/web/app/(dashboard)/layout.tsx`   | May need billing nav link                                      | ADD nav link                                  |
-| CLI scaffolder feature selection        | New "Billing Module" checkbox                                  | ADD in Step 11                                |
+| Scale         | Architecture Adjustments                                                                                                                                                                                     |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 0-1k users    | All five features work as described. Synchronous data export is fine.                                                                                                                                        |
+| 1k-100k users | Data export should become async Celery task + email delivery (avoid timeout on large accounts). Feature entitlement results should be cached in Redis (1-minute TTL) to avoid repeated DB reads per request. |
+| 100k+ users   | RBAC permission checks may need caching. Social auth token exchange should use PKCE. Email volume may require SendGrid dedicated IP. Consider read replica for data export queries.                          |
 
 ---
 
 ## Sources
 
-- Stripe webhook signature verification: [docs.stripe.com/webhooks/signature](https://docs.stripe.com/webhooks/signature) — HIGH confidence (official Stripe documentation)
-- Stripe Python SDK v8 (StripeClient API): [github.com/stripe/stripe-python](https://github.com/stripe/stripe-python) — HIGH confidence (official SDK)
-- Stripe webhook CSRF exemption requirement: [Django CSRF docs](https://docs.djangoproject.com/en/6.0/howto/csrf/), [Django Ninja CSRF docs](https://django-ninja.dev/reference/csrf/) — HIGH confidence
-- Django OneToOne profile pattern for User extension: [Django documentation on customizing auth](https://docs.djangoproject.com/en/4.2/topics/auth/customizing/) — HIGH confidence
-- Existing codebase: `apps/api/apps/ai/controllers.py`, `config/urls.py`, `config/settings/base.py`, `openspec/specs/foundation/cli-scaffolder.md` — HIGH confidence (direct inspection)
-- Adam Johnson — building webhook receivers in Django: [adamj.eu/tech/2021/05/09/how-to-build-a-webhook-receiver-in-django/](https://adamj.eu/tech/2021/05/09/how-to-build-a-webhook-receiver-in-django/) — MEDIUM confidence (well-regarded, patterns are stable)
+- Django Allauth social account provider configuration: [docs.allauth.org/en/dev/socialaccount/provider_configuration.html](https://docs.allauth.org/en/dev/socialaccount/provider_configuration.html) — HIGH confidence (official docs)
+- Django Allauth Google provider: [docs.allauth.org/en/dev/socialaccount/providers/google.html](https://docs.allauth.org/en/dev/socialaccount/providers/google.html) — HIGH confidence (official docs)
+- Expo Apple Authentication: [docs.expo.dev/versions/latest/sdk/apple-authentication/](https://docs.expo.dev/versions/latest/sdk/apple-authentication/) — HIGH confidence (official Expo docs)
+- Django Ninja Extra permission system: [eadwincode.github.io/django-ninja-extra/api_controller/api_controller_permission/](https://eadwincode.github.io/django-ninja-extra/api_controller/api_controller_permission/) — HIGH confidence (official library docs)
+- Existing codebase inspection: `apps/billing/adapters.py`, `apps/billing/decorators.py`, `apps/core/observability.py`, `apps/accounts/services.py`, `apps/accounts/headless.py`, `config/settings/base.py`, `config/urls.py` — HIGH confidence (direct inspection)
+- PaymentAdapter ABC pattern (already validated v1.1): existing `apps/billing/adapters.py` — HIGH confidence
+- GDPR cascade deletion via Django ORM: Django model deletion documentation, confirmed by codebase FK relationship inspection — HIGH confidence
+- Cookie consent in Next.js 15 App Router: [posthog.com/tutorials/nextjs-cookie-banner](https://posthog.com/tutorials/nextjs-cookie-banner) — MEDIUM confidence (PostHog-authored tutorial, current)
 
 ---
 
-_Billing & Payments Architecture — Foundation Template_
-_Researched: 2026-03-07_
+_v1.3 SaaS Functional Baseline — Foundation Template_
+_Researched: 2026-03-11_

@@ -1,830 +1,711 @@
-# Domain Pitfalls: Billing & Payments Module
+# Domain Pitfalls: v1.3 SaaS Functional Baseline
 
-**Domain:** Adding a billing/payments module to an existing Django + Next.js SaaS template
-**Researched:** 2026-03-07
-**Confidence:** MEDIUM-HIGH (WebSearch verified; training data corroborated by current community sources. Stripe-specific claims verified against Stripe documentation patterns. WeasyPrint specifics corroborated by GitHub issues and 2025 community posts.)
+**Domain:** Adding transactional email, social auth (Google/GitHub/Apple), GDPR baseline, RBAC, and feature entitlements to an existing Django + Next.js + Expo monorepo
+**Researched:** 2026-03-11
+**Confidence:** MEDIUM-HIGH (WebSearch verified against official documentation; Apple-specific claims verified against Expo and django-allauth current docs. GDPR claims verified against Django ORM behavior. Feature entitlement and RBAC claims corroborated by multiple sources.)
+
+> **Note:** This file supersedes the v1.1 billing pitfalls document for v1.3 work. The billing pitfalls remain valid and apply to their respective phases. This file focuses exclusively on the five new v1.3 features being added to the already-shipped v1.2 system.
 
 ---
 
 ## Critical Pitfalls
 
-Mistakes that cause rewrites, incorrect billing, or irreversible data loss.
+Mistakes that cause security holes, data loss, broken auth flows, or compliance violations.
 
 ---
 
-### Pitfall 1: PaymentAdapter Abstraction That Leaks Stripe Concepts
+### Pitfall 1: Apple Sign In — Native Token vs. Web Token Are Not Interchangeable
 
 **What goes wrong:**
-The adapter ABC is designed to hide provider details, but Stripe-specific concepts bleed into the shared interface. The most common forms:
+Expo's `expo-apple-authentication` generates a native iOS identity token (a JWT signed by Apple's native service). Django Allauth's Apple provider expects a token from the web OAuth flow (which uses a `client_secret` derived from a Service ID, not a Bundle ID). These two tokens have different `aud` (audience) claims.
 
-1. **Stripe status strings in the interface.** The abstract method returns a `status` field typed as `Literal["requires_payment_method", "requires_action", "succeeded"]` — these are Stripe PaymentIntent statuses. When you add a second provider, these literals are meaningless.
+When you pass a native Expo token directly to Allauth's standard social token endpoint, Apple's server-side token verification fails with an audience mismatch error. The error is often misleading — it surfaces as `jwt.exceptions.InvalidAudienceError` or a generic "invalid token" response, not a clear explanation of the mismatch.
 
-2. **Stripe customer ID on the user model.** `user.stripe_customer_id` is added to the User model directly. A second provider would require `user.paypal_customer_id`. The model cannot be cleaned up without a migration.
-
-3. **Provider webhook payload exposed to service layer.** The webhook handler calls `adapter.process_webhook(stripe_event)` and passes the raw Stripe event object downstream. The service layer ends up `isinstance`-checking for Stripe types.
-
-4. **Price/Plan IDs are Stripe price IDs.** The adapter interface has `create_subscription(price_id: str)` where `price_id` means a Stripe price ID (`price_abc123`). No other provider uses the same ID format.
+Additionally, Apple only sends the user's name and email on the **first** authentication. Subsequent authentications return `null` for `fullName`, even if the user reinstalls the app. If the backend does not persist the name on first receipt, it is permanently unrecoverable.
 
 **Why it happens:**
-The first implementation is Stripe. It is tempting to write the interface to match what Stripe needs, then "abstract it later." Later never comes.
+Sign In with Apple requires two separate Apple developer configurations:
 
-**Prevention:**
-Define the interface in terms of your domain, not Stripe's:
+- **App ID** (`com.yourcompany.app`) — used for native iOS flows; the `client_id` Apple checks in native tokens
+- **Service ID** (`com.yourcompany.app.web`) — used for web OAuth flows; what Allauth's standard Apple provider expects
 
-```python
-# GOOD: Domain-centric adapter interface
-from abc import ABC, abstractmethod
-from dataclasses import dataclass
-from enum import Enum
+Developers configure only one and assume both flows use the same token format.
 
-class PaymentStatus(Enum):
-    PENDING = "pending"
-    REQUIRES_ACTION = "requires_action"   # SCA/3DS
-    SUCCEEDED = "succeeded"
-    FAILED = "failed"
-    CANCELED = "canceled"
+**How to avoid:**
 
-@dataclass
-class PaymentResult:
-    status: PaymentStatus
-    provider_reference: str            # Opaque to the service layer
-    client_secret: str | None = None   # For frontend action (3DS, etc.)
-    action_url: str | None = None      # Redirect URL if required
-
-class PaymentAdapter(ABC):
-    @abstractmethod
-    def create_customer(self, user_id: int, email: str) -> str:
-        """Returns an opaque provider_customer_id string."""
-        ...
-
-    @abstractmethod
-    def create_subscription(
-        self,
-        provider_customer_id: str,
-        plan_key: str,           # Your internal plan key, NOT a Stripe price ID
-        trial_days: int = 0,
-    ) -> PaymentResult:
-        ...
-
-    @abstractmethod
-    def cancel_subscription(
-        self,
-        provider_subscription_id: str,
-        at_period_end: bool = True,
-    ) -> None:
-        ...
-
-    @abstractmethod
-    def parse_webhook(self, payload: bytes, signature: str) -> "WebhookEvent":
-        """Returns a provider-agnostic WebhookEvent, NOT a raw Stripe object."""
-        ...
-```
-
-Keep `stripe_customer_id` in a separate `BillingProfile` model (not on `User`). The `BillingProfile` model is part of the billing module; removing the module removes this model cleanly.
+1. Register both an App ID and a Service ID in the Apple Developer portal.
+2. On the mobile side, use `expo-apple-authentication` to get the native identity token.
+3. Send this token to a **dedicated Django endpoint** (not Allauth's standard provider flow) that verifies the native JWT using Apple's public keys fetched from `https://appleid.apple.com/auth/keys`.
+4. After verification, use `allauth.socialaccount` APIs internally to connect or create the social account, bypassing the web OAuth redirect dance.
+5. Persist `fullName` (first + last) on the very first successful auth; never rely on subsequent calls returning it.
 
 **Warning signs:**
 
-- The word "stripe" appears in a method signature on the abstract base class
-- Service layer code imports `stripe` directly (not via the adapter)
-- A `stripe_*` field on the User model or any model outside `apps/billing/`
-- `isinstance(event, stripe.Event)` anywhere outside `StripeAdapter`
+- A single `APPLE_CLIENT_ID` setting without a separate `APP_BUNDLE_ID` setting
+- `jwt.InvalidAudienceError` or `"aud" claim mismatch` in error logs
+- Users reporting their name shows as blank after re-installation
+- Allauth's `/auth/provider/token/` endpoint used directly from the Expo app for Apple
 
-**Phase to address:** Billing Phase 1 (Adapter scaffolding). The interface must be locked before any implementation begins.
+**Phase to address:** Social Auth phase. Design the dedicated native-token verification endpoint before writing any Expo-side Apple auth code.
 
-**Recovery cost:** HIGH — changing the interface after both adapter and service layers are built requires touching every call site.
+**Recovery cost:** HIGH — the two-flow architecture is a design decision. Retrofitting it after building around a single flow requires changing both the Django endpoint and the Expo auth module.
 
-**Confidence:** HIGH
+**Confidence:** HIGH (Expo docs, Apple Developer forum, multiple 2025 community posts confirming native vs. web token distinction)
 
 ---
 
-### Pitfall 2: Webhook Processing Without Idempotency Guard
+### Pitfall 2: Social Auth — Email Account Conflict With Existing Password Accounts
 
 **What goes wrong:**
-Stripe retries webhooks when your endpoint returns a non-2xx response or times out (up to 3 days, exponential backoff). Without an idempotency guard:
+A user registered with `user@example.com` and a password. Later they try to sign in with Google using the same email. Django Allauth (with `SOCIALACCOUNT_EMAIL_AUTHENTICATION=False`, the default) will either:
 
-1. A slow database write causes a timeout. Stripe retries. The subscription is created twice.
-2. A deploy restarts the server mid-webhook. Stripe retries. The user is double-charged or their plan is toggled off then on.
-3. Two concurrent webhook deliveries for the same event arrive due to Stripe's at-least-once guarantee. Both handlers run simultaneously and create duplicate records.
+- **Block the social login** with "An account already exists with this e-mail address" — confusing and a dead end for the user
+- **Create a duplicate account** with the same email if `ACCOUNT_UNIQUE_EMAIL=False` — two accounts, split data, billing chaos
 
-The race condition in case 3 is subtle: both handlers check "has this event been processed?" at the same moment, both get `False`, both proceed, and both write.
+Neither is acceptable UX. The secure way to handle this is email-verified account merging: verify the social provider's email is confirmed by the provider, then automatically link the social account to the existing password account.
 
-**Prevention:**
+**Why it happens:**
+The default Allauth configuration is conservative: it does not auto-link social accounts to existing email accounts because the social provider's email may not be verified. This is correct security behavior for providers that don't guarantee email verification (older Facebook, some OpenID providers). But Google and GitHub **do** guarantee verified emails, so the conservative default becomes needlessly hostile.
 
-Use a `ProcessedWebhookEvent` model with a unique constraint on `stripe_event_id`, and use `get_or_create` in an atomic transaction:
+**How to avoid:**
 
-```python
-# apps/billing/models.py
-class ProcessedWebhookEvent(models.Model):
-    provider = models.CharField(max_length=50, default="stripe")
-    event_id = models.CharField(max_length=255)
-    event_type = models.CharField(max_length=255)
-    processed_at = models.DateTimeField(auto_now_add=True)
-    status = models.CharField(
-        max_length=20,
-        choices=[("processing", "Processing"), ("done", "Done"), ("failed", "Failed")],
-        default="processing",
-    )
-
-    class Meta:
-        unique_together = [("provider", "event_id")]
-        indexes = [models.Index(fields=["provider", "event_id"])]
-```
+1. Set `SOCIALACCOUNT_EMAIL_AUTHENTICATION = True` and `SOCIALACCOUNT_EMAIL_AUTHENTICATION_AUTO_CONNECT = True` in settings for Google and GitHub (these providers always return verified emails).
+2. Do NOT set auto-connect for Apple — Apple's email relay (`privaterelay.appleid.com`) does not verify the user's actual email in the same way.
+3. Write a custom `SocialAccountAdapter` that enforces the per-provider rule:
 
 ```python
-# apps/billing/webhooks.py
-from django.db import transaction, IntegrityError
+class FoundationSocialAccountAdapter(DefaultSocialAccountAdapter):
+    TRUSTED_PROVIDERS = {"google", "github"}
 
-def handle_stripe_webhook(payload: bytes, sig_header: str) -> None:
-    event = stripe.Webhook.construct_event(
-        payload, sig_header, settings.STRIPE_WEBHOOK_SECRET
-    )
-
-    # Atomic idempotency guard — unique constraint races go to IntegrityError
-    try:
-        with transaction.atomic():
-            webhook_record, created = ProcessedWebhookEvent.objects.get_or_create(
-                provider="stripe",
-                event_id=event["id"],
-                defaults={"event_type": event["type"]},
-            )
-            if not created:
-                return  # Already processed or in-flight
-
-        # Process OUTSIDE the initial transaction to avoid long-held locks
-        _dispatch_webhook_event(event)
-
-        webhook_record.status = "done"
-        webhook_record.save(update_fields=["status"])
-
-    except IntegrityError:
-        # Race condition: another process won the insert. Skip.
-        return
+    def pre_social_login(self, request, sociallogin):
+        if sociallogin.account.provider not in self.TRUSTED_PROVIDERS:
+            return
+        if not sociallogin.is_existing:
+            email = sociallogin.email_addresses[0].email if sociallogin.email_addresses else None
+            if email:
+                try:
+                    existing = User.objects.get(email=email)
+                    sociallogin.connect(request, existing)
+                except User.DoesNotExist:
+                    pass
 ```
 
-The two-transaction pattern (create record → process → mark done) keeps the idempotency lock narrow. Do not run all webhook processing inside one giant transaction, as long-running processing + a held row lock = deadlocks.
+4. Test explicitly: create a password account, then log in via Google with the same email, and verify the same user object is returned (not a new one).
 
 **Warning signs:**
 
-- Webhook handler has no check for already-processed events
-- Subscription created twice for the same user (duplicate rows detectable in admin)
-- Users reporting being charged twice on flaky network days
-- `stripe_subscription_id` lacks a `unique=True` constraint on the model
+- `SOCIALACCOUNT_EMAIL_AUTHENTICATION` not set (defaults to conservative False)
+- Users reporting "two accounts" or missing subscription data after Google login
+- No test covering the email-collision scenario
+- `pre_social_login` adapter method not overridden
 
-**Phase to address:** Billing Phase 2 (Webhook infrastructure). This must be the first thing implemented before any webhook handler logic.
+**Phase to address:** Social Auth phase. Account merging logic must be in place before any social provider is activated in production.
 
-**Recovery cost:** HIGH — duplicate billing records require manual reconciliation. Data integrity issues compound over time.
+**Recovery cost:** HIGH — duplicate accounts in production require a manual merge operation with potential data loss decisions (which subscription survives?).
 
-**Confidence:** HIGH (Stripe documentation + community pattern)
+**Confidence:** HIGH (django-allauth GitHub issue #418, official configuration docs, multiple community discussions)
 
 ---
 
-### Pitfall 3: Wrong Webhook Events Listened To (Event Confusion)
+### Pitfall 3: Transactional Email — Celery Task Dispatched Before DB Transaction Commits
 
 **What goes wrong:**
-Stripe has overlapping events that seem interchangeable but are not. Three common mistakes:
-
-**Mistake A: Using `payment_intent.succeeded` for subscriptions instead of `invoice.payment_succeeded`.**
-For one-time payments via Checkout: listen to `checkout.session.completed`.
-For subscriptions: listen to `invoice.payment_succeeded` (and `invoice.payment_failed`). Subscriptions create invoices automatically each period. `payment_intent.succeeded` fires on the underlying PaymentIntent, but it fires for EVERY invoice, including upcoming ones that happen during the life of a subscription. Developers accidentally activate accounts before the first invoice settles, or re-activate accounts on renewal invoices they didn't intend to handle.
-
-**Mistake B: Using `customer.subscription.updated` to grant/revoke access.**
-`customer.subscription.updated` fires on ANY change: metadata updates, trial extensions, payment method changes. If you grant access on this event, trial extensions re-trigger access grants. Use `customer.subscription.updated` only to sync local state. Grant access based on the `status` field value transitions (e.g., `trialing` → `active`), not the event itself.
-
-**Mistake C: Using `checkout.session.completed` for subscriptions AND one-time payments, but not distinguishing the mode.**
-`checkout.session.completed` fires for both `mode: "payment"` and `mode: "subscription"` sessions. If a single handler handles both, fulfillment logic runs twice or incorrectly.
-
-**Prevention:**
+A common pattern is:
 
 ```python
-# Minimum event set for subscription billing:
-SUBSCRIPTION_EVENTS = {
-    "checkout.session.completed",            # Initial subscription signup via Checkout
-    "invoice.payment_succeeded",             # Recurring payment success → renew access
-    "invoice.payment_failed",                # Payment failure → send dunning email
-    "customer.subscription.updated",         # Sync status (cancel_at_period_end, etc.)
-    "customer.subscription.deleted",         # Hard cancellation → revoke access
-    "customer.subscription.trial_will_end",  # Upcoming trial end notification
-}
-
-def handle_checkout_session_completed(session):
-    # ALWAYS check mode before acting
-    if session["mode"] == "subscription":
-        _handle_subscription_checkout(session)
-    elif session["mode"] == "payment":
-        _handle_one_time_payment(session)
-    # Do not fall through without an explicit check
+def register_user(email, password):
+    user = User.objects.create_user(email=email, password=password)
+    send_welcome_email.delay(user.id)   # Celery task dispatched here
 ```
+
+The Celery task starts executing on a worker before the outer view's database transaction commits. The worker queries `User.objects.get(id=user_id)` and gets `DoesNotExist` because the row is not yet visible to other connections. The email is never sent. Django's default `ATOMIC_REQUESTS=True` makes this worse: the entire view runs in a transaction, meaning the `create_user` call is not committed until the view function returns — which is after `send_welcome_email.delay()` has already been called.
+
+This is one of the most commonly reported Django + Celery bugs, and it is silent: the task fails with `DoesNotExist`, Celery retries, the user's row may be committed by then, but the retry delay means the welcome email arrives 30-60 seconds late (or never, if max retries is low).
+
+**How to avoid:**
+Use `transaction.on_commit()` to defer task dispatch until the transaction is committed:
+
+```python
+from django.db import transaction
+
+def register_user(email, password):
+    user = User.objects.create_user(email=email, password=password)
+    transaction.on_commit(lambda: send_welcome_email.delay(user.id))
+```
+
+For Celery 5.x with `task_always_eager=False`, this is the correct and only reliable pattern.
 
 **Warning signs:**
 
-- Users whose access is revoked on plan metadata changes
-- Users with `status=active` in the DB but a Stripe subscription with `status=past_due`
-- Handling `payment_intent.succeeded` for subscription renewal — this fires for many more events than expected
+- `send_*.delay()` called immediately after `Model.objects.create()`
+- `User.DoesNotExist` appearing in Celery task logs
+- Welcome emails arriving inconsistently (sometimes 30-60 seconds late)
+- No `transaction.on_commit()` wrapping any task dispatch that follows a write
 
-**Phase to address:** Billing Phase 2 (Webhook infrastructure). The event routing table must be explicit and documented.
+**Phase to address:** Transactional Email phase. The `on_commit` pattern must be enforced as a code review rule for every email task dispatch.
 
-**Recovery cost:** MEDIUM — fixing event routing doesn't lose data, but requires reconciling any incorrect state transitions that already occurred.
+**Recovery cost:** LOW to fix, but MEDIUM for trust — users who received no welcome email may have already churned or marked the email as spam.
 
-**Confidence:** HIGH (Stripe documentation patterns + community experience)
-
----
-
-### Pitfall 4: Billing Data Model Decisions That Cause Pain Later
-
-**What goes wrong, specifically:**
-
-**A. Storing Stripe price IDs directly on Plan/Product models.**
-
-```python
-# FRAGILE: ties your data model to Stripe's ID format
-class Plan(models.Model):
-    stripe_price_id = models.CharField(max_length=255, unique=True)
-    stripe_price_id_monthly = models.CharField(...)
-    stripe_price_id_yearly = models.CharField(...)
-```
-
-When you add another billing provider, or when Stripe price IDs change (e.g., migrating from legacy Plans API to Products/Prices API), every row in this table must be updated. Instead, store provider-specific IDs in a separate `PlanProviderMapping` table keyed by `(plan_id, provider)`.
-
-**B. Storing subscription status as a free-form string copied from Stripe.**
-`subscription.status = "active"` mirrors Stripe's status enum. This creates an implicit dependency: if Stripe adds a new status (they have in the past), your code breaks on unhandled values. Define your own `SubscriptionStatus` enum with only the statuses you act on, and map Stripe statuses to yours in the adapter.
-
-**C. No `cancel_at_period_end` flag — using `status` alone to determine access.**
-A user who cancels is still `active` until period end. If you revoke access on `customer.subscription.updated` when status is not `active`, you revoke access immediately. You need both `status` and `cancel_at_period_end` to correctly determine access.
-
-**D. Storing plan feature flags directly on the Subscription model.**
-When plan features change, historical subscriptions reference the old feature set. Features should be on the `Plan` model (or a separate `PlanFeature` table), not on `Subscription`.
-
-**E. No audit log for subscription status transitions.**
-Billing disputes require proof of when a subscription was active. A soft `status` field with no history makes it impossible to reconstruct timeline. At minimum, keep `started_at`, `cancelled_at`, `trial_ends_at`, `current_period_end` as explicit timestamp fields.
-
-**Recommended minimal schema:**
-
-```python
-class BillingProfile(models.Model):
-    """One per user. Lives in billing app. Removed when billing module is removed."""
-    user = models.OneToOneField(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name="billing_profile",
-    )
-    provider_customer_id = models.CharField(max_length=255, blank=True)
-    # provider is which adapter is active; allows multi-provider in future
-    provider = models.CharField(max_length=50, default="stripe")
-
-class Subscription(models.Model):
-    billing_profile = models.ForeignKey(BillingProfile, on_delete=models.PROTECT)
-    plan = models.ForeignKey("Plan", on_delete=models.PROTECT)
-    provider_subscription_id = models.CharField(max_length=255, unique=True)
-    status = models.CharField(
-        max_length=30,
-        choices=SubscriptionStatus.choices,    # Your enum, not Stripe's
-    )
-    cancel_at_period_end = models.BooleanField(default=False)
-    trial_ends_at = models.DateTimeField(null=True, blank=True)
-    current_period_start = models.DateTimeField()
-    current_period_end = models.DateTimeField()
-    cancelled_at = models.DateTimeField(null=True, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-
-class PlanProviderMapping(models.Model):
-    """Maps your internal Plan to provider-specific price IDs."""
-    plan = models.ForeignKey("Plan", on_delete=models.CASCADE)
-    provider = models.CharField(max_length=50)
-    provider_price_id = models.CharField(max_length=255)
-    billing_interval = models.CharField(
-        max_length=20,
-        choices=[("month", "Monthly"), ("year", "Yearly")],
-    )
-
-    class Meta:
-        unique_together = [("plan", "provider", "billing_interval")]
-```
-
-**Warning signs:**
-
-- `stripe_price_id` field directly on Plan or Subscription model
-- `subscription.status == "active"` used as the sole access gate
-- No `cancel_at_period_end` field
-- Subscription status stored as `CharField` without a choices constraint or enum
-
-**Phase to address:** Billing Phase 1 (Data model design). Changing schema after webhooks are live requires a migration AND a data backfill.
-
-**Recovery cost:** HIGH for schema changes on a live system. Adding `cancel_at_period_end` retroactively requires backfilling from Stripe's API for every active subscription.
-
-**Confidence:** HIGH
+**Confidence:** HIGH (Django documentation on `on_commit`, Celery documentation, multiple community post-mortems)
 
 ---
 
-### Pitfall 5: Plan Upgrade/Downgrade Logic Using Direct Subscription Updates Instead of Subscription Schedules
+### Pitfall 4: GDPR Hard Delete — Orphaned Data in Third-Party and Allauth Tables
 
 **What goes wrong:**
-Upgrades (higher tier) should take effect immediately with proration. Downgrades (lower tier) should typically take effect at period end to avoid immediate loss of paid access.
+`user.delete()` cascades through Django ORM relationships that Django knows about. However, several third-party packages store user-related data in tables the ORM cascade does not automatically reach:
 
-Developers implement this by calling `stripe.Subscription.modify()` with `proration_behavior="none"` for downgrades and `"create_prorations"` for upgrades. This works until the edge case: a customer upgrades, then downgrades within the same billing period. The interim proration credit from the upgrade is lost or double-applied because the proration calculation runs against a subscription that was already partially prorated.
+1. **django-allauth** — `EmailAddress`, `SocialAccount`, `SocialToken`, `EmailConfirmation` rows in `account_*` and `socialaccount_*` tables. Django Allauth's `User.delete()` cascade works correctly IF the ForeignKey `on_delete=CASCADE` is set, but `SocialToken` rows can be orphaned if Allauth's cascade is not properly applied in all versions.
 
-The correct tool for deferred downgrades is `subscription_schedule`, which queues phase changes at period boundaries. However, `subscription_schedule` adds complexity: once a subscription is managed by a schedule, ALL future modifications must go through the schedule API, or you get a `subscription_already_has_schedule` error.
+2. **PostHog** (ObservabilityAdapter) — If `identify()` was called, the user's profile exists in PostHog. Django's `user.delete()` does not notify PostHog. The deleted user's events persist in PostHog indefinitely, linked to an anonymous ID. Under GDPR, analytics data tied to an identified person must be deleted on request.
 
-**Prevention — simple but correct approach:**
+3. **Celery task results** — If `django-celery-results` is used, task result rows may contain user IDs or email addresses in the `result` JSON field. These rows are not cascade-deleted with the user.
 
-- **Upgrades:** `stripe.Subscription.modify(sub_id, items=[...], proration_behavior="always_invoice")`. This immediately invoices the prorated difference, giving the user access to the higher tier now.
-- **Downgrades:** Set `cancel_at_period_end=False`, modify items with `proration_behavior="none"`, and set `billing_cycle_anchor="unchanged"`. Store a `pending_plan_change` on the local Subscription model and apply it on the next `invoice.payment_succeeded` event.
+4. **Stripe** (BillingProfile cascade) — The `BillingProfile` model cascades from User, and deleting it does NOT delete the Stripe customer object. Under GDPR's right to erasure, the Stripe customer record (which contains payment method fingerprints and billing address) must also be deleted via `stripe.Customer.delete()`.
 
-Do NOT mix subscription schedule and non-schedule approaches within the same codebase. Pick one pattern and document it.
+5. **Structlog / OpenTelemetry traces** — Logs and traces emitted with `user_id` in the structured context are stored in whatever log sink is configured (CloudWatch, Grafana, etc.). These are not erased by `user.delete()`.
+
+**How to avoid:**
+
+1. Write a `UserDeletionService` that orchestrates deletion across all systems, not just Django ORM:
+
+```python
+class UserDeletionService:
+    def delete_user(self, user: User) -> None:
+        # 1. External services first (before row is gone)
+        self._delete_stripe_customer(user)
+        self._delete_posthog_person(user)
+
+        # 2. Celery task result cleanup (if django-celery-results used)
+        TaskResult.objects.filter(result__contains=str(user.id)).delete()
+
+        # 3. Django ORM cascade (handles allauth tables if FK cascade is set)
+        user.delete()
+```
+
+2. For PostHog: call `posthog.delete(distinct_id=str(user.id))` which flags the person for deletion in PostHog's pipeline.
+3. For logs: document in the data processing record that logs are retained for N days and purged on schedule — this is legally acceptable under GDPR's data minimization principle if the retention period is stated.
+4. Add a test that verifies no `SocialAccount`, `EmailAddress`, or `BillingProfile` rows remain after user deletion.
 
 **Warning signs:**
 
-- `stripe.SubscriptionSchedule` imported alongside `stripe.Subscription.modify` with no clear rule for which to use when
-- Proration credits disappearing after upgrade-then-downgrade flows
-- `stripe.error.InvalidRequestError: subscription_already_has_schedule` appearing in logs
+- `user.delete()` called directly without a service orchestrating external cleanup
+- No `stripe.Customer.delete()` call in the deletion flow
+- PostHog `identify()` calls without a corresponding deletion path
+- No test asserting that all related tables are empty post-deletion
 
-**Phase to address:** Billing Phase 3 (Plan management). Must be designed before the plan-change endpoint is built.
+**Phase to address:** GDPR Baseline phase. The `UserDeletionService` must be designed before the deletion endpoint is exposed.
 
-**Recovery cost:** MEDIUM — incorrect proration requires issuing manual Stripe credits to affected customers.
+**Recovery cost:** HIGH — retroactively discovering orphaned data after production deletions means data exists in external systems for users who requested erasure, which is a GDPR violation with potential fines.
 
-**Confidence:** MEDIUM (based on Stripe documentation + community reports; verify current subscription schedules API behavior)
+**Confidence:** MEDIUM-HIGH (Django ORM cascade behavior HIGH confidence; PostHog and Stripe cascade gaps MEDIUM — verified against each service's API docs)
 
 ---
 
-### Pitfall 6: Webhook Endpoint Timing Out Because Processing Is Synchronous
+### Pitfall 5: RBAC Permissions Checked at the Wrong Layer (Object-Level vs. Endpoint-Level vs. Service-Level)
 
 **What goes wrong:**
-The Stripe webhook endpoint runs all processing synchronously within the HTTP request. If the processing involves:
+Django's built-in permission system (`has_perm`, `groups`) checks permissions at the model level, not the object level. Three common mistakes:
 
-- Sending a confirmation email
-- Generating a PDF invoice
-- Calling another external API (Mailchimp, Slack, etc.)
-- Creating downstream records across multiple models
+**Mistake A: Endpoint-only guard without service-layer check.**
+A `@require_role("admin")` decorator on the Django Ninja endpoint correctly blocks anonymous users and non-admins. But a service function called from a Celery task or a management command has no HTTP context, so the guard is bypassed entirely. The data is unprotected when accessed outside the HTTP request cycle.
 
-...the total time can exceed Stripe's 30-second timeout. When Stripe receives no response within 30 seconds, it marks the delivery as failed and retries. Your idempotency guard (Pitfall 2) prevents double-processing, but the original event is marked "failed" in Stripe's dashboard, creating false alarms.
+**Mistake B: Model-level permission without object ownership check.**
+`user.has_perm("app.change_post")` checks if the user's role can edit posts in general. It does not check if this specific post belongs to the user. A user with `editor` role can call `PATCH /posts/123/` and modify another user's post if the endpoint only checks the model permission and not `post.owner == request.user`.
 
-**Prevention:**
-Return a `200 OK` immediately after signature verification and idempotency guard, then process asynchronously:
+**Mistake C: Caching `user.get_all_permissions()` across requests.**
+Django caches the permission set on the user object for the duration of the request. If a user's role is changed (e.g., demoted from admin to member), the next request picks up the new role correctly. But if the user object is cached in the session or another cache, the old permission set is served. This is specifically a risk when `django-redis` (already in the stack) is used as the session backend and the user object is serialized into the session.
+
+**How to avoid:**
+
+1. Permission checks must live in the **service layer** (`services.py`), not just in the endpoint guard. The guard is a UX convenience; the service is the security boundary.
+2. Object-ownership checks must be explicit:
 
 ```python
-# apps/billing/views.py (Django Ninja endpoint)
-@router.post("/webhooks/stripe/", auth=None)  # No auth — Stripe signs the payload
-def stripe_webhook(request: HttpRequest):
-    payload = request.body
-    sig_header = request.headers.get("Stripe-Signature", "")
-
-    # Step 1: Verify signature (fast — milliseconds)
-    try:
-        event = stripe.Webhook.construct_event(
-            payload, sig_header, settings.STRIPE_WEBHOOK_SECRET
-        )
-    except (ValueError, stripe.error.SignatureVerificationError):
-        raise HttpError(400, "Invalid payload or signature")
-
-    # Step 2: Idempotency guard (fast — single DB lookup with unique constraint)
-    _, created = ProcessedWebhookEvent.objects.get_or_create(
-        provider="stripe",
-        event_id=event["id"],
-        defaults={"event_type": event["type"]},
-    )
-    if not created:
-        return {"status": "already_processed"}
-
-    # Step 3: Dispatch to Celery task — return 200 immediately
-    process_stripe_webhook.delay(event_id=event["id"], event_type=event["type"])
-
-    return {"status": "accepted"}
+# services.py
+def update_post(requesting_user: User, post_id: int, data: PostUpdateSchema) -> Post:
+    post = get_object_or_404(Post, id=post_id)
+    if post.owner != requesting_user and not requesting_user.has_perm("posts.change_any_post"):
+        raise PermissionDenied("You do not own this post.")
+    post.title = data.title
+    post.save()
+    return post
 ```
 
-The Celery task fetches the event from Stripe by ID (rather than storing the full payload, which avoids PII in the task queue) or processes the locally stored event data.
+3. Do not cache `user.get_all_permissions()` or the user object beyond a single request cycle. Use `user.refresh_from_db()` before permission checks in Celery tasks.
 
 **Warning signs:**
 
-- `WebhookError: Timed out` appearing in Stripe dashboard webhook delivery logs
-- Webhook handler that imports `send_mail` or `generate_pdf` at the top level
-- Webhook endpoint response time > 5 seconds in any monitoring tool
+- Permission checks only in `@require_role` endpoint decorators, not in service functions
+- No test that verifies a user cannot edit another user's resource via the API
+- Celery tasks that perform privileged operations without any permission check
+- `user.get_all_permissions()` result cached in Redis with a TTL > 0
 
-**Phase to address:** Billing Phase 2 (Webhook infrastructure). Async dispatch must be part of the initial webhook design, not added later.
+**Phase to address:** RBAC phase. Service-layer permission checks must be established as the primary pattern before any endpoint guard is written.
 
-**Recovery cost:** LOW-MEDIUM — refactoring sync to async is straightforward, but you must replay any events that timed out in Stripe's delivery logs.
+**Recovery cost:** MEDIUM — adding service-layer checks retroactively is mechanical but requires auditing every service function for missing ownership checks.
 
-**Confidence:** HIGH
+**Confidence:** HIGH (Django permissions documentation, django-guardian docs, multiple RBAC security audit reports)
+
+---
+
+### Pitfall 6: Feature Entitlements — Stale Entitlement Cache After Plan Change
+
+**What goes wrong:**
+`has_feature(user, "advanced_exports")` is implemented by checking `user.subscription.plan.features["advanced_exports"]`. To avoid hitting the DB on every request, the result is cached in Redis with a TTL of, say, 1 hour.
+
+A user downgrades their plan via Stripe webhook. The webhook fires, the `Subscription.plan` is updated in the DB. But the `has_feature` cache for this user still returns `True` for `advanced_exports` for up to 1 hour. The user continues to access a feature they are no longer paying for.
+
+The inverse is equally damaging: a user upgrades but the cache still returns `False`, making them feel their payment had no effect. This generates support tickets immediately.
+
+**How to avoid:**
+
+1. Cache entitlements by a composite key that includes the plan ID and the subscription's `current_period_end`:
+
+```python
+def _cache_key(user_id: int, plan_id: int) -> str:
+    return f"entitlements:user:{user_id}:plan:{plan_id}"
+```
+
+2. On Stripe webhook processing (when `Subscription.plan` changes), explicitly invalidate the user's entitlement cache:
+
+```python
+# In the webhook handler for customer.subscription.updated
+old_plan_id = subscription.plan_id
+subscription.plan = new_plan
+subscription.save()
+cache.delete(_cache_key(user_id, old_plan_id))
+cache.delete(_cache_key(user_id, new_plan.id))
+```
+
+3. Keep cache TTL short (5-15 minutes) as a backstop even with explicit invalidation.
+
+4. In the `BILLING_PLANS` settings dict, features are defined at the plan level, not the user level — this means the cache key does NOT need to be per-user if the plan hasn't changed. One cache entry per plan is sufficient.
+
+**Warning signs:**
+
+- `has_feature` result cached with TTL > 30 minutes without explicit invalidation on plan change
+- No cache invalidation step in the Stripe webhook handler for subscription updates
+- Feature checks query the DB on every request (opposite problem: no caching = N+1 on every page render)
+- Users reporting "I upgraded but feature X still doesn't work"
+
+**Phase to address:** Feature Entitlements phase. Cache invalidation strategy must be designed at the same time as the caching strategy.
+
+**Recovery cost:** LOW to fix technically, but HIGH in user trust — users who were incorrectly billed for features they could not access, or who accessed features without paying, create support and refund burden.
+
+**Confidence:** HIGH (Django caching documentation, LaunchDarkly post on feature flag mistakes, multiple SaaS engineering blogs)
 
 ---
 
 ## Moderate Pitfalls
 
-Mistakes that create bugs, user confusion, or significant debugging time.
+Mistakes that create bugs, compliance gaps, or significant developer confusion.
 
 ---
 
-### Pitfall 7: PDF Invoice Generation Blocking the Request Thread
+### Pitfall 7: Transactional Email — SendGrid Suppression List Silently Swallowing Emails
 
 **What goes wrong:**
-WeasyPrint (the recommended Python HTML-to-PDF library) has two production problems:
+SendGrid maintains global suppression lists: unsubscribes, bounces, spam reports, and invalid addresses. If a user's email is on any of these lists, SendGrid silently drops the email and returns a `202 Accepted` response to the Django sender. The Celery task completes successfully, Celery reports no error, and the developer sees no indication the email was never delivered.
 
-1. **Memory leak per generation.** Each PDF generated increases the process RSS by 17-40MB. This memory is not released until the worker is restarted. Django workers serving PDF endpoints will exhaust memory over hours, causing OOM kills and downtime.
+This is particularly painful for:
 
-2. **Font resolution failures in Docker.** WeasyPrint resolves fonts from the OS. In a minimal Docker image (`python:3.12-slim`), system fonts are not installed. Custom fonts loaded via `@font-face` with relative paths in CSS fail silently (the font falls back to a default) or raise `URLFetchingError`. The PDF looks wrong in production but correct in local dev (where fonts are installed).
+- Password reset emails — the user cannot log in and support tickets pile up
+- Account verification emails — the user is stuck in an unverified state
+- Billing failure notifications — the user is unaware their subscription is at risk
 
-3. **WeasyPrint v53+ breaking change.** Version 53 switched from Cairo to pydyf as the PDF generator. This dropped PNG output and changed how some CSS properties are rendered. If your template was tested on WeasyPrint < 53, it may produce different output on v53+.
+**How to avoid:**
 
-**Prevention:**
+1. Configure SendGrid webhook events for bounces, drops, and spam reports. Write a Django endpoint that receives these events and records them in a `SuppressedEmail` model.
+2. Before queuing any Celery email task, check `SuppressedEmail.objects.filter(email=recipient).exists()`. If suppressed, log a warning and skip or alert the team.
+3. For critical transactional emails (password reset, billing failure), check suppression before sending and surface a UI-level warning to the user if their email is on the suppression list.
+4. Never use a global unsubscribe link for transactional emails — use SendGrid's Unsubscribe Groups so that marketing unsubscribes do not suppress password resets.
 
-Always generate PDFs in a Celery task, never in the request cycle:
+**Warning signs:**
+
+- No SendGrid event webhook configured in the Django app
+- `send_mail()` or `sg.send()` returns success but user never receives the email
+- Support tickets about "I never got my password reset email"
+- Using a single global unsubscribe link for all email types
+
+**Phase to address:** Transactional Email phase. Suppression tracking must be implemented alongside the SendGrid adapter.
+
+**Confidence:** MEDIUM-HIGH (SendGrid suppression documentation, multiple Django-SendGrid community reports)
+
+---
+
+### Pitfall 8: Social Auth — OAuth Redirect URI Misconfiguration in Multi-Environment Setup
+
+**What goes wrong:**
+Google and GitHub OAuth apps require exact redirect URI registration. In the template's multi-environment setup (local dev, staging, production), developers register only the production redirect URI, then wonder why OAuth fails locally. Or they register `http://localhost:8000` for development and forget to register the staging URL.
+
+Apple is worse: the Apple Service ID requires the exact redirect domain to be registered in the Apple Developer portal. Unlike Google/GitHub, which have a console UI for rapid URI management, Apple changes take 5-15 minutes to propagate and cannot be done programmatically. A staging URL not registered in Apple's portal means Apple OAuth is completely broken on staging.
+
+**How to avoid:**
+
+1. Document all required redirect URIs per environment in the project setup guide:
+   - Local: `http://localhost:8000/accounts/google/login/callback/`
+   - Staging: `https://staging.yourapp.com/accounts/google/login/callback/`
+   - Production: `https://yourapp.com/accounts/google/login/callback/`
+2. For Apple: register staging and production domains in the Apple Service ID **before** any testing on those environments. Plan for the propagation delay.
+3. Use separate OAuth application credentials per environment (not shared between staging and production) — this prevents a staging misconfiguration from taking down production auth.
+4. Add a health-check test that verifies the configured redirect URI matches the expected pattern for the current environment.
+
+**Warning signs:**
+
+- `redirect_uri_mismatch` errors in OAuth provider logs
+- Single OAuth app credentials shared across local, staging, and production
+- Apple auth working in development but broken on staging
+
+**Phase to address:** Social Auth phase. URI registration checklist must be part of the phase's environment setup documentation.
+
+**Confidence:** HIGH (Google OAuth documentation, Apple Sign In documentation, community experience)
+
+---
+
+### Pitfall 9: GDPR Data Export — Incomplete Export Missing Third-Party Data
+
+**What goes wrong:**
+A data export endpoint collects `User`, `Profile`, and app-specific model data via Django's serialization framework. It returns a JSON with all the ORM rows it knows about. But it misses:
+
+1. **Allauth data** — `SocialAccount`, `EmailAddress` rows (the user's connected OAuth accounts and verified emails)
+2. **Billing data** — Invoice history, subscription history from the `BillingProfile` tables
+3. **PostHog analytics** — Events captured under the user's identity
+4. **Celery task history** — If stored in `django-celery-results`
+
+A GDPR data export that returns only 60% of the user's data is a compliance violation (Article 15 — right of access).
+
+**How to avoid:**
+
+1. Write a `UserDataExportService` that aggregates data from all modules with explicit sections:
 
 ```python
-@celery_app.task(bind=True, max_retries=3)
-def generate_invoice_pdf(self, invoice_id: int) -> str:
-    """Returns S3/storage URL of generated PDF."""
-    invoice = Invoice.objects.select_related("subscription__billing_profile__user").get(
-        id=invoice_id
-    )
-    # Render HTML template
-    html_content = render_to_string("billing/invoice.html", {"invoice": invoice})
-
-    # WeasyPrint import inside the task function (not at module level)
-    # This avoids issues with WeasyPrint's global state in forked Celery workers
-    from weasyprint import HTML, CSS
-    from weasyprint.text.fonts import FontConfiguration
-
-    font_config = FontConfiguration()
-    pdf_bytes = HTML(string=html_content, base_url=settings.STATIC_ROOT).write_pdf(
-        font_config=font_config,
-    )
-
-    # Upload to storage and return URL — don't return raw bytes through Celery
-    url = upload_to_storage(pdf_bytes, f"invoices/{invoice.id}.pdf")
-    return url
+class UserDataExportService:
+    def export(self, user: User) -> dict:
+        return {
+            "profile": self._export_profile(user),
+            "auth": self._export_auth(user),          # EmailAddress, SocialAccount
+            "billing": self._export_billing(user),    # BillingProfile, Subscription, Invoice
+            "content": self._export_content(user),    # App-specific models
+            "export_generated_at": timezone.now().isoformat(),
+            "note": "Analytics data retained per privacy policy section 4.2",
+        }
 ```
 
-**Docker font setup** — install fonts in your Dockerfile:
-
-```dockerfile
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    fonts-liberation \
-    fonts-dejavu-core \
-    && rm -rf /var/lib/apt/lists/*
-```
-
-Pin WeasyPrint to a specific minor version and test PDF output visually on every upgrade.
+2. Each module (billing, social auth, RBAC) must register an export hook with the service. The CLI scaffolder's `--without` flags must also clean up the export hooks.
+3. Test by creating a user, performing actions that touch every module, then running the export and asserting all sections are present and non-empty.
 
 **Warning signs:**
 
-- Django worker memory growing monotonically over hours (check with `docker stats`)
-- PDF fonts different between local and staging environments
-- `weasyprint.urls.URLFetchingError` in logs
+- Data export endpoint queries only `User` and app-specific models, not `account_emailaddress` or billing tables
+- No test verifying export completeness across all installed modules
+- Export returns empty `billing` section even when the user has a subscription
 
-**Phase to address:** Billing Phase 4 (Invoice generation). Design for async from the start.
+**Phase to address:** GDPR Baseline phase. Export completeness is a legal requirement, not a nice-to-have.
 
-**Recovery cost:** LOW — switching to Celery task is a straightforward refactor, but memory OOM kills in production require immediate attention.
-
-**Confidence:** HIGH (WeasyPrint memory issue confirmed in Django ticket #34356 and WeasyPrint GitHub issues)
+**Confidence:** MEDIUM-HIGH (GDPR Article 15 requirement, django-gdpr-assist documentation patterns)
 
 ---
 
-### Pitfall 8: Usage-Based Billing Reporting Timing Errors
+### Pitfall 10: GDPR Cookie Consent — Hydration Mismatch in Next.js App Router
 
 **What goes wrong:**
-Usage-based (metered) billing requires reporting usage to Stripe via the Meter Event API. Two common mistakes:
+Cookie consent state is stored in `localStorage` (or a cookie read client-side). The consent banner component reads this state on mount. Because the server renders the page without knowing the consent state, the server outputs "show banner" HTML. After hydration, the client reads localStorage and finds the user already consented, so it sets the banner to hidden. This triggers a React hydration mismatch error in Next.js 15 App Router.
 
-1. **Reporting usage at the moment of consumption rather than aggregating first.** Stripe's Meter Event endpoint allows 1,000 calls per second in live mode. An application with 500 concurrent users each making 10 actions per second would need 5,000 API calls per second — 5x the limit. At scale, this causes rate limiting errors that silently drop usage events, undercharging customers.
+A common "fix" is to add `suppressHydrationWarning` to the banner element. This hides the error but does not fix the underlying problem: analytics scripts that depend on consent may fire before the client-side consent check completes, because the scripts are initialized during SSR or early hydration.
 
-2. **Not accounting for Stripe's 35-day lookback window.** Stripe processes meter events asynchronously and truncates event timestamps to the nearest 15 minutes for analytics. If your reporting job is delayed (e.g., a Celery queue backup), you have a 35-day window to report late usage. But if your local aggregation table doesn't persist usage for that long before marking it "reported," late events are unrecoverable.
+**How to avoid:**
 
-**Prevention:**
+1. Render the consent banner as a `"use client"` component that returns `null` on the initial render (server-rendered output is always "no banner"):
 
-- Store usage events locally first (`UsageRecord` model in your DB with `reported_to_provider: bool`).
-- A periodic Celery beat task aggregates and reports hourly, not per-event.
-- Keep unreported records for at least 36 days before cleanup.
+```typescript
+"use client";
+
+export function CookieConsentBanner() {
+  const [mounted, setMounted] = useState(false);
+  const [consented, setConsented] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    setMounted(true);
+    setConsented(getStoredConsent()); // reads localStorage
+  }, []);
+
+  if (!mounted || consented !== null) return null; // no flicker, no hydration mismatch
+
+  return <BannerUI onAccept={() => setConsented(true)} onReject={() => setConsented(false)} />;
+}
+```
+
+2. Initialize PostHog (ObservabilityAdapter) in `opt_out_capturing_by_default: true` mode. Only call `posthog.opt_in_capturing()` after the user consents. This prevents pre-consent analytics firing.
+3. Do not use `suppressHydrationWarning` as the fix — it is a smell indicating the SSR/client split is not handled correctly.
+
+**Warning signs:**
+
+- `suppressHydrationWarning` on the consent banner element
+- PostHog events appearing in the analytics dashboard for users who have not consented
+- React hydration errors in the browser console on pages with the consent banner
+- `localStorage` access outside of `useEffect` or event handlers
+
+**Phase to address:** GDPR Baseline phase. Consent-gating analytics must be configured before PostHog is activated in production.
+
+**Confidence:** MEDIUM-HIGH (Next.js hydration error docs, Next.js 15 App Router behavior, GDPR cookie consent implementation guides)
+
+---
+
+### Pitfall 11: RBAC — Role Assignment API Without Privilege Escalation Protection
+
+**What goes wrong:**
+A "role assignment" endpoint allows admins to set user roles. Developers implement the endpoint without checking whether the requesting user can assign the target role. A user with `manager` role can call `PATCH /users/123/role` with `{"role": "admin"}`, elevating their own or another user's privileges beyond what their current role permits.
+
+The second form of this mistake: the role assignment endpoint accepts arbitrary role strings rather than validating against a defined role enum. `{"role": "superadmin"}` creates a role that no permission check handles, effectively granting an undefined (and therefore unchecked) level of access.
+
+**How to avoid:**
+
+1. Define a `Role` enum with all valid roles in a single location. The role assignment endpoint validates against this enum.
+2. Enforce a role hierarchy: a user can only assign roles at or below their own level. An `admin` can assign `editor` or `viewer` but not `admin` or `owner`.
+3. The `owner` role (highest privilege) can only be set during initial setup or via a management command — never via the API.
 
 ```python
-# Celery beat task — runs every hour
-@celery_app.task
-def report_metered_usage():
-    cutoff = timezone.now() - timedelta(hours=1)
-    unreported = UsageRecord.objects.filter(
-        reported_to_provider=False,
-        created_at__lte=cutoff,
-    ).values("subscription__provider_subscription_id").annotate(
-        total=models.Sum("quantity")
-    )
-    for row in unreported:
-        stripe.billing.MeterEvent.create(
-            event_name="api_calls",
-            payload={"value": str(row["total"]), "stripe_customer_id": ...},
-            timestamp=int(cutoff.timestamp()),
-        )
-        UsageRecord.objects.filter(...).update(reported_to_provider=True)
+ROLE_HIERARCHY = ["viewer", "editor", "manager", "admin", "owner"]
+
+def can_assign_role(assigning_user: User, target_role: str) -> bool:
+    assigning_level = ROLE_HIERARCHY.index(get_user_role(assigning_user))
+    target_level = ROLE_HIERARCHY.index(target_role)
+    return assigning_level > target_level  # Must be strictly higher
 ```
 
 **Warning signs:**
 
-- Stripe rate limit errors (`429`) in billing-related API calls
-- Usage reports called synchronously in the API request handler
-- `UsageRecord` table with no `reported_to_provider` flag
+- Role assignment endpoint only checks `is_admin(request.user)` without checking the target role level
+- Role stored as a free-form `CharField` without a choices constraint
+- No test verifying that a `manager` cannot assign the `admin` role
 
-**Phase to address:** Billing Phase 3 (Plan management). Usage reporting architecture must be designed with the metered billing plan type.
+**Phase to address:** RBAC phase. Role hierarchy and escalation protection must be built into the first version of the assignment endpoint.
 
-**Recovery cost:** MEDIUM — undercharging customers requires identifying affected billing periods and issuing manual adjustments. Stripe cannot backfill usage reports older than 35 days.
-
-**Confidence:** MEDIUM (Stripe Meter API documentation + community rate-limit reports)
+**Confidence:** HIGH (standard privilege escalation prevention pattern, OWASP)
 
 ---
 
-### Pitfall 9: Frontend Billing UX — Missing Failure and 3DS Handling
+### Pitfall 12: EmailAdapter Abstraction — HTML Email Rendering Without Plain-Text Fallback
 
 **What goes wrong:**
-Minimal implementations of the billing frontend miss three critical flows:
+The `EmailAdapter` sends HTML emails rendered from templates. No plain-text alternative is included. Gmail and Outlook display HTML correctly. But:
 
-1. **No handling for `requires_action` status (3DS/SCA).** Under PSD2 in Europe (and increasingly globally), many card payments require 3D Secure authentication. Stripe's Payment Element handles this automatically when you call `stripe.confirmPayment()`. If you navigate away from the payment page before the 3DS modal resolves, the payment is abandoned. Many React implementations use `router.push('/dashboard')` immediately after `confirmPayment()` resolves without checking the status, leaving users in a `requires_action` limbo.
+1. Some email clients (and corporate security gateways) strip HTML and display raw HTML tags as visible text.
+2. GDPR and CAN-SPAM require emails to be readable without HTML rendering.
+3. Deliverability scores (SpamAssassin, etc.) penalize HTML-only emails — they have a higher spam score than multipart emails with both HTML and text parts.
 
-   ```typescript
-   // WRONG: Navigates away before checking 3DS result
-   await stripe.confirmPayment({ elements, confirmParams: { return_url: "..." } });
-   router.push("/dashboard");
-
-   // CORRECT: confirmPayment redirects automatically for 3DS;
-   // only run local code if the method does NOT require redirect
-   const { error } = await stripe.confirmPayment({
-     elements,
-     confirmParams: { return_url: `${window.location.origin}/billing/return` },
-     redirect: "if_required",
-   });
-   if (error) {
-     setErrorMessage(error.message ?? "Payment failed.");
-   } else {
-     // No redirect needed — payment succeeded without 3DS
-     router.push("/dashboard");
-   }
-   ```
-
-2. **No return URL handler for post-3DS redirect.** When `confirmPayment` redirects to the `return_url`, the user lands on your page with `?payment_intent=pi_xxx&payment_intent_client_secret=xxx&redirect_status=succeeded` in the URL. If the page has no handler for these query params, users land on a blank dashboard with no confirmation of whether payment succeeded.
-
-3. **No retry flow for failed payments.** `invoice.payment_failed` is sent by Stripe on subscription renewal failure. The default behavior sends Stripe's own dunning emails. If you override dunning, your app must surface a "Update payment method" flow. Many implementations show the error but don't link to a page where the customer can fix their card, so the subscription silently lapses.
-
-**Prevention:**
-
-- Always use `redirect: 'if_required'` in `confirmPayment` unless you explicitly want redirect-only behavior.
-- Create a `/billing/return` page that reads query params, calls your backend to verify payment status, and renders success/failure UI.
-- On `invoice.payment_failed`, set `subscription.payment_failed = True` in your model and surface a banner in the dashboard until the customer updates their payment method via a portal link.
-
-**Warning signs:**
-
-- No `/billing/return` route in the Next.js app
-- `stripe.confirmPayment` call not followed by `if (error)` check
-- Subscription status stuck in `past_due` with no visible UI affordance
-
-**Phase to address:** Billing Phase 3 (Frontend billing UI). Test with Stripe's 3DS test cards (`4000000000003063`) during development.
-
-**Recovery cost:** LOW — these are frontend-only changes, but users who encountered silent failures may have abandoned.
-
-**Confidence:** HIGH (Stripe documentation + Next.js GitHub discussions)
-
----
-
-### Pitfall 10: Making the Billing Module Hard to Remove
-
-**What goes wrong:**
-The CLI scaffolder promises billing is removable. In practice, integration points accumulate:
-
-1. **Direct import of billing models in non-billing apps.**
-
-   ```python
-   # apps/accounts/services.py — WRONG
-   from apps.billing.models import Subscription
-   def is_user_subscribed(user): return Subscription.objects.filter(user=user).exists()
-   ```
-
-   When billing is removed, `accounts` breaks immediately.
-
-2. **URL patterns included unconditionally in `urls.py`.**
-
-   ```python
-   # config/urls.py — WRONG
-   from apps.billing.urls import router as billing_router  # ImportError if billing removed
-   ```
-
-3. **Django signals registered in `billing/apps.py` that modify non-billing models.** If the signal handler adds a `BillingProfile` on `User.post_save`, removing the billing app leaves a dangling signal registration reference that Django can't resolve.
-
-4. **Template tags or context processors from billing in base templates.** `{% load billing_tags %}` in `base.html` raises `TemplateSyntaxError` when billing is removed.
-
-5. **Settings that other apps depend on.** `settings.ACTIVE_PLAN_FEATURES` computed from billing models, read by the auth middleware for feature gating.
-
-**Prevention — architectural rules for clean removability:**
-
-- **No cross-app model imports.** All references from non-billing code to billing state must go through a service function or a `billing_enabled` check:
-
-  ```python
-  # apps/core/billing_utils.py — thin bridge, cleared when billing removed
-  def get_user_subscription_status(user) -> str | None:
-      if not apps.is_installed("apps.billing"):
-          return None
-      from apps.billing.services import get_subscription_status
-      return get_subscription_status(user)
-  ```
-
-- **Conditional URL registration:**
-
-  ```python
-  # config/urls.py
-  if apps.is_installed("apps.billing"):
-      from apps.billing.api import billing_router
-      api.add_router("/billing/", billing_router)
-  ```
-
-- **Billing signals registered only within billing's `AppConfig.ready()`**, never connecting to models in other apps via post-save signals that other apps rely on.
-
-- **Feature gating via a dedicated service, not billing models directly.** The feature gate service checks `BILLING_ENABLED` from settings first; if False, returns a no-op grant.
-
-- **CLI scaffolder test:** The test suite must include a step that removes billing from `INSTALLED_APPS`, runs `manage.py check`, and verifies zero errors.
-
-**Warning signs:**
-
-- `from apps.billing.models import` in any file outside `apps/billing/`
-- `billing` in `INSTALLED_APPS` without a conditional check in `urls.py`
-- Django system check warnings about missing relations after billing is removed
-
-**Phase to address:** Billing Phase 1 (Module design). Boundaries must be established before the first model is written.
-
-**Recovery cost:** HIGH — decoupling after tight integration requires touching every integration point individually and verifying system checks pass.
-
-**Confidence:** HIGH
-
----
-
-### Pitfall 11: Testing Strategy That Misses the Hard Parts
-
-**What goes wrong:**
-Billing tests are either too narrow (unit tests with everything mocked, no real Stripe interaction) or too broad (every test hits Stripe's test mode API, making the suite slow and flaky). Three specific gaps:
-
-1. **Webhook signature verification not tested.** Tests skip signature verification by mocking `stripe.Webhook.construct_event`. This means the actual signature checking path (the most likely place for a security regression) is never exercised.
-
-2. **Idempotency guard not tested.** Tests don't simulate the same webhook being delivered twice. When a developer changes the idempotency guard, they have no regression test.
-
-3. **Status state machine not tested.** The transitions `pending → active → cancel_at_period_end → cancelled` are not tested as a sequence. Individual event handlers are tested in isolation. A developer changes the `cancelled` state handler and doesn't realize it needs a prior `cancel_at_period_end` state to be correct.
-
-**Prevention — testing strategy:**
-
-```
-Layer 1 — Unit tests (no Stripe, no DB):
-  - Test adapter's parse_webhook() mapping from Stripe event → WebhookEvent
-  - Test plan/status mapping functions
-  - Run fast, no mocks except for the adapter interface
-
-Layer 2 — Integration tests (real DB, mocked Stripe API):
-  - Use stripe-mock (official Stripe Docker image) for local + CI
-  - Test full webhook handler with real signature verification:
-    use stripe.WebhookSignature to sign your test payload with a known secret
-  - Test idempotency: POST the same event_id twice, assert second is a no-op
-  - Test status state machine as a sequence
-
-Layer 3 — Contract tests (Stripe test mode, CI only):
-  - Run against real Stripe test API monthly or on billing code changes
-  - Verify that your adapter's assumptions about Stripe's API are still correct
-  - Never run in the main fast test suite
-```
-
-**Signing test payloads correctly:**
+**How to avoid:**
+Every email sent through the `EmailAdapter` must be `multipart/alternative` with both `text/html` and `text/plain` parts. Django's `EmailMultiAlternatives` handles this:
 
 ```python
-# tests/billing/conftest.py
-import time
-import stripe
+from django.core.mail import EmailMultiAlternatives
 
-@pytest.fixture
-def signed_stripe_payload(settings):
-    settings.STRIPE_WEBHOOK_SECRET = "whsec_test_secret"
-    def _make_payload(event_type: str, data: dict) -> tuple[bytes, str]:
-        payload = json.dumps({"id": "evt_test", "type": event_type, "data": data}).encode()
-        timestamp = int(time.time())
-        signed_payload = f"{timestamp}.{payload.decode()}"
-        signature = hmac.new(
-            b"test_secret", signed_payload.encode(), hashlib.sha256
-        ).hexdigest()
-        sig_header = f"t={timestamp},v1={signature}"
-        return payload, sig_header
-    return _make_payload
+msg = EmailMultiAlternatives(
+    subject=subject,
+    body=plain_text_body,       # Required — never empty
+    from_email=from_email,
+    to=[recipient],
+)
+msg.attach_alternative(html_body, "text/html")
+msg.send()
 ```
+
+Generate the plain-text version from the HTML template either via a separate `.txt` template or via `html2text`. Never use an empty string for `body`.
 
 **Warning signs:**
 
-- Webhook tests that patch `stripe.Webhook.construct_event` to return a fixture
-- No test that submits the same event_id twice
-- Test suite passes with `STRIPE_WEBHOOK_SECRET` unset (should fail loudly)
+- `send_mail()` or `EmailMessage` used with only `html_message=` parameter and no `body`
+- No `*.txt` template alongside every `*.html` email template
+- SpamAssassin score > 5 in deliverability tests
 
-**Phase to address:** Billing Phase 2 (Webhook infrastructure). Testing patterns must be established alongside the handlers.
+**Phase to address:** Transactional Email phase. The `EmailAdapter` base class must enforce multipart by construction.
 
-**Recovery cost:** LOW-MEDIUM — adding tests retroactively is possible but often reveals latent bugs.
-
-**Confidence:** HIGH (Simon Willison's TIL on pytest Stripe signature, dj-stripe test patterns)
+**Confidence:** HIGH (CAN-SPAM compliance, SpamAssassin documentation, Django EmailMultiAlternatives docs)
 
 ---
 
 ## Minor Pitfalls
 
-Annoyances that are easy to fix but easy to overlook.
+Annoyances that are easy to fix but easy to overlook during initial implementation.
 
 ---
 
-### Pitfall 12: Stripe Secret Key Leaking via OpenAPI Spec
+### Pitfall 13: Apple Sign In — Development Build Limitation
 
-**What goes wrong:**
-Django Ninja Extra generates an OpenAPI spec served at `/api/openapi.json`. If any billing endpoint leaks `STRIPE_PUBLISHABLE_KEY` (or worse, `STRIPE_SECRET_KEY`) in a response schema or endpoint description, the spec becomes a security leak. Even the publishable key should not be in the spec — it should be an environment variable accessed client-side.
+Apple Sign In (`expo-apple-authentication`) only works in production builds and TestFlight. It does **not** work in Expo Go or development builds on the simulator without additional configuration. Developers who start Apple auth implementation expecting to test in Expo Go will get a misleading "Apple Sign In is not available on this device" error that has nothing to do with their code.
 
-**Prevention:**
-Never embed Stripe keys in schema examples or response bodies. Serve `STRIPE_PUBLISHABLE_KEY` via a dedicated `/config` endpoint that requires authentication, or inject it via Next.js environment variables on the server side. Restrict OpenAPI spec access to non-production environments (see existing PITFALLS.md, Security Mistakes section).
+**Prevention:** Configure the dev environment to show a mock "Sign in with Apple" button that short-circuits to a test account in development builds. Gate real Apple auth behind `Constants.appOwnership === 'standalone'`. Set this expectation in the phase plan before implementation begins.
 
-**Confidence:** HIGH
+**Phase to address:** Social Auth (Mobile) phase.
 
----
-
-### Pitfall 13: Stripe Customer Portal vs. Custom Subscription Management UI
-
-**What goes wrong:**
-Teams build a full custom subscription management UI (plan selection, payment method update, invoice history) that partially replicates Stripe's hosted Customer Portal. The custom UI handles 80% of cases correctly and misses edge cases (coupon application, tax handling, multi-currency). Support tickets spike.
-
-**Prevention:**
-Use Stripe's hosted Customer Portal for subscription management (cancel, update payment method, view invoices). Only build custom UI for the initial checkout flow. Integrate the portal via:
-
-```python
-session = stripe.billing_portal.Session.create(
-    customer=billing_profile.provider_customer_id,
-    return_url=f"{settings.FRONTEND_URL}/billing",
-)
-return {"url": session.url}
-```
-
-Then redirect the user to `session.url`. This is the 80/20 choice for a template — full custom UI is a product decision, not a template responsibility.
-
-**Confidence:** HIGH
+**Confidence:** HIGH (Expo `expo-apple-authentication` docs)
 
 ---
 
-### Pitfall 14: Hardcoded Currency Assumptions
+### Pitfall 14: RBAC Groups — Django Admin Bypasses All Custom Guards
 
-**What goes wrong:**
-`amount` stored as an integer (Stripe's format: cents/minor units) gets displayed directly as a dollar amount. `1099` is rendered as `$1099` instead of `$10.99`. International pricing in JPY (no minor units, `amount=1000` = ¥1000) is displayed as `¥10.00`.
+Django Admin uses Django's built-in `is_staff` and `is_superuser` flags, not the custom `@require_role("admin")` guards applied to Django Ninja endpoints. An `is_staff=True` user has full Django Admin access regardless of their application role. A user with application role `admin` but `is_staff=False` cannot access Django Admin.
 
-**Prevention:**
-Store `amount` and `currency` together. Use a `Money` type or at minimum a display formatter that is currency-aware:
+These two permission systems are independent and will diverge as the application grows.
 
-```python
-def format_money(amount: int, currency: str) -> str:
-    zero_decimal_currencies = {"jpy", "krw", "vnd", "bif", "clp"}
-    if currency.lower() in zero_decimal_currencies:
-        return f"{amount} {currency.upper()}"
-    return f"{amount / 100:.2f} {currency.upper()}"
-```
+**Prevention:** Document clearly that Django Admin access (`is_staff`) is separate from application RBAC. For the template, Django Admin is the superuser-only operational tool; application RBAC governs API access. Never set `is_staff=True` programmatically from the application layer.
 
-**Confidence:** HIGH
+**Phase to address:** RBAC phase.
+
+**Confidence:** HIGH (Django permission system documentation)
 
 ---
 
-## Phase-Specific Warnings
+### Pitfall 15: Feature Entitlements — `has_feature` Called in Templates or Serializers Without N+1 Guard
 
-| Phase Topic            | Likely Pitfall                                              | Mitigation                                                              |
-| ---------------------- | ----------------------------------------------------------- | ----------------------------------------------------------------------- |
-| Adapter design         | Stripe concepts leaking into ABC (Pitfall 1)                | Define interface in domain terms first; write Stripe adapter second     |
-| Data model             | Provider-specific IDs hardcoded on Plan model (Pitfall 4)   | Use PlanProviderMapping table; no `stripe_*` fields outside billing app |
-| Webhook infrastructure | Duplicate processing on retry (Pitfall 2)                   | ProcessedWebhookEvent table with unique constraint before any handler   |
-| Webhook infrastructure | Wrong events mapped to business actions (Pitfall 3)         | Explicit event routing table; reviewed and documented                   |
-| Webhook infrastructure | Synchronous processing timing out (Pitfall 6)               | Return 200 immediately; dispatch to Celery                              |
-| Plan management        | Upgrade/downgrade proration errors (Pitfall 5)              | Decide on direct modify vs schedule; document the rule                  |
-| Plan management        | Usage-based reporting rate limits (Pitfall 8)               | Local `UsageRecord` table; hourly Celery beat job                       |
-| Invoice generation     | WeasyPrint memory leak (Pitfall 7)                          | Celery task; pin WeasyPrint version; install fonts in Dockerfile        |
-| Frontend billing UI    | Missing 3DS / return URL handler (Pitfall 9)                | Use `redirect: 'if_required'`; build `/billing/return` page             |
-| CLI scaffolder         | Tight coupling making removal hard (Pitfall 10)             | `apps.is_installed()` guards; no cross-app model imports                |
-| Testing                | Webhook tests that skip signature verification (Pitfall 11) | Sign test payloads using real HMAC; use stripe-mock in CI               |
+`has_feature(user, key)` may trigger a DB query to load `user.subscription.plan` if the subscription is not already prefetched. Called once in a service function this is fine. Called in a loop (e.g., rendering a list of users each with their feature set) this becomes an N+1 query that the `nplusone` fixture (already in the stack) will catch in tests but not in production if the list view does not use `select_related`.
+
+**Prevention:** The `has_feature` implementation must accept a pre-loaded plan object as an optional parameter, or always be called after a `select_related("subscription__plan")` queryset. Add a note in the function docstring.
+
+**Phase to address:** Feature Entitlements phase.
+
+**Confidence:** HIGH (Django ORM N+1 pattern, confirmed by nplusone's detection mechanism)
 
 ---
 
-## Billing-Specific "Looks Done But Isn't" Checklist
+## Technical Debt Patterns
 
-- [ ] **Webhook idempotency:** Does the handler check `ProcessedWebhookEvent` before processing? Does CI have a test that submits the same event ID twice?
-- [ ] **Stripe signature verification:** Is the signature verified on EVERY webhook request, not just in production?
-- [ ] **`cancel_at_period_end` tracked:** Is there a flag distinct from `status` to determine if a subscription is in a grace period?
-- [ ] **3DS handling:** Does `confirmPayment` use `redirect: 'if_required'`? Does the `/billing/return` page exist?
-- [ ] **PDF generation async:** Is invoice PDF generation dispatched to Celery, not run in the request cycle?
-- [ ] **System fonts in Docker:** Does the API Dockerfile install `fonts-liberation` or equivalent?
-- [ ] **Removability test:** Does `manage.py check` pass with billing removed from `INSTALLED_APPS`?
-- [ ] **No cross-app billing imports:** Does `grep -r "from apps.billing" apps/ --include="*.py" | grep -v "apps/billing/"` return zero results?
-- [ ] **Currency-aware amount display:** Is `amount` always paired with `currency` before display?
-- [ ] **Stripe keys not in OpenAPI spec:** Is `STRIPE_SECRET_KEY` absent from all schema examples and response bodies?
+| Shortcut                                                               | Immediate Benefit    | Long-term Cost                                                                                     | When Acceptable                             |
+| ---------------------------------------------------------------------- | -------------------- | -------------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| Use Django's built-in `is_staff` as the sole admin gate                | No RBAC setup needed | Admin access tied to deployment flag, not application logic; grows unmanageable with team          | Never for new projects                      |
+| Cache `has_feature` with a long TTL (1h+) and no explicit invalidation | Fewer DB hits        | Users see stale entitlements after plan change; billing disputes                                   | Never                                       |
+| Skip plain-text email fallback                                         | Faster template work | Lower deliverability, CAN-SPAM non-compliance                                                      | Never                                       |
+| Use `user.delete()` directly without a `UserDeletionService`           | Less code            | GDPR erasure violations; orphaned data in Stripe, PostHog                                          | Never for GDPR-covered users                |
+| Single Apple OAuth credential for all environments                     | Simpler setup        | Staging misconfiguration can affect production; Apple's 15-minute propagation delay blocks testing | Only in greenfield before staging exists    |
+| Dispatch Celery tasks without `transaction.on_commit()`                | Simpler code         | Race condition: task runs before DB row is visible                                                 | Only in tests with `task_always_eager=True` |
+
+---
+
+## Integration Gotchas
+
+| Integration                    | Common Mistake                                                                         | Correct Approach                                                                             |
+| ------------------------------ | -------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| SendGrid                       | Using global unsubscribe link for transactional emails (password reset, billing alert) | Use Unsubscribe Groups — marketing opt-out must not suppress transactional emails            |
+| SendGrid                       | Ignoring 202 Accepted as success; not handling bounce/drop events                      | Configure event webhook; record suppressed addresses; surface to support team                |
+| Apple Sign In                  | Passing native Expo identity token to Allauth's standard social token endpoint         | Build a dedicated native token verification endpoint; verify JWT against Apple's public keys |
+| Google OAuth                   | Same OAuth app credentials for dev, staging, and production                            | Separate credentials per environment; all redirect URIs registered explicitly                |
+| PostHog (ObservabilityAdapter) | `identify()` called on every request; `delete()` never called on user erasure          | Call `identify()` once on signup; add `posthog.delete()` to `UserDeletionService`            |
+| Stripe + GDPR                  | `user.delete()` without calling `stripe.Customer.delete()`                             | Orchestrate Stripe deletion before ORM deletion in `UserDeletionService`                     |
+| django-allauth social auth     | `SOCIALACCOUNT_EMAIL_AUTHENTICATION=False` (default) for trusted providers             | Set `True` + `AUTO_CONNECT=True` for Google/GitHub; write custom adapter for Apple           |
+
+---
+
+## Performance Traps
+
+| Trap                                                                                | Symptoms                                                              | Prevention                                                                          | When It Breaks                           |
+| ----------------------------------------------------------------------------------- | --------------------------------------------------------------------- | ----------------------------------------------------------------------------------- | ---------------------------------------- |
+| `has_feature(user, key)` in a list view without `select_related`                    | N+1 queries on user list pages; `nplusone` failures in tests          | Always `select_related("subscription__plan")` before calling `has_feature` in loops | At ~50 users on a single page render     |
+| Sending emails synchronously in the request cycle                                   | p99 API response time spikes on email-triggering endpoints            | All email sends via Celery task with `transaction.on_commit()`                      | Immediately if SendGrid is slow (>200ms) |
+| GDPR data export building JSON in memory for large accounts                         | Memory exhaustion on Celery worker for power users with years of data | Stream export to a file/S3, return download URL rather than inline JSON             | At ~10,000 records per export            |
+| Fetching Apple public keys from `appleid.apple.com/auth/keys` on every auth attempt | High latency on Apple login; failure if Apple CDN is slow             | Cache public keys in Redis with TTL of 12-24 hours                                  | Any Apple CDN degradation                |
+
+---
+
+## Security Mistakes
+
+| Mistake                                                                                          | Risk                                                                                                     | Prevention                                                                                                     |
+| ------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| Role stored as free-form string in DB without choices validation                                 | Undefined roles bypass all permission checks                                                             | Use a `Role` enum with `choices=` constraint; validate on assignment                                           |
+| Privilege escalation via role assignment API (manager assigns admin)                             | Horizontal privilege escalation                                                                          | Enforce role hierarchy: assigning user's level must be > target role level                                     |
+| Social account auto-connect without verifying the provider confirmed the email                   | Account takeover: attacker adds your email to their social account, auto-connects to your Django account | Only auto-connect for providers that guarantee email verification (Google, GitHub); not for Apple relay emails |
+| Serving Apple's private key (`AuthKey_*.p8`) from an environment variable not excluded from logs | Private key leaked in structured logs                                                                    | Ensure `SECRET_KEY`, `APPLE_PRIVATE_KEY` are masked in structlog's `BoundLogger`                               |
+| GDPR deletion without verifying all cascade paths                                                | Right-to-erasure violation                                                                               | `UserDeletionService` with explicit external service cleanup; post-deletion assertion test                     |
+| Feature entitlement check only at the API endpoint, not in service layer                         | Entitlement bypass via direct service or task invocation                                                 | Service-layer entitlement check is the security boundary; endpoint check is UX only                            |
+
+---
+
+## UX Pitfalls
+
+| Pitfall                                                           | User Impact                                                                | Better Approach                                                                                      |
+| ----------------------------------------------------------------- | -------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| Social auth "email already exists" error with no merge path       | User cannot log in with their preferred method; creates duplicate accounts | Auto-connect for verified providers; show "Link your Google account" prompt for unverified conflicts |
+| Cookie consent banner causes hydration flicker on every page load | Jarring visual glitch; reduces trust                                       | SSR renders nothing for banner; client renders banner only on first mount                            |
+| Apple Sign In name is blank on all logins after first             | User profile shows empty name fields                                       | Persist `fullName` on first auth; mark as immutable afterward                                        |
+| Password reset email silently suppressed by SendGrid              | User cannot log in; calls support                                          | Check suppression list before queuing; surface "email delivery issue" warning in UI                  |
+| Downgraded plan still shows premium features for up to 1 hour     | User confusion; potential for chargeback disputes                          | Explicitly invalidate entitlement cache on plan change webhook; keep TTL ≤ 15 minutes                |
+| Role change takes effect immediately without warning              | Admin accidentally locks themselves out                                    | Show confirmation dialog for role changes that would affect the requesting user                      |
+
+---
+
+## "Looks Done But Isn't" Checklist
+
+- [ ] **Apple Sign In:** Does the native Expo token go to a dedicated verification endpoint (not Allauth's standard social token flow)? Is `fullName` persisted on first auth?
+- [ ] **Social email conflict:** Does the `SocialAccountAdapter.pre_social_login()` method handle the case where an email already exists in a password account? Is there a test for this scenario?
+- [ ] **Celery email dispatch:** Is every `send_*.delay()` call wrapped in `transaction.on_commit()`? Check every file that calls `.delay()` after a `.create()` or `.save()`.
+- [ ] **GDPR erasure completeness:** Does `UserDeletionService` call `stripe.Customer.delete()`, `posthog.delete()`, and verify no orphaned `SocialAccount` or `EmailAddress` rows remain?
+- [ ] **GDPR export completeness:** Does the export include `EmailAddress`, `SocialAccount`, `BillingProfile`, `Subscription`, and `Invoice` data in addition to the core `User` and profile models?
+- [ ] **Cookie consent + PostHog:** Is PostHog initialized with `opt_out_capturing_by_default=True`? Is `opt_in_capturing()` called only after explicit user consent?
+- [ ] **RBAC service-layer checks:** Is every privileged service function protected by an ownership or role check, not just the endpoint decorator?
+- [ ] **Role escalation:** Does the role assignment endpoint reject attempts to assign a role equal to or higher than the assigning user's own role?
+- [ ] **Entitlement cache invalidation:** Is `cache.delete()` called for the user's entitlement key in the Stripe webhook handler when the subscription plan changes?
+- [ ] **Email plain-text fallback:** Does every email template have a corresponding `.txt` template? Is `body` never passed as an empty string?
+- [ ] **SendGrid suppression:** Is there a webhook endpoint receiving SendGrid bounce/drop events? Is the suppression list checked before queuing critical emails?
+- [ ] **OAuth redirect URIs:** Are all redirect URIs registered for all environments (local, staging, production) in each provider's developer console?
+
+---
+
+## Recovery Strategies
+
+| Pitfall                                                   | Recovery Cost | Recovery Steps                                                                                   |
+| --------------------------------------------------------- | ------------- | ------------------------------------------------------------------------------------------------ |
+| Apple native token mismatch (built wrong endpoint)        | HIGH          | Rebuild dedicated native token endpoint; update Expo auth module; retest on physical device      |
+| Duplicate accounts from social email conflict             | HIGH          | Write a merge migration: identify pairs, copy data to older account, delete newer, update FKs    |
+| Celery tasks dispatched without `on_commit` (emails lost) | MEDIUM        | Add `on_commit` wrappers; replay lost tasks by querying DB for records created in the gap        |
+| GDPR erasure missing Stripe/PostHog data                  | HIGH          | Retroactively call external deletion APIs for all previously deleted users; log as incident      |
+| Entitlement cache stale after plan change                 | LOW           | Flush Redis `entitlements:*` namespace; add explicit invalidation; notify affected users         |
+| Role escalation exploit discovered                        | HIGH          | Audit role assignment history; demote unauthorized admins; patch endpoint; security disclosure   |
+| SendGrid suppression silently swallowing emails           | MEDIUM        | Pull suppression list from SendGrid API; identify affected users; resend via alternative channel |
+
+---
+
+## Pitfall-to-Phase Mapping
+
+| Pitfall                                            | Prevention Phase     | Verification                                                                                                     |
+| -------------------------------------------------- | -------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| Apple native vs. web token (Pitfall 1)             | Social Auth          | Test on physical iOS device with native Expo build; verify `aud` claim matches bundle ID                         |
+| Email account merge conflict (Pitfall 2)           | Social Auth          | Test: create password account → sign in with Google → verify single user object returned                         |
+| Celery task before DB commit (Pitfall 3)           | Transactional Email  | Test: inspect task execution time relative to transaction commit; simulate with `sleep()` in view                |
+| GDPR orphaned data in third parties (Pitfall 4)    | GDPR Baseline        | Test: delete user → assert no rows in `socialaccount_*`, `account_*`, billing tables; verify Stripe customer 404 |
+| RBAC wrong layer (Pitfall 5)                       | RBAC                 | Test: call service functions directly (bypassing HTTP); verify permission checks still fire                      |
+| Entitlement cache stale (Pitfall 6)                | Feature Entitlements | Test: change plan → immediately check `has_feature` → verify result reflects new plan                            |
+| SendGrid suppression swallowing emails (Pitfall 7) | Transactional Email  | Configure SendGrid event webhook in test mode; verify bounce events are recorded                                 |
+| OAuth redirect URI misconfiguration (Pitfall 8)    | Social Auth          | Checklist: verify URIs registered in all three environments before merging                                       |
+| Incomplete GDPR export (Pitfall 9)                 | GDPR Baseline        | Test: create user with activity in all modules → export → assert all sections present and non-empty              |
+| Cookie consent hydration mismatch (Pitfall 10)     | GDPR Baseline        | Test: render consent banner in SSR mode → assert no hydration error in browser console                           |
+| Role escalation vulnerability (Pitfall 11)         | RBAC                 | Test: manager attempts to assign admin role → assert 403                                                         |
+| Email without plain-text fallback (Pitfall 12)     | Transactional Email  | Test: inspect `EmailMultiAlternatives` object → assert both `body` and `html` parts present                      |
 
 ---
 
 ## Sources
 
-- Stripe documentation — webhook idempotency, event types, subscription lifecycle, meter events, Customer Portal API (confidence: HIGH — stable official docs, current as of 2026)
-- [Stripe Webhooks: Solving Race Conditions](https://www.pedroalonso.net/blog/stripe-webhooks-solving-race-conditions/) — Pedro Alonso (confidence: MEDIUM)
-- [Medium — Integrating Stripe Billing with Django 6.0](https://medium.com/django-journal/integrating-stripe-billing-with-django-6-0-333aa65cf1e6) (confidence: MEDIUM)
-- WeasyPrint GitHub — [Memory leak issue #34356 (Django ticket)](https://code.djangoproject.com/ticket/34356), WeasyPrint Celery threading issues (confidence: HIGH — confirmed issues)
-- [WeasyPrint v53 pydyf migration](https://doc.courtbouillon.org/weasyprint/stable/common_use_cases.html) — official docs (confidence: HIGH)
-- [Mocking Stripe signature in pytest — Simon Willison's TIL](https://til.simonwillison.net/pytest/pytest-stripe-signature) (confidence: HIGH)
-- [stripe-mock official GitHub](https://github.com/stripe/stripe-mock) — mock Stripe API server (confidence: HIGH)
-- [Mastering Stripe Subscription Upgrades — Engineering Journal](https://engineeringjournal.substack.com/p/mastering-stripe-subscription-upgrades) (confidence: MEDIUM)
-- [Modeling SaaS subscriptions in Postgres — Axel Larsson](https://axellarsson.com/blog/modeling-saas-subscriptions-in-postgres/) (confidence: MEDIUM)
-- [dj-stripe — Django Stripe integration library](https://dj-stripe.dev/) — reference for webhook handling patterns (confidence: HIGH)
-- [SaaS Pegasus guide — Django Stripe integration](https://www.saaspegasus.com/guides/django-stripe-integrate/) (confidence: MEDIUM)
-- Training data — adapter pattern, leaky abstractions, Django modular architecture (confidence: MEDIUM — corroborated by search results)
+- [django-allauth Apple provider documentation](https://docs.allauth.org/en/dev/socialaccount/providers/apple.html) — native vs. web token distinction (confidence: HIGH)
+- [Expo expo-apple-authentication documentation](https://docs.expo.dev/versions/latest/sdk/apple-authentication/) — managed workflow limitations, first-auth name constraint (confidence: HIGH)
+- [django-allauth GitHub issue #418 — Social account auto-connect](https://github.com/pennersr/django-allauth/issues/418) — email conflict patterns (confidence: HIGH)
+- [django-allauth headless token strategies](https://docs.allauth.org/en/dev/headless/tokens.html) — token strategy for headless mode (confidence: HIGH)
+- [Apple Sign In with Expo + Golang 2025 guide](https://medium.com/@meszmate/apple-sign-in-with-expo-golang-complete-2025-guide-to-server-side-oauth-jwt-validation-and-01677dc27e08) — native JWT verification patterns (confidence: MEDIUM)
+- [Implementing Sign in with Apple with Expo — DEV Community](https://dev.to/bendix/implementing-sign-in-with-apple-with-a-managed-expo-workflow-and-a-nest-js-backend-8ja) — managed workflow integration patterns (confidence: MEDIUM)
+- [Apple Developer Forum — Mobile and Web under the same bundle](https://developer.apple.com/forums/thread/706607) — two client_ids required (confidence: HIGH)
+- Django documentation — `transaction.on_commit()`, `ATOMIC_REQUESTS`, `EmailMultiAlternatives` (confidence: HIGH)
+- [django-gdpr-assist documentation](https://django-gdpr-assist.readthedocs.io/) — third-party model registration, anonymization vs deletion (confidence: HIGH)
+- [GDPR on Django's model Collector](https://blog.eleni.co/garden/gdpr-on-top-of-django-s-model-collector/) — cascade completeness analysis (confidence: MEDIUM)
+- [SendGrid suppression documentation](https://www.twilio.com/docs/sendgrid/ui/sending-email/index-suppressions) — suppression list behavior, event webhooks (confidence: HIGH)
+- [SendGrid List-Unsubscribe docs](https://www.twilio.com/docs/sendgrid/ui/sending-email/list-unsubscribe) — global vs. group unsubscribe distinction (confidence: HIGH)
+- [Next.js hydration error documentation](https://nextjs.org/docs/messages/react-hydration-error) — cookie consent hydration mismatch prevention (confidence: HIGH)
+- [React Cookie Consent GDPR guide for Next.js](https://www.cookietrust.io/react-nextjs-cookie-consent-gdpr-guide/) — consent banner SSR pattern (confidence: MEDIUM)
+- [7 Feature Flag Mistakes — LaunchDarkly](https://launchdarkly.com/blog/feature-flag-mistakes/) — flag reuse, long-lived flags, cache invalidation (confidence: MEDIUM)
+- [Django RBAC implementation guide — Permit.io](https://www.permit.io/blog/how-to-implement-role-based-access-control-rbac-into-a-django-application) — role hierarchy, escalation prevention (confidence: MEDIUM)
+- [Django Ninja Extra permissions documentation](https://eadwincode.github.io/django-ninja-extra/api_controller/api_controller_permission/) — endpoint vs. service-layer guard distinction (confidence: HIGH)
+- Training data — Django ORM cascade behavior, Celery task timing, RBAC patterns (confidence: MEDIUM — corroborated by search results)
 
 ---
 
-_Pitfalls research for: Billing & Payments Module (Django Ninja Extra + Next.js 15 + Stripe adapter pattern)_
-_Researched: 2026-03-07_
-_Supersedes: Foundation template PITFALLS.md (2026-02-08) for billing-specific concerns only. Foundation pitfalls remain valid for non-billing phases._
+_Pitfalls research for: v1.3 SaaS Functional Baseline (transactional email, social auth, GDPR baseline, RBAC, feature entitlements)_
+_Researched: 2026-03-11_
+_Supersedes: v1.1 billing PITFALLS.md for v1.3-specific concerns only. Billing pitfalls remain valid for billing phases._
