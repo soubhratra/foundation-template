@@ -15,6 +15,7 @@ import random
 from typing import Any
 
 from celery import shared_task
+from django.core.cache import cache
 
 logger = logging.getLogger(__name__)
 
@@ -79,6 +80,22 @@ def _handle_subscription_created(event_data: dict[str, Any]) -> None:
     )
 
 
+def _extract_price_id_from_event(event_data: dict[str, Any]) -> str:
+    """Extract the active price ID from a subscription.updated event payload.
+
+    Stripe wraps price data inside items.data[0].price.id — not a top-level field.
+    Guards against subscriptions with no items (returns empty string).
+
+    Note: Uses data[0] — designed for single-plan subscriptions.
+    Multi-item (metered billing) subscriptions would require iterating items.
+    """
+    items = event_data.get("items", {})
+    data_list = items.get("data", [])
+    if not data_list:
+        return ""
+    return data_list[0].get("price", {}).get("id", "")
+
+
 def _handle_subscription_updated(event_data: dict[str, Any]) -> None:
     """customer.subscription.updated → update status, cancel_at_period_end, period dates."""
     from apps.billing.models import Customer, Subscription
@@ -114,6 +131,28 @@ def _handle_subscription_updated(event_data: dict[str, Any]) -> None:
     if period_end is not None:
         subscription.current_period_end = _unix_to_datetime(period_end)
     subscription.save()
+
+    # --- ENT-02: Resolve plan_id and invalidate entitlement cache ---
+    price_id = _extract_price_id_from_event(event_data)
+    if price_id:
+        from apps.billing.models import PlanProviderMapping
+
+        try:
+            mapping = PlanProviderMapping.objects.get(
+                price_id=price_id, provider="stripe", is_active=True
+            )
+            subscription.plan_id = mapping.plan_id
+            subscription.save(update_fields=["plan_id", "updated_at"])
+        except PlanProviderMapping.DoesNotExist:
+            logger.warning(
+                "customer.subscription.updated: no PlanProviderMapping for price_id=%s",
+                price_id,
+            )
+
+    # Invalidate entitlement cache unconditionally — covers both successful plan resolution
+    # and cases where PlanProviderMapping is missing (downgrade to unmapped plan).
+    # cache.delete() is a no-op on cache miss — no extra round-trip.
+    cache.delete(f"entitlements:{customer.user.pk}")
 
 
 def _handle_subscription_deleted(event_data: dict[str, Any]) -> None:
