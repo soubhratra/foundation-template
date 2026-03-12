@@ -63,3 +63,50 @@ def patch_ninja_testclient_force_login():
         NinjaClientBase._build_request = _make_build_request_with_user(
             NinjaClientBase._build_request
         )
+
+
+# ---------------------------------------------------------------------------
+# RBAC fixtures — admin_user and member_user (Phase 22)
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def admin_user(db):
+    """A user who is a member of the 'admin' Django Group.
+
+    Requires migration 0003_seed_roles to have run so that the 'admin'
+    Group exists. The fixture will fail (RED) until that migration exists.
+    """
+    from django.contrib.auth import get_user_model
+    from django.contrib.auth.models import Group
+
+    UserModel = get_user_model()
+    user = UserModel.objects.create_user(
+        username="rbac_admin",
+        email="admin@test.com",
+        password="testpass123",  # pragma: allowlist secret
+    )
+    admin_group = Group.objects.get(name="admin")  # seeded by migration 0003
+    user.groups.add(admin_group)
+    return user
+
+
+@pytest.fixture
+def member_user(db):
+    """A user who is a member of the 'member' Django Group only.
+
+    Requires migration 0003_seed_roles to have run so that the 'member'
+    Group exists. The fixture will fail (RED) until that migration exists.
+    """
+    from django.contrib.auth import get_user_model
+    from django.contrib.auth.models import Group
+
+    UserModel = get_user_model()
+    user = UserModel.objects.create_user(
+        username="rbac_member",
+        email="member@test.com",
+        password="testpass123",  # pragma: allowlist secret
+    )
+    member_group = Group.objects.get(name="member")  # seeded by migration 0003
+    user.groups.add(member_group)
+    return user
