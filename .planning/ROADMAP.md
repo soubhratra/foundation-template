@@ -224,7 +224,16 @@ Plans:
 4. A user who previously signed up with email/password can use "Continue with Google" with the same email and lands on their existing account — no duplicate account is created, no error shown
 5. Running `create-foundation-app --without social-auth` produces a project with no `SOCIALACCOUNT_PROVIDERS` config, no social provider apps in `INSTALLED_APPS`, and `manage.py check` passes clean
 
-**Plans**: TBD
+**Plans**: 6 plans
+
+Plans:
+
+- [ ] 20-01-PLAN.md — Wave 1: RED test stubs for SOCIAL-01 through SOCIAL-05
+- [ ] 20-02-PLAN.md — Wave 2: Django settings block (SOCIAL AUTH MODULE) + SocialAccountAdapter
+- [ ] 20-03-PLAN.md — Wave 2: Apple JWT verification endpoint (POST /api/v1/auth/apple/)
+- [ ] 20-04-PLAN.md — Wave 3: Web SocialButtons component + login/signup pages + .env.example
+- [ ] 20-05-PLAN.md — Wave 3: Mobile Apple Sign In button (iOS-only, sign-in screen)
+- [ ] 20-06-PLAN.md — Wave 4: removeSocialAuthModule() scaffolder flag + prompts + index wiring
 
 ### Phase 21: GDPR Baseline
 
