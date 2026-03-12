@@ -285,7 +285,13 @@ Plans:
 2. When a Stripe `customer.subscription.updated` webhook is processed (plan upgrade or downgrade), the user's cached entitlement keys are invalidated immediately — the next `has_feature()` call reflects the new plan without waiting for TTL expiry
 3. In a project generated with `--without billing`, `has_feature(user, any_key)` returns `True` for every key — features are fully accessible and no import errors occur when the billing module is absent
 
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+
+- [ ] 23-01-PLAN.md — Wave 0: RED test stubs (ENT-01, ENT-02, ENT-03)
+- [ ] 23-02-PLAN.md — Wave 1: model migration + BILLING_PLANS extension + billing/core entitlement modules
+- [ ] 23-03-PLAN.md — Wave 2: webhook handler update (plan_id write + cache invalidation)
 
 ## Progress
 
@@ -313,4 +319,4 @@ Plans:
 | 20. Social Auth                  | 6/6       | Complete       | 2026-03-12  | -          |
 | 21. GDPR Baseline                | 4/4       | Complete       | 2026-03-12  | -          |
 | 22. RBAC                         | 3/3       | Complete       | 2026-03-12  | -          |
-| 23. Feature Entitlements         | v1.3      | 0/TBD          | Not started | -          |
+| 23. Feature Entitlements         | v1.3      | 0/3            | Not started | -          |
