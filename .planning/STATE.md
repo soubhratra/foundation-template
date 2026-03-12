@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: SaaS Functional Baseline
 status: planning
-stopped_at: Phase 20 context gathered
-last_updated: "2026-03-12T11:11:58.432Z"
+stopped_at: Completed 20-social-auth-01-PLAN.md
+last_updated: "2026-03-12T12:05:28.078Z"
 last_activity: 2026-03-11 — v1.3 roadmap created; all 19 requirements mapped across Phases 19–23
 progress:
   total_phases: 11
   completed_phases: 7
-  total_plans: 23
-  completed_plans: 23
+  total_plans: 29
+  completed_plans: 24
   percent: 0
 ---
 
@@ -51,6 +51,7 @@ _Updated after each plan completion_
 | Phase 19-transactional-email P02 | 5 | 2 tasks | 6 files |
 | Phase 19-transactional-email P03 | 11 | 2 tasks | 10 files |
 | Phase 19-transactional-email P04 | 246 | 2 tasks | 4 files |
+| Phase 20-social-auth P01 | 9 | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -70,6 +71,8 @@ _Updated after each plan completion_
 - [Phase 19-transactional-email]: EmailMultiAlternatives body=HTML: test_css_is_inlined checks email.body for style= attrs; test_plain_text_alternative_present checks alternatives for text/html — both pass with HTML as both body and alternative
 - [Phase 19-transactional-email]: removeEmailModule() uses sentinel-comment regex (# EMAIL MODULE) for INSTALLED_APPS line removal — same pattern as BILLING MODULE for consistency across all optional module removals
 - [Phase 19-transactional-email]: TDD strictly applied to removeEmailModule(): RED commit before GREEN — 7 unit tests in remove-email.test.ts written and committed before implementation
+- [Phase 20-social-auth]: Per-test import gate pattern: pytest.fail() inside test body prevents collection ERRORs that block other test files
+- [Phase 20-social-auth]: \_configure_social_providers import path: config.settings.base (not apps.api.config...) — pytest rootdir is apps/api with python_paths=['.']
 
 ### Pending Todos
 
@@ -89,6 +92,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-12T11:11:58.428Z
-Stopped at: Phase 20 context gathered
-Resume file: .planning/phases/20-social-auth/20-CONTEXT.md
+Last session: 2026-03-12T12:05:28.074Z
+Stopped at: Completed 20-social-auth-01-PLAN.md
+Resume file: None

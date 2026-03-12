@@ -17,11 +17,11 @@ Requirements for v1.3. Each maps to roadmap phases starting at phase 19.
 
 ### Social Auth
 
-- [ ] **SOCIAL-01**: User can sign up and log in via Google OAuth on the web app
-- [ ] **SOCIAL-02**: User can sign up and log in via GitHub OAuth on the web app
-- [ ] **SOCIAL-03**: User can sign up and log in via Apple Sign In on the iOS mobile app
-- [ ] **SOCIAL-04**: Social login with an email matching an existing password account auto-connects the accounts (per-provider: Google/GitHub auto-merge, Apple relay addresses excluded)
-- [ ] **SOCIAL-05**: Running `create-foundation-app --without social-auth` removes all social auth configuration cleanly
+- [x] **SOCIAL-01**: User can sign up and log in via Google OAuth on the web app
+- [x] **SOCIAL-02**: User can sign up and log in via GitHub OAuth on the web app
+- [x] **SOCIAL-03**: User can sign up and log in via Apple Sign In on the iOS mobile app
+- [x] **SOCIAL-04**: Social login with an email matching an existing password account auto-connects the accounts (per-provider: Google/GitHub auto-merge, Apple relay addresses excluded)
+- [x] **SOCIAL-05**: Running `create-foundation-app --without social-auth` removes all social auth configuration cleanly
 
 ### GDPR
 
@@ -85,11 +85,11 @@ Requirements for v1.3. Each maps to roadmap phases starting at phase 19.
 | EMAIL-03    | Phase 19 | Complete |
 | EMAIL-04    | Phase 19 | Complete |
 | EMAIL-05    | Phase 19 | Complete |
-| SOCIAL-01   | Phase 20 | Pending  |
-| SOCIAL-02   | Phase 20 | Pending  |
-| SOCIAL-03   | Phase 20 | Pending  |
-| SOCIAL-04   | Phase 20 | Pending  |
-| SOCIAL-05   | Phase 20 | Pending  |
+| SOCIAL-01   | Phase 20 | Complete |
+| SOCIAL-02   | Phase 20 | Complete |
+| SOCIAL-03   | Phase 20 | Complete |
+| SOCIAL-04   | Phase 20 | Complete |
+| SOCIAL-05   | Phase 20 | Complete |
 | GDPR-01     | Phase 21 | Pending  |
 | GDPR-02     | Phase 21 | Pending  |
 | GDPR-03     | Phase 21 | Pending  |
