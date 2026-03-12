@@ -239,8 +239,7 @@ class AccountExportService:
             try:
                 sub = customer.subscription
                 subscription_status = sub.status
-                # plan_id is not stored on Subscription directly — no Stripe IDs in export
-                plan_id = None
+                plan_id = sub.plan_id  # Subscription.plan_id added in Phase 23 (migration 0004)
             except Exception:
                 subscription_status = None
                 plan_id = None
