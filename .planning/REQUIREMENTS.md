@@ -38,7 +38,7 @@ Requirements for v1.3. Each maps to roadmap phases starting at phase 19.
 ### Entitlements
 
 - [ ] **ENT-01**: Application code can check `has_feature(user, "feature_key")` which returns True/False based on the user's active billing plan and the `BILLING_PLANS` settings dict
-- [ ] **ENT-02**: Entitlement results are cached in Redis and invalidated automatically when a billing plan-change webhook is processed
+- [x] **ENT-02**: Entitlement results are cached in Redis and invalidated automatically when a billing plan-change webhook is processed
 - [ ] **ENT-03**: When `--without billing` is used, `has_feature()` returns `True` for all keys (no billing = no gating)
 
 ## Future Requirements
@@ -97,7 +97,7 @@ Requirements for v1.3. Each maps to roadmap phases starting at phase 19.
 | RBAC-02     | Phase 22 | Complete |
 | RBAC-03     | Phase 22 | Complete |
 | ENT-01      | Phase 23 | Pending  |
-| ENT-02      | Phase 23 | Pending  |
+| ENT-02      | Phase 23 | Complete |
 | ENT-03      | Phase 23 | Pending  |
 
 **Coverage:**
