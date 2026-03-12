@@ -5,6 +5,8 @@ import { env } from "@/config/env";
 import { cn } from "@/lib/utils";
 import "./globals.css";
 
+import { CookieConsentBanner } from "@/components/cookie-consent-banner";
+
 import { buildApiBaseUrl } from "./base-url";
 import { AppProviders } from "./providers";
 
@@ -24,6 +26,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       >
         <ThemeProvider>
           <AppProviders baseUrl={apiBaseUrl}>{children}</AppProviders>
+          <CookieConsentBanner />
         </ThemeProvider>
       </body>
     </html>
