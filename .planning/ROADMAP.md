@@ -359,5 +359,5 @@ Plans:
 | 21. GDPR Baseline                | 4/4       | Complete       | 2026-03-12 | -          |
 | 22. RBAC                         | 3/3       | Complete       | 2026-03-12 | -          |
 | 23. Feature Entitlements         | 3/3       | Complete       | 2026-03-12 | -          |
-| 24. Social Auth OAuth Callback   | v1.3      | 0/2            | Pending    | -          |
+| 24. Social Auth OAuth Callback   | 1/2       | In Progress    |            | -          |
 | 25. GDPR Export plan_id Accuracy | v1.3      | 0/1            | Pending    | -          |

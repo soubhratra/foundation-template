@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: SaaS Functional Baseline
 status: planning
-stopped_at: Completed 23-feature-entitlements-23-03-PLAN.md
-last_updated: "2026-03-12T22:38:23.891Z"
+stopped_at: Completed 24-social-auth-oauth-callback-pages-24-01-PLAN.md
+last_updated: "2026-03-12T23:31:09.845Z"
 last_activity: 2026-03-11 — v1.3 roadmap created; all 19 requirements mapped across Phases 19–23
 progress:
-  total_phases: 11
+  total_phases: 13
   completed_phases: 11
-  total_plans: 39
-  completed_plans: 39
+  total_plans: 41
+  completed_plans: 40
   percent: 0
 ---
 
@@ -67,6 +67,7 @@ _Updated after each plan completion_
 | Phase 23-feature-entitlements P01 | 4 | 2 tasks | 2 files |
 | Phase 23-feature-entitlements P02 | 3 | 2 tasks | 7 files |
 | Phase 23-feature-entitlements P03 | 4 | 1 tasks | 2 files |
+| Phase 24-social-auth-oauth-callback-pages P01 | 4 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -117,6 +118,9 @@ _Updated after each plan completion_
 - [Phase 23-feature-entitlements]: Import of \_has_feature inside has_feature() function body — catches ImportError per-call, not at module load time (billing-absent fallback)
 - [Phase 23-feature-entitlements]: cache.delete() is unconditional on subscription.updated webhook — fires even when PlanProviderMapping has no entry for price_id (covers unmapped plan downgrades)
 - [Phase 23-feature-entitlements]: \_extract_price_id_from_event guards against empty items.data — returns empty string for Stripe subscriptions with no line items
+- [Phase 24-social-auth-oauth-callback-pages]: callback page evaluates result.data from refetch() Promise (not reactive hook state) to avoid initial-render false-negative
+- [Phase 24-social-auth-oauth-callback-pages]: router.replace used instead of router.push on OAuth callback page — prevents back-navigation into loading state
+- [Phase 24-social-auth-oauth-callback-pages]: Test import path for Next.js app dir is ../../../../app/ (4 levels from src/**tests**/app/(auth)/) — app/ is at web root not under src/
 
 ### Pending Todos
 
@@ -136,6 +140,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-12T22:33:53.734Z
-Stopped at: Completed 23-feature-entitlements-23-03-PLAN.md
+Last session: 2026-03-12T23:31:09.841Z
+Stopped at: Completed 24-social-auth-oauth-callback-pages-24-01-PLAN.md
 Resume file: None
