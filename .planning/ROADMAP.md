@@ -55,7 +55,7 @@ Full archive: `.planning/milestones/v1.2-ROADMAP.md`
 
 **Milestone Goal:** Every scaffolded product starts with transactional email, social login, GDPR compliance, role-based access control, and plan-gated feature entitlements already wired in.
 
-- [ ] **Phase 19: Transactional Email** — `EmailAdapter` ABC with `ResendAdapter` default; Celery-queued async dispatch; HTML templates with inline CSS; `ConsoleAdapter` for dev; `--without email` scaffolder flag
+- [x] **Phase 19: Transactional Email** — `EmailAdapter` ABC with `ResendAdapter` default; Celery-queued async dispatch; HTML templates with inline CSS; `ConsoleAdapter` for dev; `--without email` scaffolder flag (completed 2026-03-12)
 - [ ] **Phase 20: Social Auth** — Google + GitHub OAuth on web; Apple Sign In on iOS mobile; email-collision account merge; `--without social-auth` scaffolder flag
 - [ ] **Phase 21: GDPR Baseline** — Async account hard delete cascading all third-party data; JSON personal data export; cookie consent banner gating PostHog
 - [ ] **Phase 22: RBAC** — `@require_role("admin")` decorator; role assignment API; seeded `admin`/`member` groups via data migration
@@ -287,7 +287,7 @@ Plans:
 | 16. Security Hardening           | v1.2      | 3/3            | Complete    | 2026-03-11 |
 | 17. Dev-Time Security Gates      | v1.2      | 3/3            | Complete    | 2026-03-11 |
 | 18. Dev-Time Quality Gates       | v1.2      | 3/3            | Complete    | 2026-03-11 |
-| 19. Transactional Email          | 3/4       | In Progress    |             | -          |
+| 19. Transactional Email          | 4/4       | Complete       | 2026-03-12  | -          |
 | 20. Social Auth                  | v1.3      | 0/TBD          | Not started | -          |
 | 21. GDPR Baseline                | v1.3      | 0/TBD          | Not started | -          |
 | 22. RBAC                         | v1.3      | 0/TBD          | Not started | -          |
