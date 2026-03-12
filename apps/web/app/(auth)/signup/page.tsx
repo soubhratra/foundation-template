@@ -6,19 +6,9 @@ import { useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 
-import {
-  AuthCard,
-  AuthForm,
-  AuthLinks,
-  type AuthFormStatus,
-} from "@/components/auth";
-import {
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
+import { AuthCard, AuthForm, AuthLinks, type AuthFormStatus } from "@/components/auth";
+import { SocialButtons } from "@/components/auth/social-buttons";
+import { FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "@/components/ui/sonner";
@@ -53,7 +43,8 @@ export default function SignupPage() {
       });
       form.reset({ ...defaultValues, email: values.email });
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Unable to create your account right now.";
+      const message =
+        error instanceof Error ? error.message : "Unable to create your account right now.";
       toast.error(message);
       setStatus({
         variant: "error",
@@ -98,7 +89,11 @@ export default function SignupPage() {
             <FormItem>
               <FormLabel>Full name</FormLabel>
               <FormControl>
-                <Input placeholder="Ada Lovelace" disabled={form.formState.isSubmitting} {...field} />
+                <Input
+                  placeholder="Ada Lovelace"
+                  disabled={form.formState.isSubmitting}
+                  {...field}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -111,7 +106,12 @@ export default function SignupPage() {
             <FormItem>
               <FormLabel>Email</FormLabel>
               <FormControl>
-                <Input type="email" autoComplete="email" disabled={form.formState.isSubmitting} {...field} />
+                <Input
+                  type="email"
+                  autoComplete="email"
+                  disabled={form.formState.isSubmitting}
+                  {...field}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -124,7 +124,12 @@ export default function SignupPage() {
             <FormItem>
               <FormLabel>Password</FormLabel>
               <FormControl>
-                <Input type="password" autoComplete="new-password" disabled={form.formState.isSubmitting} {...field} />
+                <Input
+                  type="password"
+                  autoComplete="new-password"
+                  disabled={form.formState.isSubmitting}
+                  {...field}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -137,7 +142,12 @@ export default function SignupPage() {
             <FormItem>
               <FormLabel>Confirm password</FormLabel>
               <FormControl>
-                <Input type="password" autoComplete="new-password" disabled={form.formState.isSubmitting} {...field} />
+                <Input
+                  type="password"
+                  autoComplete="new-password"
+                  disabled={form.formState.isSubmitting}
+                  {...field}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -166,6 +176,7 @@ export default function SignupPage() {
           )}
         />
       </AuthForm>
+      <SocialButtons />
     </AuthCard>
   );
 }

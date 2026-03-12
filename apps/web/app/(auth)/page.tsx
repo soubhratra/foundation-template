@@ -7,19 +7,9 @@ import { useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 
-import {
-  AuthCard,
-  AuthForm,
-  AuthLinks,
-  type AuthFormStatus,
-} from "@/components/auth";
-import {
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
+import { AuthCard, AuthForm, AuthLinks, type AuthFormStatus } from "@/components/auth";
+import { SocialButtons } from "@/components/auth/social-buttons";
+import { FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "@/components/ui/sonner";
@@ -152,6 +142,7 @@ export default function LoginPage() {
         />
         {showVerificationHint ? <VerificationHint /> : null}
       </AuthForm>
+      <SocialButtons />
     </AuthCard>
   );
 }
