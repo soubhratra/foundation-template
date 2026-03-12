@@ -297,7 +297,7 @@ Plans:
 | 17. Dev-Time Security Gates      | v1.2      | 3/3            | Complete    | 2026-03-11 |
 | 18. Dev-Time Quality Gates       | v1.2      | 3/3            | Complete    | 2026-03-11 |
 | 19. Transactional Email          | 4/4       | Complete       | 2026-03-12  | -          |
-| 20. Social Auth                  | 2/6       | In Progress    |             | -          |
+| 20. Social Auth                  | 3/6       | In Progress    |             | -          |
 | 21. GDPR Baseline                | v1.3      | 0/TBD          | Not started | -          |
 | 22. RBAC                         | v1.3      | 0/TBD          | Not started | -          |
 | 23. Feature Entitlements         | v1.3      | 0/TBD          | Not started | -          |

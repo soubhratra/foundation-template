@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: SaaS Functional Baseline
 status: planning
-stopped_at: Completed 20-social-auth-02-PLAN.md
-last_updated: "2026-03-12T12:11:24.448Z"
+stopped_at: Completed 20-social-auth-03-PLAN.md
+last_updated: "2026-03-12T12:16:21.121Z"
 last_activity: 2026-03-11 — v1.3 roadmap created; all 19 requirements mapped across Phases 19–23
 progress:
   total_phases: 11
   completed_phases: 7
   total_plans: 29
-  completed_plans: 25
+  completed_plans: 26
   percent: 0
 ---
 
@@ -53,6 +53,7 @@ _Updated after each plan completion_
 | Phase 19-transactional-email P04 | 246 | 2 tasks | 4 files |
 | Phase 20-social-auth P01 | 9 | 2 tasks | 5 files |
 | Phase 20-social-auth P02 | 5 | 2 tasks | 3 files |
+| Phase 20-social-auth P03 | 18 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -77,6 +78,8 @@ _Updated after each plan completion_
 - [Phase 20-social-auth]: Google and GitHub registration requires both client_id AND secret — not just id alone
 - [Phase 20-social-auth]: bool() wrapping of super().can_authenticate_by_email() ensures consistent True/False return type — allauth returns raw provider setting value which is MagicMock in unit tests
 - [Phase 20-social-auth]: APPLE_PRIVATE_KEY base64 decode has graceful fallback to raw string — covers test PEM values and production base64-encoded keys
+- [Phase 20-social-auth]: JWKS cache-bust-on-InvalidSignatureError: delete cache and retry once — handles Apple key rotation and test isolation (same kid, different test RSA key pairs)
+- [Phase 20-social-auth]: AppleSignInController calls django_login() before JWT issuance — allauth JWTTokenStrategy requires request.session.session_key; falls back to jwt_internal.create_access_token() directly when SessionAwareJWTTokenStrategy returns None
 
 ### Pending Todos
 
@@ -96,6 +99,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-12T12:11:24.443Z
-Stopped at: Completed 20-social-auth-02-PLAN.md
+Last session: 2026-03-12T12:16:21.117Z
+Stopped at: Completed 20-social-auth-03-PLAN.md
 Resume file: None
