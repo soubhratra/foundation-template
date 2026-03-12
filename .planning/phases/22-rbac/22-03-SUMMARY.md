@@ -122,3 +122,13 @@ None - no external service configuration required.
 
 _Phase: 22-rbac_
 _Completed: 2026-03-12_
+
+## Self-Check: PASSED
+
+- apps/api/apps/accounts/schemas.py — FOUND
+- apps/api/apps/accounts/services.py — FOUND
+- apps/api/apps/accounts/controllers.py — FOUND
+- .planning/phases/22-rbac/22-03-SUMMARY.md — FOUND
+- commit 9361d2e (feat: AdminUserOut/RoleAssignIn/UserRoleOut schemas + role service methods) — FOUND
+- commit 8cd4795 (feat: AdminController with 4 endpoints) — FOUND
+- 14/14 test_rbac.py tests GREEN
