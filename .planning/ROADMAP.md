@@ -60,6 +60,8 @@ Full archive: `.planning/milestones/v1.2-ROADMAP.md`
 - [x] **Phase 21: GDPR Baseline** — Async account hard delete cascading all third-party data; JSON personal data export; cookie consent banner gating PostHog (completed 2026-03-12)
 - [x] **Phase 22: RBAC** — `@require_role("admin")` decorator; role assignment API; seeded `admin`/`member` groups via data migration (completed 2026-03-12)
 - [x] **Phase 23: Feature Entitlements** — `has_feature(user, key)` utility; Redis-cached results; billing-off fallback returns `True` (completed 2026-03-12)
+- [ ] **Phase 24: Social Auth OAuth Callback Pages** — Create missing `(auth)/callback/page.tsx` and `(auth)/error/page.tsx` in Next.js web app; closes INT-01 and INT-02; unblocks Google/GitHub OAuth E2E flows
+- [ ] **Phase 25: GDPR Export plan_id Accuracy** — Update `AccountExportService.export()` to read `Subscription.plan_id` from ORM instead of hard-coding `None`; closes INT-03
 
 ## Phase Details
 
@@ -293,6 +295,43 @@ Plans:
 - [ ] 23-02-PLAN.md — Wave 1: model migration + BILLING_PLANS extension + billing/core entitlement modules
 - [ ] 23-03-PLAN.md — Wave 2: webhook handler update (plan_id write + cache invalidation)
 
+### Phase 24: Social Auth OAuth Callback Pages
+
+**Goal**: Complete the Google/GitHub web OAuth flow by adding the missing Next.js callback and error pages so users can successfully sign in via social providers
+**Depends on**: Phase 23
+**Requirements**: SOCIAL-01, SOCIAL-02
+**Gap Closure**: Closes INT-01, INT-02 from v1.3 audit; restores Google OAuth web login, GitHub OAuth web login, and OAuth error recovery E2E flows
+**Success Criteria** (what must be TRUE):
+
+1. A user completing Google OAuth is redirected to `/auth/callback`, the page reads the allauth session, calls `useAuth().refetch()`, and the user lands on the dashboard — no 404
+2. A user whose OAuth flow fails is redirected to `/auth/error` and sees a human-readable error message with a link back to the sign-in page — no 404
+3. Both pages are within the `(auth)` route group and render without errors in dev and production builds
+
+**Plans**: 2 plans
+
+Plans:
+
+- [ ] 24-01-PLAN.md — Wave 1: Create `(auth)/callback/page.tsx` — read allauth session, refetch auth, redirect to dashboard
+- [ ] 24-02-PLAN.md — Wave 2: Create `(auth)/error/page.tsx` — display OAuth error, link back to sign-in
+
+### Phase 25: GDPR Export plan_id Accuracy
+
+**Goal**: Fix `AccountExportService` to return the actual `plan_id` from the `Subscription` model instead of always returning `null`
+**Depends on**: Phase 23
+**Requirements**: GDPR-02
+**Gap Closure**: Closes INT-03 from v1.3 audit; GDPR data export reflects actual billing plan
+**Success Criteria** (what must be TRUE):
+
+1. `GET /api/v1/account/export` returns `"subscription": {"plan_id": "<actual-plan-id>"}` for a user with a resolved `Subscription.plan_id` — not `null`
+2. Export still returns `plan_id: null` for users without an active subscription (no regression)
+3. Existing GDPR export tests remain green; new test covers plan_id round-trip
+
+**Plans**: 1 plan
+
+Plans:
+
+- [ ] 25-01-PLAN.md — Wave 1: Update `AccountExportService.export()` to read `subscription.plan_id` from ORM + update/add test
+
 ## Progress
 
 | Phase                            | Milestone | Plans Complete | Status     | Completed  |
@@ -320,3 +359,5 @@ Plans:
 | 21. GDPR Baseline                | 4/4       | Complete       | 2026-03-12 | -          |
 | 22. RBAC                         | 3/3       | Complete       | 2026-03-12 | -          |
 | 23. Feature Entitlements         | 3/3       | Complete       | 2026-03-12 | -          |
+| 24. Social Auth OAuth Callback   | v1.3      | 0/2            | Pending    | -          |
+| 25. GDPR Export plan_id Accuracy | v1.3      | 0/1            | Pending    | -          |

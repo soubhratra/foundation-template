@@ -37,9 +37,9 @@ Requirements for v1.3. Each maps to roadmap phases starting at phase 19.
 
 ### Entitlements
 
-- [ ] **ENT-01**: Application code can check `has_feature(user, "feature_key")` which returns True/False based on the user's active billing plan and the `BILLING_PLANS` settings dict
+- [x] **ENT-01**: Application code can check `has_feature(user, "feature_key")` which returns True/False based on the user's active billing plan and the `BILLING_PLANS` settings dict
 - [x] **ENT-02**: Entitlement results are cached in Redis and invalidated automatically when a billing plan-change webhook is processed
-- [ ] **ENT-03**: When `--without billing` is used, `has_feature()` returns `True` for all keys (no billing = no gating)
+- [x] **ENT-03**: When `--without billing` is used, `has_feature()` returns `True` for all keys (no billing = no gating)
 
 ## Future Requirements
 
@@ -78,27 +78,27 @@ Requirements for v1.3. Each maps to roadmap phases starting at phase 19.
 
 ## Traceability
 
-| Requirement | Phase    | Status   |
-| ----------- | -------- | -------- |
-| EMAIL-01    | Phase 19 | Complete |
-| EMAIL-02    | Phase 19 | Complete |
-| EMAIL-03    | Phase 19 | Complete |
-| EMAIL-04    | Phase 19 | Complete |
-| EMAIL-05    | Phase 19 | Complete |
-| SOCIAL-01   | Phase 20 | Complete |
-| SOCIAL-02   | Phase 20 | Complete |
-| SOCIAL-03   | Phase 20 | Complete |
-| SOCIAL-04   | Phase 20 | Complete |
-| SOCIAL-05   | Phase 20 | Complete |
-| GDPR-01     | Phase 21 | Complete |
-| GDPR-02     | Phase 21 | Complete |
-| GDPR-03     | Phase 21 | Complete |
-| RBAC-01     | Phase 22 | Complete |
-| RBAC-02     | Phase 22 | Complete |
-| RBAC-03     | Phase 22 | Complete |
-| ENT-01      | Phase 23 | Pending  |
-| ENT-02      | Phase 23 | Complete |
-| ENT-03      | Phase 23 | Pending  |
+| Requirement | Phase                            | Status                                       |
+| ----------- | -------------------------------- | -------------------------------------------- |
+| EMAIL-01    | Phase 19                         | Complete                                     |
+| EMAIL-02    | Phase 19                         | Complete                                     |
+| EMAIL-03    | Phase 19                         | Complete                                     |
+| EMAIL-04    | Phase 19                         | Complete                                     |
+| EMAIL-05    | Phase 19                         | Complete                                     |
+| SOCIAL-01   | Phase 20, Phase 24 (gap closure) | Complete (callback page pending Phase 24)    |
+| SOCIAL-02   | Phase 20, Phase 24 (gap closure) | Complete (callback page pending Phase 24)    |
+| SOCIAL-03   | Phase 20                         | Complete                                     |
+| SOCIAL-04   | Phase 20                         | Complete                                     |
+| SOCIAL-05   | Phase 20                         | Complete                                     |
+| GDPR-01     | Phase 21                         | Complete                                     |
+| GDPR-02     | Phase 21, Phase 25 (gap closure) | Complete (plan_id accuracy pending Phase 25) |
+| GDPR-03     | Phase 21                         | Complete                                     |
+| RBAC-01     | Phase 22                         | Complete                                     |
+| RBAC-02     | Phase 22                         | Complete                                     |
+| RBAC-03     | Phase 22                         | Complete                                     |
+| ENT-01      | Phase 23                         | Complete                                     |
+| ENT-02      | Phase 23                         | Complete                                     |
+| ENT-03      | Phase 23                         | Complete                                     |
 
 **Coverage:**
 
