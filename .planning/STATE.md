@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: SaaS Functional Baseline
 status: planning
-stopped_at: Phase 19 context gathered
-last_updated: "2026-03-12T02:47:55.593Z"
+stopped_at: Completed 19-01-PLAN.md — RED test stubs for all EMAIL requirements
+last_updated: "2026-03-12T03:16:58.241Z"
 last_activity: 2026-03-11 — v1.3 roadmap created; all 19 requirements mapped across Phases 19–23
 progress:
   total_phases: 11
   completed_phases: 6
-  total_plans: 19
-  completed_plans: 19
+  total_plans: 23
+  completed_plans: 20
   percent: 0
 ---
 
@@ -47,6 +47,7 @@ Progress: [░░░░░░░░░░] 0% (v1.3 IN PROGRESS) | 5 phases pend
 | -     | -     | -     | -        |
 
 _Updated after each plan completion_
+| Phase 19-transactional-email P01 | 4 | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -57,6 +58,8 @@ _Updated after each plan completion_
 - v1.3 social email merge: `SOCIALACCOUNT_EMAIL_AUTHENTICATION_AUTO_CONNECT=True` for Google + GitHub; disabled for Apple (relay addresses)
 - v1.3 GDPR deletion: `UserDeletionService` orchestrator required — `user.delete()` alone leaves orphaned Stripe customer + PostHog person (Article 17 violation)
 - v1.3 entitlement cache: must invalidate on `customer.subscription.updated` webhook — stale cache after downgrade is a user trust issue
+- [Phase 19-transactional-email]: test_settings.py uses override_settings (not re-import) for EMAIL_BACKEND assertions — Django settings singleton means env patching alone has no effect at test time
+- [Phase 19-transactional-email]: test_css_is_inlined uses send_email_task.run() to bypass Celery broker — .run() calls underlying Python function synchronously in tests
 
 ### Pending Todos
 
@@ -76,6 +79,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-12T02:47:55.589Z
-Stopped at: Phase 19 context gathered
-Resume file: .planning/phases/19-transactional-email/19-CONTEXT.md
+Last session: 2026-03-12T03:16:58.238Z
+Stopped at: Completed 19-01-PLAN.md — RED test stubs for all EMAIL requirements
+Resume file: None
