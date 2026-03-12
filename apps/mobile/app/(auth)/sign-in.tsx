@@ -1,27 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  Pressable,
-  StyleSheet,
-  Switch,
-  View,
-} from "react-native";
+import { Platform, Pressable, StyleSheet, Switch, View } from "react-native";
 
+import * as AppleAuthentication from "expo-apple-authentication";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useForm } from "react-hook-form";
 
-import { useAuth } from "@repo/business-logic";
-import {
-  AuthFooter,
-  AuthForm,
-  AuthFormField,
-  type AuthFormStatus,
-} from "@/components/auth";
+import { useAuth, useAuthContext, USER_QUERY_KEY } from "@repo/business-logic";
+import { AuthFooter, AuthForm, AuthFormField, type AuthFormStatus } from "@/components/auth";
 import { Input, Text, theme } from "@repo/ui";
-import {
-  createZodFormOptions,
-  loginSchema,
-  type LoginInput,
-} from "@repo/validation";
+import { createZodFormOptions, loginSchema, type LoginInput } from "@repo/validation";
 
 export default function SignInScreen() {
   const [status, setStatus] = useState<AuthFormStatus | null>(null);
@@ -38,6 +25,7 @@ export default function SignInScreen() {
     }),
   );
   const { loginWithJwt } = useAuth();
+  const { tokenStorage, queryClient } = useAuthContext();
 
   useEffect(() => {
     if (prefilledEmail && form.getValues("email") !== prefilledEmail) {
@@ -68,6 +56,54 @@ export default function SignInScreen() {
     [loginWithJwt, router],
   );
 
+  const handleAppleSignIn = useCallback(async () => {
+    try {
+      const credential = await AppleAuthentication.signInAsync({
+        requestedScopes: [
+          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+        ],
+      });
+
+      if (!credential.identityToken) return;
+
+      const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/v1/auth/apple/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          identity_token: credential.identityToken,
+          full_name: credential.fullName?.givenName ?? null,
+        }),
+      });
+
+      if (response.ok) {
+        const tokens = (await response.json()) as { access: string; refresh: string };
+        await tokenStorage.setTokens({
+          accessToken: tokens.access,
+          refreshToken: tokens.refresh,
+        });
+        await queryClient.invalidateQueries({ queryKey: USER_QUERY_KEY });
+        router.replace("/(tabs)/home");
+      } else {
+        setStatus({
+          variant: "error",
+          title: "Apple Sign In failed",
+          description: "Please try again.",
+        });
+      }
+    } catch (error: unknown) {
+      // ERR_CANCELED: user dismissed the Apple sheet — silent dismiss
+      if (error instanceof Error && error.message.includes("ERR_CANCELED")) {
+        return;
+      }
+      setStatus({
+        variant: "error",
+        title: "Apple Sign In failed",
+        description: "Please try again.",
+      });
+    }
+  }, [router, tokenStorage, queryClient]);
+
   return (
     <AuthForm
       form={form}
@@ -76,20 +112,39 @@ export default function SignInScreen() {
       onSubmit={handleSubmit}
       status={status}
       footer={
-        <AuthFooter
-          links={[
-            {
-              prefix: "New here?",
-              label: "Create an account",
-              href: "/(auth)/sign-up",
-            },
-            {
-              prefix: "Need help?",
-              label: "Reset password",
-              href: "/(auth)/reset-password",
-            },
-          ]}
-        />
+        <>
+          {/* SOCIAL AUTH MODULE */}
+          {Platform.OS === "ios" && (
+            <View style={styles.socialContainer}>
+              <View style={styles.divider}>
+                <View style={styles.dividerLine} />
+                <Text style={styles.dividerText}>or</Text>
+                <View style={styles.dividerLine} />
+              </View>
+              <AppleAuthentication.AppleAuthenticationButton
+                buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
+                buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
+                cornerRadius={8}
+                style={styles.appleButton}
+                onPress={handleAppleSignIn}
+              />
+            </View>
+          )}
+          <AuthFooter
+            links={[
+              {
+                prefix: "New here?",
+                label: "Create an account",
+                href: "/(auth)/sign-up",
+              },
+              {
+                prefix: "Need help?",
+                label: "Reset password",
+                href: "/(auth)/reset-password",
+              },
+            ]}
+          />
+        </>
       }
     >
       <AuthFormField
@@ -197,5 +252,27 @@ const styles = StyleSheet.create({
   },
   toggleDescription: {
     color: theme.colors.muted,
+  },
+  socialContainer: {
+    marginTop: 16,
+  },
+  appleButton: {
+    width: "100%",
+    height: 44,
+  },
+  divider: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: theme.colors.border,
+  },
+  dividerText: {
+    marginHorizontal: 8,
+    fontSize: 12,
+    color: theme.colors.textMuted,
   },
 });

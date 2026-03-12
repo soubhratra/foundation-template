@@ -183,11 +183,12 @@ async function request(baseUrl: string, path: string, init: RequestInit): Promis
   const method = (init.method ?? "GET").toUpperCase();
   const isMutating = !["GET", "HEAD", "OPTIONS", "TRACE"].includes(method);
 
-  const { headers, ...rest } = init;
+  const { headers: initHeaders, ...rest } = init;
+  let headers: HeadersInit | undefined = initHeaders;
   if (isMutating) {
     const csrf = getCsrfToken();
     if (csrf) {
-      const merged = new Headers(headers);
+      const merged = new Headers(initHeaders);
       merged.set("X-CSRFToken", csrf);
       headers = merged;
     }
