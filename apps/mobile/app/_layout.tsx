@@ -77,7 +77,7 @@ export default function RootLayout() {
   return (
     <PostHogProvider
       apiKey={process.env.EXPO_PUBLIC_POSTHOG_KEY ?? ""}
-      options={{ host: "https://eu.i.posthog.com" }}
+      options={{ host: process.env.EXPO_PUBLIC_POSTHOG_HOST ?? "https://eu.i.posthog.com" }}
       autocapture={{ captureScreens: false }}
     >
       <PostHogScreenTracker />

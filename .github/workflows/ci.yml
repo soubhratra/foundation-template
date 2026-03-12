@@ -41,6 +41,9 @@ jobs:
       - name: Install dependencies
         run: cd apps/api && uv sync
 
+      - name: Run detect-secrets scan
+        run: cd apps/api && uv run detect-secrets scan --baseline ../../.secrets.baseline
+
       - name: Run bandit security scan
         run: cd apps/api && uv run bandit -r apps/ -lll -x tests/
 

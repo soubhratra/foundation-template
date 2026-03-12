@@ -37,16 +37,27 @@ DATABASE_URL=postgres://foundation:foundation@localhost:5432/foundation
 
 All other values have safe defaults for local development.
 
-### 2. Start the backing services
+### 2. Install pre-commit hooks
+
+```bash
+pre-commit install
+pre-commit install --hook-type commit-msg
+```
+
+The second command activates the `commitlint` commit-msg hook that enforces
+Conventional Commits format. Both steps are required — `pre-commit install`
+alone does not activate commit-msg stage hooks.
+
+### 3. Start the backing services
 
 ```bash
 docker compose up -d
 ```
 
-This starts Postgres + PGVector + Redis. Wait a few seconds for Postgres to
-become ready before running migrations.
+This starts Postgres + PGVector + Redis + Celery worker/beat + Jaeger. Wait a
+few seconds for Postgres to become ready before running migrations.
 
-### 3. Run database migrations
+### 4. Run database migrations
 
 ```bash
 cd apps/api
@@ -55,7 +66,7 @@ python manage.py migrate
 
 This creates all tables including allauth's session and email tables.
 
-### 4. Create your first dev user
+### 5. Create your first dev user
 
 **Option A — Use the app's signup form (recommended).**
 Start the API and the web app, navigate to `/signup`, and register normally.
@@ -87,6 +98,7 @@ EmailAddress.objects.create(user=user, email=user.email, primary=True, verified=
 
 ```
 cp apps/api/.env.example apps/api/.env  # fill in SECRET_KEY + DATABASE_URL
+pre-commit install && pre-commit install --hook-type commit-msg
 docker compose up -d
 cd apps/api && python manage.py migrate
 # then sign up via the web app OR use the shell snippet above
