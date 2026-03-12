@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #333; margin: 0; padding: 0; background-color: #f5f5f5; }
+  .wrapper { max-width: 600px; margin: 0 auto; padding: 40px 20px; }
+  .header { text-align: center; padding-bottom: 24px; border-bottom: 1px solid #e5e5e5; margin-bottom: 32px; }
+  .app-name { font-size: 20px; font-weight: 600; color: #111; }
+  .content { background: #fff; border-radius: 8px; padding: 32px; }
+  .footer { margin-top: 32px; text-align: center; font-size: 12px; color: #999; }
+  .button { display: inline-block; background-color: #000; color: #fff; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: 500; margin: 16px 0; }
+</style>
+</head>
+<body>
+<div class="wrapper">
+  <div class="header"><div class="app-name">{% block app_name %}Your App{% endblock %}</div></div>
+  <div class="content">{% block content %}{% endblock %}</div>
+  <div class="footer"><p>You are receiving this email because you have an account with us.</p></div>
+</div>
+</body>
+</html>
