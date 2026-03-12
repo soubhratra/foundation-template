@@ -2,6 +2,7 @@ import fse from "fs-extra";
 const { readFile, writeFile, remove } = fse;
 import { join } from "node:path";
 import { logger } from "./utils.js";
+import { rm } from "node:fs/promises";
 
 /**
  * Remove AI module from generated project
@@ -638,4 +639,148 @@ export async function removeEmailModule(outputDir: string): Promise<void> {
   }
 
   logger.info("Email module removed.");
+}
+
+/**
+ * Remove social auth module from generated project
+ *
+ * Steps:
+ * 1. Remove SOCIAL AUTH MODULE fenced block and sentinel-commented lines from base.py
+ * 2. Unconditionally remove allauth.socialaccount from INSTALLED_APPS (no sentinel comment)
+ * 3. Delete apps/web/src/components/auth/social-buttons.tsx
+ * 4. Remove social env vars from apps/api/.env.example (ENOENT guard)
+ * 5. Remove SocialButtons from web login page (ENOENT guard)
+ * 6. Remove SocialButtons from web signup page (ENOENT guard)
+ * 7. Remove Apple Sign In from mobile sign-in screen (ENOENT guard)
+ */
+export async function removeSocialAuthModule(outputDir: string): Promise<void> {
+  logger.info("Removing social auth module...");
+
+  // 1 & 2. Modify base.py: remove fenced block, sentinel lines, and unconditional allauth.socialaccount
+  const basePyPath = join(outputDir, "apps/api/config/settings/base.py");
+  try {
+    let basePy = await readFile(basePyPath, "utf-8");
+
+    // Remove the entire SOCIAL AUTH MODULE fenced block
+    basePy = basePy.replace(
+      /\n# -{10,}\n# SOCIAL AUTH MODULE[^\n]*\n# -{10,}[\s\S]*?# -{10,}\n# END SOCIAL AUTH MODULE\n# -{10,}/,
+      "",
+    );
+
+    // Remove any remaining sentinel-commented lines (e.g. "_social_installed",  # SOCIAL AUTH MODULE)
+    basePy = basePy.replace(/^.*# SOCIAL AUTH MODULE.*$\n?/gm, "");
+
+    // Unconditional pass: remove allauth.socialaccount from INSTALLED_APPS regardless of
+    // whether a sentinel comment is present. The pre-existing base.py line has no comment,
+    // so the sentinel-comment regex above would not catch it.
+    basePy = basePy.replace(/^\s*["']allauth\.socialaccount["'],?\s*\n?/m, "");
+
+    // Clean up excessive blank lines
+    basePy = basePy.replace(/\n{3,}/g, "\n\n");
+
+    await writeFile(basePyPath, basePy, "utf-8");
+    logger.info(`  ✓ Removed social auth entries from base.py`);
+  } catch (error) {
+    throw new Error(`Failed to modify settings/base.py: ${error}`);
+  }
+
+  // 3. Delete the social-buttons.tsx component file (force:true so missing file is not an error)
+  const socialButtonsPath = join(outputDir, "apps/web/src/components/auth/social-buttons.tsx");
+  await rm(socialButtonsPath, { force: true });
+  logger.info(`  ✓ Deleted social-buttons.tsx`);
+
+  // 4. Remove social env vars from apps/api/.env.example (ENOENT guard)
+  const apiEnvPath = join(outputDir, "apps/api/.env.example");
+  try {
+    let apiEnv = await readFile(apiEnvPath, "utf-8");
+
+    // Remove comment lines for social auth sections
+    apiEnv = apiEnv.replace(/^# Social Auth[^\n]*\n/gm, "");
+
+    // Remove individual social credential lines
+    for (const varName of [
+      "GOOGLE_CLIENT_ID",
+      "GOOGLE_CLIENT_SECRET",
+      "GITHUB_CLIENT_ID",
+      "GITHUB_CLIENT_SECRET",
+      "APPLE_CLIENT_ID",
+      "APPLE_TEAM_ID",
+      "APPLE_KEY_ID",
+      "APPLE_PRIVATE_KEY",
+    ]) {
+      apiEnv = apiEnv.replace(new RegExp(`^${varName}=.*$\\n?`, "gm"), "");
+    }
+
+    apiEnv = apiEnv.replace(/\n{3,}/g, "\n\n");
+    await writeFile(apiEnvPath, apiEnv, "utf-8");
+    logger.info(`  ✓ Removed social env vars from apps/api/.env.example`);
+  } catch (e) {
+    if ((e as NodeJS.ErrnoException).code !== "ENOENT") throw e;
+    logger.info(`  ⚠ apps/api/.env.example not found (skipping)`);
+  }
+
+  // 5. Remove SocialButtons from web login page (ENOENT guard)
+  const webLoginPath = join(outputDir, "apps/web/app/(auth)/page.tsx");
+  try {
+    let loginPage = await readFile(webLoginPath, "utf-8");
+    // Remove the import line
+    loginPage = loginPage.replace(/^.*import.*SocialButtons.*$\n?/gm, "");
+    // Remove any line referencing <SocialButtons (handles return <SocialButtons />;)
+    loginPage = loginPage.replace(/^[^\n]*<SocialButtons[^>]*\/>[^\n]*\n?/gm, "");
+    loginPage = loginPage.replace(/\n{3,}/g, "\n\n");
+    await writeFile(webLoginPath, loginPage, "utf-8");
+    logger.info(`  ✓ Removed SocialButtons from web login page`);
+  } catch (e) {
+    if ((e as NodeJS.ErrnoException).code !== "ENOENT") throw e;
+    logger.info(`  ⚠ web login page not found (skipping)`);
+  }
+
+  // 6. Remove SocialButtons from web signup page (ENOENT guard)
+  const webSignupPath = join(outputDir, "apps/web/app/(auth)/signup/page.tsx");
+  try {
+    let signupPage = await readFile(webSignupPath, "utf-8");
+    // Remove the import line
+    signupPage = signupPage.replace(/^.*import.*SocialButtons.*$\n?/gm, "");
+    // Remove any line referencing <SocialButtons (handles return <SocialButtons />;)
+    signupPage = signupPage.replace(/^[^\n]*<SocialButtons[^>]*\/>[^\n]*\n?/gm, "");
+    signupPage = signupPage.replace(/\n{3,}/g, "\n\n");
+    await writeFile(webSignupPath, signupPage, "utf-8");
+    logger.info(`  ✓ Removed SocialButtons from web signup page`);
+  } catch (e) {
+    if ((e as NodeJS.ErrnoException).code !== "ENOENT") throw e;
+    logger.info(`  ⚠ web signup page not found (skipping)`);
+  }
+
+  // 7. Remove Apple Sign In from mobile sign-in screen (ENOENT guard)
+  const mobileSignInPath = join(outputDir, "apps/mobile/app/(auth)/sign-in.tsx");
+  try {
+    let signInScreen = await readFile(mobileSignInPath, "utf-8");
+
+    // Remove AppleAuthentication import line
+    signInScreen = signInScreen.replace(/^.*import \* as AppleAuthentication.*$\n?/gm, "");
+
+    // Remove handleAppleSignIn callback function
+    signInScreen = signInScreen.replace(
+      /\s*const handleAppleSignIn = useCallback\([\s\S]*?\}, \[.*?\]\);/,
+      "",
+    );
+
+    // Remove SOCIAL AUTH MODULE comment + following Platform.OS block
+    signInScreen = signInScreen.replace(
+      /\{\/\* SOCIAL AUTH MODULE \*\/\}\s*\n\s*\{Platform\.OS === "ios" && \([\s\S]*?\)\}\s*\n?/,
+      "",
+    );
+
+    // Remove any standalone AppleAuthentication JSX elements (covers simpler fixture)
+    signInScreen = signInScreen.replace(/^\s*<AppleAuthentication\.[^/]*\/>\s*\n?/gm, "");
+
+    signInScreen = signInScreen.replace(/\n{3,}/g, "\n\n");
+    await writeFile(mobileSignInPath, signInScreen, "utf-8");
+    logger.info(`  ✓ Removed Apple Sign In from mobile sign-in screen`);
+  } catch (e) {
+    if ((e as NodeJS.ErrnoException).code !== "ENOENT") throw e;
+    logger.info(`  ⚠ mobile sign-in screen not found (skipping)`);
+  }
+
+  logger.info("✓ Social auth module removed successfully");
 }
