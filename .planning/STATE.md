@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: SaaS Functional Baseline
 status: planning
-stopped_at: Completed 19-01-PLAN.md — RED test stubs for all EMAIL requirements
-last_updated: "2026-03-12T03:16:58.241Z"
+stopped_at: Completed 19-02-PLAN.md — notifications app scaffold and EMAIL MODULE settings wired
+last_updated: "2026-03-12T03:20:38.438Z"
 last_activity: 2026-03-11 — v1.3 roadmap created; all 19 requirements mapped across Phases 19–23
 progress:
   total_phases: 11
   completed_phases: 6
   total_plans: 23
-  completed_plans: 20
+  completed_plans: 21
   percent: 0
 ---
 
@@ -48,6 +48,7 @@ Progress: [░░░░░░░░░░] 0% (v1.3 IN PROGRESS) | 5 phases pend
 
 _Updated after each plan completion_
 | Phase 19-transactional-email P01 | 4 | 2 tasks | 5 files |
+| Phase 19-transactional-email P02 | 5 | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -60,6 +61,8 @@ _Updated after each plan completion_
 - v1.3 entitlement cache: must invalidate on `customer.subscription.updated` webhook — stale cache after downgrade is a user trust issue
 - [Phase 19-transactional-email]: test_settings.py uses override_settings (not re-import) for EMAIL_BACKEND assertions — Django settings singleton means env patching alone has no effect at test time
 - [Phase 19-transactional-email]: test_css_is_inlined uses send_email_task.run() to bypass Celery broker — .run() calls underlying Python function synchronously in tests
+- [Phase 19-transactional-email]: EMAIL_BACKEND auto-switch in base.py: if RESEND_API_KEY (truthy) use anymail Resend backend, else console — removes dev-only override from development.py for single code path across all environments
+- [Phase 19-transactional-email]: INSTALLED_APPS sentinel comments (# EMAIL MODULE — remove this line to exclude email) enable scaffolder removeEmailModule() regex to strip email entries cleanly
 
 ### Pending Todos
 
@@ -79,6 +82,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-12T03:16:58.238Z
-Stopped at: Completed 19-01-PLAN.md — RED test stubs for all EMAIL requirements
+Last session: 2026-03-12T03:20:38.435Z
+Stopped at: Completed 19-02-PLAN.md — notifications app scaffold and EMAIL MODULE settings wired
 Resume file: None

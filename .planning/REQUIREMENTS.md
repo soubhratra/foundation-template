@@ -9,11 +9,11 @@ Requirements for v1.3. Each maps to roadmap phases starting at phase 19.
 
 ### Email (Transactional)
 
-- [ ] **EMAIL-01**: Application can send a transactional email via `EmailAdapter` ABC with `ResendAdapter` as the default backend, swappable via one Django setting
-- [ ] **EMAIL-02**: Emails are dispatched asynchronously via Celery tasks (never blocking HTTP) using `transaction.on_commit()` to prevent race conditions
-- [ ] **EMAIL-03**: HTML email templates are rendered server-side with inline CSS (via `premailer`) for email client compatibility
-- [ ] **EMAIL-04**: A `ConsoleAdapter` is the default in development (no credentials needed); `ResendAdapter` activates when `RESEND_API_KEY` is set
-- [ ] **EMAIL-05**: Running `create-foundation-app --without email` removes all email module files cleanly; `manage.py check` passes
+- [x] **EMAIL-01**: Application can send a transactional email via `EmailAdapter` ABC with `ResendAdapter` as the default backend, swappable via one Django setting
+- [x] **EMAIL-02**: Emails are dispatched asynchronously via Celery tasks (never blocking HTTP) using `transaction.on_commit()` to prevent race conditions
+- [x] **EMAIL-03**: HTML email templates are rendered server-side with inline CSS (via `premailer`) for email client compatibility
+- [x] **EMAIL-04**: A `ConsoleAdapter` is the default in development (no credentials needed); `ResendAdapter` activates when `RESEND_API_KEY` is set
+- [x] **EMAIL-05**: Running `create-foundation-app --without email` removes all email module files cleanly; `manage.py check` passes
 
 ### Social Auth
 
@@ -78,27 +78,27 @@ Requirements for v1.3. Each maps to roadmap phases starting at phase 19.
 
 ## Traceability
 
-| Requirement | Phase    | Status  |
-| ----------- | -------- | ------- |
-| EMAIL-01    | Phase 19 | Pending |
-| EMAIL-02    | Phase 19 | Pending |
-| EMAIL-03    | Phase 19 | Pending |
-| EMAIL-04    | Phase 19 | Pending |
-| EMAIL-05    | Phase 19 | Pending |
-| SOCIAL-01   | Phase 20 | Pending |
-| SOCIAL-02   | Phase 20 | Pending |
-| SOCIAL-03   | Phase 20 | Pending |
-| SOCIAL-04   | Phase 20 | Pending |
-| SOCIAL-05   | Phase 20 | Pending |
-| GDPR-01     | Phase 21 | Pending |
-| GDPR-02     | Phase 21 | Pending |
-| GDPR-03     | Phase 21 | Pending |
-| RBAC-01     | Phase 22 | Pending |
-| RBAC-02     | Phase 22 | Pending |
-| RBAC-03     | Phase 22 | Pending |
-| ENT-01      | Phase 23 | Pending |
-| ENT-02      | Phase 23 | Pending |
-| ENT-03      | Phase 23 | Pending |
+| Requirement | Phase    | Status   |
+| ----------- | -------- | -------- |
+| EMAIL-01    | Phase 19 | Complete |
+| EMAIL-02    | Phase 19 | Complete |
+| EMAIL-03    | Phase 19 | Complete |
+| EMAIL-04    | Phase 19 | Complete |
+| EMAIL-05    | Phase 19 | Complete |
+| SOCIAL-01   | Phase 20 | Pending  |
+| SOCIAL-02   | Phase 20 | Pending  |
+| SOCIAL-03   | Phase 20 | Pending  |
+| SOCIAL-04   | Phase 20 | Pending  |
+| SOCIAL-05   | Phase 20 | Pending  |
+| GDPR-01     | Phase 21 | Pending  |
+| GDPR-02     | Phase 21 | Pending  |
+| GDPR-03     | Phase 21 | Pending  |
+| RBAC-01     | Phase 22 | Pending  |
+| RBAC-02     | Phase 22 | Pending  |
+| RBAC-03     | Phase 22 | Pending  |
+| ENT-01      | Phase 23 | Pending  |
+| ENT-02      | Phase 23 | Pending  |
+| ENT-03      | Phase 23 | Pending  |
 
 **Coverage:**
 
