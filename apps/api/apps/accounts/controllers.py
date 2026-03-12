@@ -8,6 +8,7 @@ from ninja.security import SessionAuth
 from ninja_extra import ControllerBase, api_controller, route
 from ninja_extra.permissions import IsAuthenticated
 
+from .permissions import RequireRole
 from .schemas import UserOut, UserUpdateIn
 from .services import AccountExportService, UserService
 from .tasks import delete_user_account
@@ -93,6 +94,48 @@ class AccountController(ControllerBase):
         )
         response["Content-Disposition"] = 'attachment; filename="my-data.json"'
         return response
+
+
+# ---------------------------------------------------------------------------
+# RBAC MODULE — AdminController for role-based user management
+# ---------------------------------------------------------------------------
+
+
+@api_controller(
+    "/admin/users",
+    tags=["Admin"],
+    permissions=[RequireRole("admin")],
+)
+class AdminController(ControllerBase):
+    """Admin-only controller for user and role management (RBAC-02).
+
+    All endpoints require the requesting user to be in the 'admin' Django Group.
+    RequireRole returns False (→ 403) for unauthenticated users
+    (AnonymousUser.is_authenticated is False) and for authenticated users
+    not in the 'admin' group.
+
+    No auth= is specified at the controller level — RequireRole is the sole
+    permission gate. Authenticated users arrive via session/JWT middleware in
+    production (Django's authentication middleware sets request.user before
+    ninja processes the request).
+
+    NOTE: This is a stub created in Phase 22-02 to make TestRequireRole GREEN.
+    Full implementation with auth=[SessionAuth(), jwt_token_auth] added in
+    Phase 22-03.
+    """
+
+    @route.get("/", response=list[UserOut], url_name="admin-list-users")
+    def list_users(self, request):
+        """List all users. Admin only."""
+        from django.contrib.auth import get_user_model
+
+        User = get_user_model()
+        return list(User.objects.all().order_by("id"))
+
+
+# ---------------------------------------------------------------------------
+# END RBAC MODULE
+# ---------------------------------------------------------------------------
 
 
 # ---------------------------------------------------------------------------
