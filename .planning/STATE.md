@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-03-11)
 Phase: 13 of 18 (Structured Logging + Distributed Tracing)
 Plan: — of — in current phase
 Status: Ready to plan
-Last activity: 2026-03-11 — v1.2 roadmap created (phases 13–18)
+Last activity: 2026-03-12 — Completed quick task 1: fix stale test URL in test_middleware.py and add Redis env vars to Docker Compose
 
 Progress: [░░░░░░░░░░] 0% (v1.2) | Phases 1–12 complete (v1.0 + v1.1)
 
@@ -126,6 +126,12 @@ None yet.
 
 - Phase 17 (Dev-Time Security Gates) has no hard dependency on phases 13–16 — can be executed in parallel if context allows
 - Phase 14 (ObservabilityAdapter) depends on Phase 13 middleware setup being in place for Django request context
+
+### Quick Tasks Completed
+
+| #   | Description                                                                       | Date       | Commit  | Directory                                                                                         |
+| --- | --------------------------------------------------------------------------------- | ---------- | ------- | ------------------------------------------------------------------------------------------------- |
+| 1   | fix stale test URL in test_middleware.py and add Redis env vars to Docker Compose | 2026-03-12 | d7f5918 | [1-fix-stale-test-url-in-test-middleware-py](./quick/1-fix-stale-test-url-in-test-middleware-py/) |
 
 ## Session Continuity
 
