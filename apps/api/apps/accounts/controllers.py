@@ -1,11 +1,24 @@
+import json
+from datetime import UTC, datetime
+
 from allauth.headless.contrib.ninja.security import jwt_token_auth
+from django.http import HttpResponse
 from ninja import Schema
 from ninja.security import SessionAuth
 from ninja_extra import ControllerBase, api_controller, route
 from ninja_extra.permissions import IsAuthenticated
 
 from .schemas import UserOut, UserUpdateIn
-from .services import UserService
+from .services import AccountExportService, UserService
+from .tasks import delete_user_account
+
+
+class DeleteAccountIn(Schema):
+    password: str
+
+
+class MessageOut(Schema):
+    message: str
 
 
 @api_controller(
@@ -27,6 +40,59 @@ class UserController(ControllerBase):
     def update_current_user(self, request, payload: UserUpdateIn):
         """Update the authenticated user's profile."""
         return self.service.update_user(user_id=request.user.id, data=payload)
+
+
+@api_controller(
+    "/account",
+    tags=["Account"],
+    permissions=[IsAuthenticated],
+    auth=[SessionAuth(), jwt_token_auth],
+)
+class AccountController(ControllerBase):
+    """GDPR endpoints for account self-service deletion and data export."""
+
+    @route.delete(
+        "/",
+        response={202: MessageOut, 400: dict},
+        url_name="account-delete",
+    )
+    def delete_account(self, request, payload: DeleteAccountIn):
+        """Initiate account deletion (GDPR Article 17 — right to erasure).
+
+        Verifies the user's password, invalidates all sessions, and enqueues
+        an asynchronous Celery task to perform the full deletion cascade.
+
+        Returns 202 Accepted immediately — the actual deletion happens asynchronously.
+        Returns 400 if the provided password is incorrect.
+        """
+        from .services import invalidate_user_sessions
+
+        if not request.user.check_password(payload.password):
+            return 400, {"detail": "Incorrect password."}
+
+        invalidate_user_sessions(request.user.id)
+        delete_user_account.delay(request.user.id)
+        return 202, {"message": "Account deletion initiated."}
+
+    @route.get(
+        "/export",
+        url_name="account-export",
+    )
+    def export_account(self, request):
+        """Export user data package (GDPR Article 20 — right to data portability).
+
+        Returns a JSON file download containing profile, connected social accounts,
+        and billing history. Stripe IDs are excluded from the export payload.
+        """
+        data = AccountExportService().export(request.user)
+        data["exported_at"] = datetime.now(UTC).isoformat()
+
+        response = HttpResponse(
+            json.dumps(data, default=str),
+            content_type="application/json",
+        )
+        response["Content-Disposition"] = 'attachment; filename="my-data.json"'
+        return response
 
 
 # ---------------------------------------------------------------------------
