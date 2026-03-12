@@ -18,6 +18,7 @@ import {
   removeBillingModule,
   removeObservability,
   removeEmailModule,
+  removeSocialAuthModule,
 } from "./remove.js";
 import { runValidation } from "./validation-runner.js";
 import { rollbackGeneration } from "./rollback.js";
@@ -51,6 +52,11 @@ export async function main() {
     (withoutIdx !== -1 && withoutArgs[withoutIdx + 1] === "observability") ||
     withoutArgs.includes("--without-observability");
 
+  // Parse --without social-auth / --without-social-auth flag
+  const withoutSocialAuthFlag =
+    (withoutIdx !== -1 && withoutArgs[withoutIdx + 1] === "social-auth") ||
+    withoutArgs.includes("--without-social-auth");
+
   // Track output directory for rollback
   let outputDir = "";
 
@@ -68,7 +74,8 @@ export async function main() {
     // If --without observability flag was passed, remove observability from selected features
     const features = rawFeatures
       .filter((f) => !(withoutBillingFlag && f === "billing"))
-      .filter((f) => !(withoutObservabilityFlag && f === "observability"));
+      .filter((f) => !(withoutObservabilityFlag && f === "observability"))
+      .filter((f) => !(withoutSocialAuthFlag && f === "social-auth"));
     outputDir = await promptOutputDir();
 
     // Build configuration object
@@ -128,6 +135,9 @@ export async function main() {
     }
     if (!config.features.includes("email")) {
       await removeEmailModule(config.outputDir);
+    }
+    if (!config.features.includes("social-auth")) {
+      await removeSocialAuthModule(config.outputDir);
     }
     s4.stop(pc.green("✓ Features configured"));
 

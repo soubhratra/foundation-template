@@ -694,10 +694,20 @@ export async function removeSocialAuthModule(outputDir: string): Promise<void> {
   try {
     let apiEnv = await readFile(apiEnvPath, "utf-8");
 
-    // Remove comment lines for social auth sections
+    // Primary pass: remove the entire SOCIAL AUTH MODULE fenced section.
+    // The section is bounded by a dash-comment line, the "SOCIAL AUTH MODULE" sentinel header,
+    // and extends to the next blank line or end of file. This handles the real .env.example.
+    apiEnv = apiEnv.replace(
+      /# -{10,}\n# [^\n]*SOCIAL AUTH MODULE[^\n]*\n# -{10,}\n[\s\S]*?(?=\n\n|\z)/m,
+      "",
+    );
+
+    // Secondary pass: remove comment lines for social auth sections (fixture format)
     apiEnv = apiEnv.replace(/^# Social Auth[^\n]*\n/gm, "");
 
-    // Remove individual social credential lines
+    // Tertiary pass: remove individual lines referencing social credential names.
+    // This catches both assignment lines (VAR=) and commented references (# VAR = description)
+    // so that no mention of the removed credentials survives in any form.
     for (const varName of [
       "GOOGLE_CLIENT_ID",
       "GOOGLE_CLIENT_SECRET",
@@ -708,8 +718,11 @@ export async function removeSocialAuthModule(outputDir: string): Promise<void> {
       "APPLE_KEY_ID",
       "APPLE_PRIVATE_KEY",
     ]) {
-      apiEnv = apiEnv.replace(new RegExp(`^${varName}=.*$\\n?`, "gm"), "");
+      apiEnv = apiEnv.replace(new RegExp(`^[^\n]*${varName}[^\n]*\\n?`, "gm"), "");
     }
+
+    // Remove leading dash-comment lines that were part of the section header block
+    apiEnv = apiEnv.replace(/^# -{10,}\n(?=\n)/gm, "");
 
     apiEnv = apiEnv.replace(/\n{3,}/g, "\n\n");
     await writeFile(apiEnvPath, apiEnv, "utf-8");

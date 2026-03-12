@@ -5,7 +5,7 @@ import { validateProjectName, validateOutputDir } from "./validate.js";
  * Selected features configuration
  */
 export type SelectedFeatures = Array<
-  "web" | "mobile" | "landing" | "ai" | "billing" | "observability" | "email"
+  "web" | "mobile" | "landing" | "ai" | "billing" | "observability" | "email" | "social-auth"
 >;
 
 /**
@@ -81,8 +81,22 @@ export async function promptFeatures(): Promise<SelectedFeatures> {
         label: "Transactional Email",
         hint: "Async email via Resend (anymail) with console fallback in dev",
       },
+      {
+        value: "social-auth",
+        label: "Social Auth",
+        hint: "Google + GitHub OAuth (web), Apple Sign In iOS (allauth headless)",
+      },
     ],
-    initialValues: ["web", "mobile", "landing", "ai", "billing", "observability", "email"],
+    initialValues: [
+      "web",
+      "mobile",
+      "landing",
+      "ai",
+      "billing",
+      "observability",
+      "email",
+      "social-auth",
+    ],
     required: true,
   });
 
