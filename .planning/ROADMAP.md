@@ -287,7 +287,7 @@ Plans:
 | 16. Security Hardening           | v1.2      | 3/3            | Complete    | 2026-03-11 |
 | 17. Dev-Time Security Gates      | v1.2      | 3/3            | Complete    | 2026-03-11 |
 | 18. Dev-Time Quality Gates       | v1.2      | 3/3            | Complete    | 2026-03-11 |
-| 19. Transactional Email          | 2/4       | In Progress    |             | -          |
+| 19. Transactional Email          | 3/4       | In Progress    |             | -          |
 | 20. Social Auth                  | v1.3      | 0/TBD          | Not started | -          |
 | 21. GDPR Baseline                | v1.3      | 0/TBD          | Not started | -          |
 | 22. RBAC                         | v1.3      | 0/TBD          | Not started | -          |
