@@ -14,7 +14,7 @@ vi.mock("@repo/business-logic", () => ({
   useAuth: () => ({ refetch: mockRefetch }),
 }));
 
-import OAuthCallbackPage from "../../../app/(auth)/callback/page";
+import OAuthCallbackPage from "../../../../app/(auth)/callback/page";
 
 describe("OAuthCallbackPage", () => {
   beforeEach(() => {
