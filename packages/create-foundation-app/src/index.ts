@@ -17,6 +17,7 @@ import {
   removeWebApp,
   removeBillingModule,
   removeObservability,
+  removeEmailModule,
 } from "./remove.js";
 import { runValidation } from "./validation-runner.js";
 import { rollbackGeneration } from "./rollback.js";
@@ -124,6 +125,9 @@ export async function main() {
     }
     if (!config.features.includes("observability")) {
       await removeObservability(config.outputDir);
+    }
+    if (!config.features.includes("email")) {
+      await removeEmailModule(config.outputDir);
     }
     s4.stop(pc.green("✓ Features configured"));
 

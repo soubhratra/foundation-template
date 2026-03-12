@@ -5,7 +5,7 @@ import { validateProjectName, validateOutputDir } from "./validate.js";
  * Selected features configuration
  */
 export type SelectedFeatures = Array<
-  "web" | "mobile" | "landing" | "ai" | "billing" | "observability"
+  "web" | "mobile" | "landing" | "ai" | "billing" | "observability" | "email"
 >;
 
 /**
@@ -76,8 +76,13 @@ export async function promptFeatures(): Promise<SelectedFeatures> {
         value: "observability",
         label: "Observability (PostHog analytics + error tracking)",
       },
+      {
+        value: "email",
+        label: "Transactional Email",
+        hint: "Async email via Resend (anymail) with console fallback in dev",
+      },
     ],
-    initialValues: ["web", "mobile", "landing", "ai", "billing", "observability"],
+    initialValues: ["web", "mobile", "landing", "ai", "billing", "observability", "email"],
     required: true,
   });
 
