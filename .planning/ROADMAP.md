@@ -295,28 +295,28 @@ Plans:
 
 ## Progress
 
-| Phase                            | Milestone | Plans Complete | Status      | Completed  |
-| -------------------------------- | --------- | -------------- | ----------- | ---------- |
-| 1. Monorepo Foundation           | v1.0      | 4/4            | Complete    | 2026-02-17 |
-| 2. API Core + Auth Backend       | v1.0      | 5/5            | Complete    | 2026-02-17 |
-| 3. Shared Packages + Types       | v1.0      | 6/6            | Complete    | 2026-02-17 |
-| 4. Web Application               | v1.0      | 5/5            | Complete    | 2026-02-17 |
-| 5. Mobile Application            | v1.0      | 4/4            | Complete    | 2026-02-17 |
-| 6. AI Module                     | v1.0      | 5/5            | Complete    | 2026-02-17 |
-| 7. DevEx + CI/CD                 | v1.0      | 4/4            | Complete    | 2026-02-17 |
-| 8. CLI Scaffolder                | v1.0      | 3/3            | Complete    | 2026-02-17 |
-| 9. Billing Scaffold              | v1.1      | 3/3            | Complete    | 2026-03-07 |
-| 10. Webhook Infra + Service      | v1.1      | 3/3            | Complete    | 2026-03-08 |
-| 11. API Endpoints + Frontend     | v1.1      | 8/8            | Complete    | 2026-03-10 |
-| 12. Invoice PDF + CLI            | v1.1      | 3/3            | Complete    | 2026-03-11 |
-| 13. Structured Logging + Tracing | v1.2      | 3/3            | Complete    | 2026-03-11 |
-| 14. ObservabilityAdapter         | v1.2      | 4/4            | Complete    | 2026-03-11 |
-| 15. Health Probes + Celery Infra | v1.2      | 3/3            | Complete    | 2026-03-11 |
-| 16. Security Hardening           | v1.2      | 3/3            | Complete    | 2026-03-11 |
-| 17. Dev-Time Security Gates      | v1.2      | 3/3            | Complete    | 2026-03-11 |
-| 18. Dev-Time Quality Gates       | v1.2      | 3/3            | Complete    | 2026-03-11 |
-| 19. Transactional Email          | 4/4       | Complete       | 2026-03-12  | -          |
-| 20. Social Auth                  | 6/6       | Complete       | 2026-03-12  | -          |
-| 21. GDPR Baseline                | 4/4       | Complete       | 2026-03-12  | -          |
-| 22. RBAC                         | 3/3       | Complete       | 2026-03-12  | -          |
-| 23. Feature Entitlements         | v1.3      | 0/3            | Not started | -          |
+| Phase                            | Milestone | Plans Complete | Status     | Completed  |
+| -------------------------------- | --------- | -------------- | ---------- | ---------- |
+| 1. Monorepo Foundation           | v1.0      | 4/4            | Complete   | 2026-02-17 |
+| 2. API Core + Auth Backend       | v1.0      | 5/5            | Complete   | 2026-02-17 |
+| 3. Shared Packages + Types       | v1.0      | 6/6            | Complete   | 2026-02-17 |
+| 4. Web Application               | v1.0      | 5/5            | Complete   | 2026-02-17 |
+| 5. Mobile Application            | v1.0      | 4/4            | Complete   | 2026-02-17 |
+| 6. AI Module                     | v1.0      | 5/5            | Complete   | 2026-02-17 |
+| 7. DevEx + CI/CD                 | v1.0      | 4/4            | Complete   | 2026-02-17 |
+| 8. CLI Scaffolder                | v1.0      | 3/3            | Complete   | 2026-02-17 |
+| 9. Billing Scaffold              | v1.1      | 3/3            | Complete   | 2026-03-07 |
+| 10. Webhook Infra + Service      | v1.1      | 3/3            | Complete   | 2026-03-08 |
+| 11. API Endpoints + Frontend     | v1.1      | 8/8            | Complete   | 2026-03-10 |
+| 12. Invoice PDF + CLI            | v1.1      | 3/3            | Complete   | 2026-03-11 |
+| 13. Structured Logging + Tracing | v1.2      | 3/3            | Complete   | 2026-03-11 |
+| 14. ObservabilityAdapter         | v1.2      | 4/4            | Complete   | 2026-03-11 |
+| 15. Health Probes + Celery Infra | v1.2      | 3/3            | Complete   | 2026-03-11 |
+| 16. Security Hardening           | v1.2      | 3/3            | Complete   | 2026-03-11 |
+| 17. Dev-Time Security Gates      | v1.2      | 3/3            | Complete   | 2026-03-11 |
+| 18. Dev-Time Quality Gates       | v1.2      | 3/3            | Complete   | 2026-03-11 |
+| 19. Transactional Email          | 4/4       | Complete       | 2026-03-12 | -          |
+| 20. Social Auth                  | 6/6       | Complete       | 2026-03-12 | -          |
+| 21. GDPR Baseline                | 4/4       | Complete       | 2026-03-12 | -          |
+| 22. RBAC                         | 3/3       | Complete       | 2026-03-12 | -          |
+| 23. Feature Entitlements         | 1/3       | In Progress    |            | -          |
