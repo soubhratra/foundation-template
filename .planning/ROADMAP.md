@@ -266,7 +266,13 @@ Plans:
 2. An authenticated admin user can call `POST /api/v1/users/{id}/roles` to assign or remove a role from another user — a non-admin calling this endpoint receives HTTP 403
 3. On a fresh database after running migrations, Django Groups named `admin` and `member` exist without any manual fixture loading or admin UI interaction
 
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+
+- [ ] 22-01-PLAN.md — Wave 1: RED test stubs (test_rbac.py covering RBAC-01, RBAC-02, RBAC-03)
+- [ ] 22-02-PLAN.md — Wave 2: RequireRole permission class + 0003_seed_roles data migration
+- [ ] 22-03-PLAN.md — Wave 3: AdminController (4 endpoints) + schemas + UserService role methods
 
 ### Phase 23: Feature Entitlements
 
@@ -306,5 +312,5 @@ Plans:
 | 19. Transactional Email          | 4/4       | Complete       | 2026-03-12  | -          |
 | 20. Social Auth                  | 6/6       | Complete       | 2026-03-12  | -          |
 | 21. GDPR Baseline                | 4/4       | Complete       | 2026-03-12  | -          |
-| 22. RBAC                         | v1.3      | 0/TBD          | Not started | -          |
+| 22. RBAC                         | v1.3      | 0/3            | Not started | -          |
 | 23. Feature Entitlements         | v1.3      | 0/TBD          | Not started | -          |
