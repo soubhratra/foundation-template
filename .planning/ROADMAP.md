@@ -311,8 +311,8 @@ Plans:
 
 Plans:
 
-- [ ] 24-01-PLAN.md — Wave 1: Create `(auth)/callback/page.tsx` — read allauth session, refetch auth, redirect to dashboard
-- [ ] 24-02-PLAN.md — Wave 2: Create `(auth)/error/page.tsx` — display OAuth error, link back to sign-in
+- [ ] 24-01-PLAN.md — Wave 1: callback page (test stubs + implementation) — refetch auth, redirect to dashboard
+- [ ] 24-02-PLAN.md — Wave 1: error page (test stubs + implementation) — display OAuth error, link back to sign-in
 
 ### Phase 25: GDPR Export plan_id Accuracy
 
