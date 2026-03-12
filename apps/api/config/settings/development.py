@@ -5,8 +5,6 @@ DEBUG = True
 SESSION_COOKIE_SECURE = False
 CSRF_COOKIE_SECURE = False
 
-EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
-
 # Allow login without email verification in development.
 # Production keeps ACCOUNT_EMAIL_VERIFICATION = "mandatory" from base.py.
 ACCOUNT_EMAIL_VERIFICATION = "optional"

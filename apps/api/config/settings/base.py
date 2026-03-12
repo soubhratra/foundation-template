@@ -114,6 +114,8 @@ INSTALLED_APPS = [
     "apps.core",
     "apps.ai",
     "apps.billing",  # BILLING MODULE — remove this line to exclude billing
+    "anymail",  # EMAIL MODULE — remove this line to exclude email
+    "apps.notifications",  # EMAIL MODULE — remove this line to exclude email
 ]
 
 MIDDLEWARE = [
@@ -407,6 +409,26 @@ BILLING_PLANS: dict = {
 }
 # ---------------------------------------------------------------------------
 # END BILLING MODULE
+# ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# EMAIL MODULE
+# ---------------------------------------------------------------------------
+RESEND_API_KEY: str = env("RESEND_API_KEY", default="")
+
+EMAIL_BACKEND = (
+    "anymail.backends.resend.EmailBackend"
+    if RESEND_API_KEY
+    else "django.core.mail.backends.console.EmailBackend"
+)
+
+ANYMAIL = {
+    "RESEND_API_KEY": RESEND_API_KEY,
+}
+
+DEFAULT_FROM_EMAIL: str = env("DEFAULT_FROM_EMAIL", default="noreply@example.com")
+# ---------------------------------------------------------------------------
+# END EMAIL MODULE
 # ---------------------------------------------------------------------------
 
 # --------------------------------------------------------------------------
