@@ -37,6 +37,37 @@ def _fetch_apple_jwks() -> dict:
     return jwks
 
 
+def _get_public_key_for_kid(kid: str) -> object:
+    """
+    Return the RSA public key for the given kid, fetching JWKS if needed.
+
+    First checks the cache. If the kid is not found in the cached JWKS,
+    forces a refresh from Apple (handles key rotation gracefully and also
+    ensures test isolation — each mocked requests.get call returns a fresh
+    JWKS matching the test's own key pair).
+
+    Raises:
+        ValueError: kid not found in Apple JWKS even after refresh
+    """
+    jwks = _fetch_apple_jwks()
+    key_data = next((k for k in jwks.get("keys", []) if k.get("kid") == kid), None)
+
+    if key_data is None:
+        # kid missing from cached JWKS — Apple may have rotated keys.
+        # Bust the cache and try once more before giving up.
+        cache.delete(APPLE_JWKS_CACHE_KEY)
+        jwks = _fetch_apple_jwks()
+        key_data = next((k for k in jwks.get("keys", []) if k.get("kid") == kid), None)
+
+    if key_data is None:
+        raise ValueError(
+            f"Apple public key not found for kid={kid}. "
+            "Apple may have rotated their keys — retry or clear the JWKS cache."
+        )
+
+    return RSAAlgorithm.from_jwk(key_data)
+
+
 def verify_apple_identity_token(identity_token: str, bundle_id: str) -> dict:
     """
     Verify an Apple identity token issued by expo-apple-authentication.
@@ -52,30 +83,41 @@ def verify_apple_identity_token(identity_token: str, bundle_id: str) -> dict:
     Raises:
         jwt.PyJWTError: Invalid signature, expired token, wrong audience/issuer
         ValueError: Apple public key not found for the token's kid header
+
+    Key rotation handling:
+        If signature verification fails with the cached public key, the JWKS cache
+        is cleared and verification is retried once with a fresh key fetch. This
+        handles Apple key rotation without service downtime.
     """
+    from jwt.exceptions import InvalidSignatureError
+
     unverified_header = jwt.get_unverified_header(identity_token)
-    jwks = _fetch_apple_jwks()
+    kid = unverified_header.get("kid")
+    public_key = _get_public_key_for_kid(kid)
 
-    public_key = None
-    for key_data in jwks.get("keys", []):
-        if key_data.get("kid") == unverified_header.get("kid"):
-            public_key = RSAAlgorithm.from_jwk(key_data)
-            break
-
-    if public_key is None:
-        raise ValueError(
-            f"Apple public key not found for kid={unverified_header.get('kid')}. "
-            "Apple may have rotated their keys — retry or clear the JWKS cache."
+    try:
+        payload = jwt.decode(
+            identity_token,
+            public_key,
+            algorithms=["RS256"],
+            audience=bundle_id,
+            issuer=APPLE_ISSUER,
+            leeway=60,  # 60-second leeway for clock skew
+        )
+    except InvalidSignatureError:
+        # Signature verification failed with cached key — Apple may have rotated keys.
+        # Bust the cache and retry once with a freshly fetched JWKS.
+        cache.delete(APPLE_JWKS_CACHE_KEY)
+        public_key = _get_public_key_for_kid(kid)
+        payload = jwt.decode(
+            identity_token,
+            public_key,
+            algorithms=["RS256"],
+            audience=bundle_id,
+            issuer=APPLE_ISSUER,
+            leeway=60,
         )
 
-    payload = jwt.decode(
-        identity_token,
-        public_key,
-        algorithms=["RS256"],
-        audience=bundle_id,
-        issuer=APPLE_ISSUER,
-        leeway=60,  # 60-second leeway for clock skew
-    )
     return payload
 
 
