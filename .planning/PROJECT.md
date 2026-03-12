@@ -65,7 +65,11 @@ A new SaaS product goes from zero to running full-stack app (web + mobile + API 
 
 ### Active (v1.3)
 
-<!-- Placeholder — define with /gsd:new-milestone -->
+- [ ] Transactional email via `EmailAdapter` ABC (`SendGridAdapter` default, Celery-queued, HTML templates) — `--without email` removes
+- [ ] Social auth: Google + GitHub (web), Apple (mobile) via Django Allauth — `--without social-auth` removes
+- [ ] GDPR baseline: account hard delete + cascade, JSON data export endpoint, cookie consent banner (Next.js)
+- [ ] RBAC: Django groups + `@require_role("admin")` decorator + role assignment API
+- [ ] Feature entitlements: `has_feature(user, key)` checked against billing plan config in settings
 
 ### Out of Scope
 
@@ -136,4 +140,4 @@ A new SaaS product goes from zero to running full-stack app (web + mobile + API 
 
 ---
 
-_Last updated: 2026-03-12 after v1.2 milestone_
+_Last updated: 2026-03-11 after v1.3 milestone planning started_
