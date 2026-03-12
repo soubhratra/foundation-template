@@ -572,3 +572,70 @@ export async function removeObservability(outputDir: string): Promise<void> {
 
   logger.info("✓ Observability module removed successfully");
 }
+
+/**
+ * Remove email module from generated project
+ *
+ * Steps:
+ * 1. Delete apps/api/apps/notifications/ directory
+ * 2. Remove "anymail" and "apps.notifications" lines from INSTALLED_APPS in base.py
+ * 3. Remove EMAIL MODULE settings block from base.py
+ * 4. Remove RESEND_API_KEY and DEFAULT_FROM_EMAIL from apps/api/.env.example
+ */
+export async function removeEmailModule(outputDir: string): Promise<void> {
+  logger.info("Removing email module...");
+
+  // 1. Delete apps/api/apps/notifications/ directory
+  const notificationsDir = join(outputDir, "apps/api/apps/notifications");
+  try {
+    await remove(notificationsDir);
+    logger.info(`  ✓ Deleted ${notificationsDir}`);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+      throw new Error(`Failed to delete notifications directory: ${error}`);
+    }
+    logger.warning(`  ⚠ notifications directory not found (already removed)`);
+  }
+
+  // 2 & 3. Modify base.py: remove INSTALLED_APPS email lines and EMAIL MODULE settings block
+  const basePyPath = join(outputDir, "apps/api/config/settings/base.py");
+  try {
+    let basePyContent = await readFile(basePyPath, "utf-8");
+
+    // Remove "anymail" and "apps.notifications" lines (both have EMAIL MODULE comment sentinel)
+    basePyContent = basePyContent.replace(/\s*"anymail",[^\n]*# EMAIL MODULE[^\n]*\n/g, "");
+    basePyContent = basePyContent.replace(
+      /\s*"apps\.notifications",[^\n]*# EMAIL MODULE[^\n]*\n/g,
+      "",
+    );
+
+    // Remove EMAIL MODULE settings block (dash-comment fenced)
+    basePyContent = basePyContent.replace(
+      /\n# -{10,}\n# EMAIL MODULE\n# -{10,}[\s\S]*?# -{10,}\n# END EMAIL MODULE\n# -{10,}/,
+      "",
+    );
+
+    await writeFile(basePyPath, basePyContent, "utf-8");
+    logger.info(`  ✓ Removed email entries from base.py`);
+  } catch (error) {
+    throw new Error(`Failed to modify settings/base.py: ${error}`);
+  }
+
+  // 4. Remove RESEND_API_KEY and DEFAULT_FROM_EMAIL from apps/api/.env.example
+  const envExamplePath = join(outputDir, "apps/api/.env.example");
+  try {
+    let envContent = await readFile(envExamplePath, "utf-8");
+    envContent = envContent.replace(/^# Email \(Transactional\)\n/m, "");
+    envContent = envContent.replace(/^RESEND_API_KEY=.*\n?/m, "");
+    envContent = envContent.replace(/^DEFAULT_FROM_EMAIL=.*\n?/m, "");
+    await writeFile(envExamplePath, envContent, "utf-8");
+    logger.info(`  ✓ Removed email env vars from .env.example`);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+      throw new Error(`Failed to modify .env.example: ${error}`);
+    }
+    logger.warning(`  ⚠ .env.example not found (skipping)`);
+  }
+
+  logger.info("Email module removed.");
+}
