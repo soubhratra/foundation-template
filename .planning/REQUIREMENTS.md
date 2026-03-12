@@ -25,8 +25,8 @@ Requirements for v1.3. Each maps to roadmap phases starting at phase 19.
 
 ### GDPR
 
-- [ ] **GDPR-01**: Authenticated user can permanently delete their account via `DELETE /api/v1/account/` — triggers async Celery task that cascades through all user data, cleans up Stripe customer and PostHog person, returns HTTP 202
-- [ ] **GDPR-02**: Authenticated user can export all their personal data as JSON via `GET /api/v1/account/export`
+- [x] **GDPR-01**: Authenticated user can permanently delete their account via `DELETE /api/v1/account/` — triggers async Celery task that cascades through all user data, cleans up Stripe customer and PostHog person, returns HTTP 202
+- [x] **GDPR-02**: Authenticated user can export all their personal data as JSON via `GET /api/v1/account/export`
 - [ ] **GDPR-03**: User sees a cookie consent banner on first visit to the web app; PostHog initialises only after consent is granted
 
 ### RBAC
@@ -90,8 +90,8 @@ Requirements for v1.3. Each maps to roadmap phases starting at phase 19.
 | SOCIAL-03   | Phase 20 | Complete |
 | SOCIAL-04   | Phase 20 | Complete |
 | SOCIAL-05   | Phase 20 | Complete |
-| GDPR-01     | Phase 21 | Pending  |
-| GDPR-02     | Phase 21 | Pending  |
+| GDPR-01     | Phase 21 | Complete |
+| GDPR-02     | Phase 21 | Complete |
 | GDPR-03     | Phase 21 | Pending  |
 | RBAC-01     | Phase 22 | Pending  |
 | RBAC-02     | Phase 22 | Pending  |

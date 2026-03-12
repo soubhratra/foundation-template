@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: SaaS Functional Baseline
 status: planning
-stopped_at: Phase 21 context gathered
-last_updated: "2026-03-12T19:12:34.245Z"
+stopped_at: Completed 21-gdpr-baseline-01-PLAN.md
+last_updated: "2026-03-12T19:47:44.648Z"
 last_activity: 2026-03-11 — v1.3 roadmap created; all 19 requirements mapped across Phases 19–23
 progress:
   total_phases: 11
   completed_phases: 8
-  total_plans: 29
-  completed_plans: 29
+  total_plans: 33
+  completed_plans: 30
   percent: 0
 ---
 
@@ -57,6 +57,7 @@ _Updated after each plan completion_
 | Phase 20-social-auth P04 | 3 | 2 tasks | 5 files |
 | Phase 20-social-auth P05 | 6 | 1 tasks | 4 files |
 | Phase 20-social-auth P06 | 8 | 2 tasks | 3 files |
+| Phase 21-gdpr-baseline P01 | 285 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -88,6 +89,8 @@ _Updated after each plan completion_
 - [Phase 20-social-auth]: expo-apple-authentication must be explicitly installed even in Expo 52 managed workflow — not auto-included; use npx expo install for correct version resolution
 - [Phase 20-social-auth]: Env removal three-pass strategy: fenced block + comment-line + per-var regex covering all line forms — required because real .env.example has comment-form references
 - [Phase 20-social-auth]: SocialButtons JSX removal uses broad pattern to match inline return statements not just standalone element lines
+- [Phase 21-gdpr-baseline]: billing signal auto-creates Customer on user save — test fixtures must use get_or_create then update stripe_customer_id (not create directly)
+- [Phase 21-gdpr-baseline]: import gate pattern (pytest.fail inside try/except ImportError) chosen for GDPR test stubs — gives actionable messages pointing to exact class/file to implement
 
 ### Pending Todos
 
@@ -107,6 +110,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-12T19:12:34.240Z
-Stopped at: Phase 21 context gathered
-Resume file: .planning/phases/21-gdpr-baseline/21-CONTEXT.md
+Last session: 2026-03-12T19:47:44.644Z
+Stopped at: Completed 21-gdpr-baseline-01-PLAN.md
+Resume file: None
