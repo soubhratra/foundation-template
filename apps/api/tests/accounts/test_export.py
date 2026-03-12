@@ -233,3 +233,36 @@ class TestExportEndpoint:
             "Export response must NOT contain Stripe subscription IDs (sub_ prefix). "
             "stripe_subscription_id must be excluded from the export payload."
         )
+
+    def test_export_billing_plan_id_round_trip(self, db, export_user_with_plan) -> None:
+        """billing.plan_id matches the value stored on Subscription.plan_id (GDPR-02)."""
+        from ninja.testing import TestClient
+
+        from apps.accounts.controllers import AccountController
+
+        client = TestClient(AccountController)
+        client.force_login(export_user_with_plan)
+        response = client.get("/export")
+
+        billing = response.json().get("billing", {})
+        assert billing.get("plan_id") == "pro", (
+            f"Expected billing.plan_id='pro', got {billing.get('plan_id')!r}. "
+            "AccountExportService.export() must read sub.plan_id from the ORM, "
+            "not return hardcoded None."
+        )
+
+
+@pytest.fixture
+def export_user_with_plan(db, export_user):
+    """User with a Customer + Subscription with an explicit plan_id."""
+    from apps.billing.models import Customer, Subscription, SubscriptionStatus
+
+    customer, _ = Customer.objects.get_or_create(user=export_user)
+    Subscription.objects.update_or_create(
+        customer=customer,
+        defaults={
+            "plan_id": "pro",
+            "status": SubscriptionStatus.ACTIVE,
+        },
+    )
+    return export_user
