@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: SaaS Functional Baseline
 status: planning
-stopped_at: Completed 22-rbac-01-PLAN.md
-last_updated: "2026-03-12T20:54:45.836Z"
+stopped_at: Completed 22-rbac-02-PLAN.md
+last_updated: "2026-03-12T21:05:55.245Z"
 last_activity: 2026-03-11 — v1.3 roadmap created; all 19 requirements mapped across Phases 19–23
 progress:
   total_phases: 11
   completed_phases: 9
   total_plans: 36
-  completed_plans: 34
+  completed_plans: 35
   percent: 0
 ---
 
@@ -62,6 +62,7 @@ _Updated after each plan completion_
 | Phase 21-gdpr-baseline P03 | 3 | 2 tasks | 4 files |
 | Phase 21-gdpr-baseline P04 | 4 | 2 tasks | 4 files |
 | Phase 22-rbac P01 | 252 | 1 tasks | 2 files |
+| Phase 22-rbac P02 | 525 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -102,6 +103,9 @@ _Updated after each plan completion_
 - [Phase 21-gdpr-baseline]: deleteAccountAction uses direct fetch (not createApiClient) — DELETE /api/v1/account/ not in generated OpenAPI client; raw fetch with cookie forwarding matches createUpstreamFetcher pattern
 - [Phase 21-gdpr-baseline]: DangerZone session clear uses useAuth().logout.mutate() — calls DELETE /api/v1/auth/browser/v1/auth/session, same path as header Sign Out button
 - [Phase 22-rbac]: Inline helper functions for admin_user/member_user in test bodies — fixture-level Group.DoesNotExist produces ERROR not FAIL; helpers catch DoesNotExist and call pytest.fail() for readable RED output
+- [Phase 22-rbac]: RequireRole returns False from has_permission (not raise PermissionDenied) — ninja_extra converts False to HttpError 403, TestClient handles it via default HttpError handler
+- [Phase 22-rbac]: Migration named migration*0003_seed_roles.py (not 0003*) so Python import system can import seed_roles() for idempotency tests
+- [Phase 22-rbac]: AdminController stub added in 22-02 as test vehicle for TestRequireRole — no auth= so RequireRole is sole gate returning 403 (not 401 from auth layer)
 
 ### Pending Todos
 
@@ -121,6 +125,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-12T20:54:45.832Z
-Stopped at: Completed 22-rbac-01-PLAN.md
+Last session: 2026-03-12T21:05:55.241Z
+Stopped at: Completed 22-rbac-02-PLAN.md
 Resume file: None
