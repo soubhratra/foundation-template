@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: SaaS Functional Baseline
 status: planning
-stopped_at: Completed 23-feature-entitlements-23-01-PLAN.md
-last_updated: "2026-03-12T22:22:13.919Z"
+stopped_at: Completed 23-feature-entitlements-23-02-PLAN.md
+last_updated: "2026-03-12T22:26:58.191Z"
 last_activity: 2026-03-11 — v1.3 roadmap created; all 19 requirements mapped across Phases 19–23
 progress:
   total_phases: 11
   completed_phases: 10
   total_plans: 39
-  completed_plans: 37
+  completed_plans: 38
   percent: 0
 ---
 
@@ -65,6 +65,7 @@ _Updated after each plan completion_
 | Phase 22-rbac P02 | 525 | 2 tasks | 3 files |
 | Phase 22-rbac P03 | 6 | 2 tasks | 3 files |
 | Phase 23-feature-entitlements P01 | 4 | 2 tasks | 2 files |
+| Phase 23-feature-entitlements P02 | 3 | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -111,6 +112,8 @@ _Updated after each plan completion_
 - [Phase 22-rbac]: GET /admin/users/{id}/roles returns list[str] directly — test_get_user_roles asserts isinstance(data, list); UserRoleOut dict would fail that check
 - [Phase 22-rbac]: AdminController retains no auth= (consistent with 22-02 pattern) — RequireRole handles both anonymous and non-admin cases; Django middleware sets request.user before ninja processes
 - [Phase 23-feature-entitlements]: noqa F401 on inline import gates: ruff F401 fires on unused imports in try/except blocks; noqa preserves import gate pattern from Phase 20/21 without ruff auto-removal
+- [Phase 23-feature-entitlements]: Cache key is entitlements:{user.pk} with 300s TTL — per-user granularity allows targeted invalidation in Plan 03
+- [Phase 23-feature-entitlements]: Import of \_has_feature inside has_feature() function body — catches ImportError per-call, not at module load time (billing-absent fallback)
 
 ### Pending Todos
 
@@ -130,6 +133,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-12T22:22:13.915Z
-Stopped at: Completed 23-feature-entitlements-23-01-PLAN.md
+Last session: 2026-03-12T22:26:58.186Z
+Stopped at: Completed 23-feature-entitlements-23-02-PLAN.md
 Resume file: None
