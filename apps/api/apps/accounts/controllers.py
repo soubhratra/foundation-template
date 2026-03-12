@@ -8,8 +8,8 @@ from ninja.security import SessionAuth
 from ninja_extra import ControllerBase, api_controller, route
 from ninja_extra.permissions import IsAuthenticated
 
-from .permissions import RequireRole
-from .schemas import UserOut, UserUpdateIn
+from .permissions import KNOWN_ROLES, RequireRole
+from .schemas import AdminUserOut, RoleAssignIn, UserOut, UserRoleOut, UserUpdateIn
 from .services import AccountExportService, UserService
 from .tasks import delete_user_account
 
@@ -118,19 +118,51 @@ class AdminController(ControllerBase):
     permission gate. Authenticated users arrive via session/JWT middleware in
     production (Django's authentication middleware sets request.user before
     ninja processes the request).
-
-    NOTE: This is a stub created in Phase 22-02 to make TestRequireRole GREEN.
-    Full implementation with auth=[SessionAuth(), jwt_token_auth] added in
-    Phase 22-03.
     """
 
-    @route.get("/", response=list[UserOut], url_name="admin-list-users")
-    def list_users(self, request):
-        """List all users. Admin only."""
-        from django.contrib.auth import get_user_model
+    def __init__(self):
+        self.service = UserService()
 
-        User = get_user_model()
-        return list(User.objects.all().order_by("id"))
+    @route.get("", response=list[AdminUserOut], url_name="admin-list-users")
+    def list_users(self, request, page: int = 1, page_size: int = 20):
+        """List all users with their roles. Admin only."""
+        users = self.service.list_users(page=page, page_size=page_size)
+        return list(users)
+
+    @route.get("/{user_id}/roles", response=list[str], url_name="admin-user-roles")
+    def get_user_roles(self, request, user_id: int):
+        """Get the current roles for a specific user. Admin only."""
+        return self.service.get_user_roles(user_id=user_id)
+
+    @route.post(
+        "/{user_id}/roles",
+        response={200: UserRoleOut, 400: dict},
+        url_name="admin-assign-role",
+    )
+    def assign_role(self, request, user_id: int, payload: RoleAssignIn):
+        """Assign a role to a user. Idempotent. Admin only."""
+        if user_id == request.user.id:
+            return 400, {"detail": "Cannot modify your own roles."}
+        if payload.role not in KNOWN_ROLES:
+            return 400, {
+                "detail": f"Unknown role '{payload.role}'. Valid roles: {sorted(KNOWN_ROLES)}"
+            }
+        user = self.service.assign_role(user_id=user_id, role=payload.role)
+        return 200, UserRoleOut(user_id=user.id, roles=[g.name for g in user.groups.all()])
+
+    @route.delete(
+        "/{user_id}/roles/{role}",
+        response={200: UserRoleOut, 400: dict},
+        url_name="admin-remove-role",
+    )
+    def remove_role(self, request, user_id: int, role: str):
+        """Remove a role from a user. Idempotent. Admin only."""
+        if user_id == request.user.id:
+            return 400, {"detail": "Cannot modify your own roles."}
+        if role not in KNOWN_ROLES:
+            return 400, {"detail": f"Unknown role '{role}'. Valid roles: {sorted(KNOWN_ROLES)}"}
+        user = self.service.remove_role(user_id=user_id, role=role)
+        return 200, UserRoleOut(user_id=user.id, roles=[g.name for g in user.groups.all()])
 
 
 # ---------------------------------------------------------------------------
