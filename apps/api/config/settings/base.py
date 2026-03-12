@@ -492,6 +492,11 @@ BILLING_PLANS: dict = {
         "stripe_price_id_annual": "",
         "trial_days": 0,
         "features": ["Up to 3 projects", "Community support"],
+        "feature_flags": {
+            "api_access": False,
+            "advanced_analytics": False,
+            "white_label": False,
+        },
     },
     "pro": {
         "name": "Pro",
@@ -499,6 +504,11 @@ BILLING_PLANS: dict = {
         "stripe_price_id_annual": env("STRIPE_PRICE_PRO_ANNUAL", default=""),
         "trial_days": 14,
         "features": ["Unlimited projects", "Priority support", "API access"],
+        "feature_flags": {
+            "api_access": True,
+            "advanced_analytics": True,
+            "white_label": False,
+        },
     },
     "enterprise": {
         "name": "Enterprise",
@@ -506,6 +516,11 @@ BILLING_PLANS: dict = {
         "stripe_price_id_annual": env("STRIPE_PRICE_ENTERPRISE_ANNUAL", default=""),
         "trial_days": 0,
         "features": ["Everything in Pro", "Dedicated support", "Custom contracts", "SLA"],
+        "feature_flags": {
+            "api_access": True,
+            "advanced_analytics": True,
+            "white_label": True,
+        },
     },
 }
 # ---------------------------------------------------------------------------

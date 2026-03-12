@@ -46,6 +46,7 @@ class Subscription(models.Model):
     cancel_at_period_end = models.BooleanField(default=False)
     current_period_start = models.DateTimeField(null=True, blank=True)
     current_period_end = models.DateTimeField(null=True, blank=True)
+    plan_id = models.CharField(max_length=50, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
