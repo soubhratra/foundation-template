@@ -94,6 +94,46 @@ class UserService:
             user.save(update_fields=fields_to_update)
         return user
 
+    # ------------------------------------------------------------------
+    # RBAC role management methods (Phase 22-03)
+    # ------------------------------------------------------------------
+
+    def list_users(self, page: int = 1, page_size: int = 20):
+        """Return a page of all users with their groups prefetched.
+
+        prefetch_related("groups") is required to avoid N+1 queries —
+        the global _nplusone_guard fixture in tests/conftest.py will catch
+        any violation during tests.
+        """
+        offset = (page - 1) * page_size
+        return User.objects.prefetch_related("groups").order_by("id")[offset : offset + page_size]
+
+    def get_user_roles(self, user_id: int) -> list[str]:
+        """Return the list of role (group) names for a user."""
+        user = get_object_or_404(User, id=user_id)
+        return [g.name for g in user.groups.all()]
+
+    def assign_role(self, user_id: int, role: str) -> Any:
+        """Assign a role (Django Group) to a user. Idempotent."""
+        from django.contrib.auth.models import Group
+
+        user = get_object_or_404(User, id=user_id)
+        group = get_object_or_404(Group, name=role)
+        user.groups.add(group)
+        return user
+
+    def remove_role(self, user_id: int, role: str) -> Any:
+        """Remove a role (Django Group) from a user. Idempotent — no error if not assigned."""
+        from django.contrib.auth.models import Group
+
+        user = get_object_or_404(User, id=user_id)
+        try:
+            group = Group.objects.get(name=role)
+            user.groups.remove(group)
+        except Group.DoesNotExist:
+            pass  # idempotent — removing a non-existent role is a no-op
+        return user
+
 
 class UserDeletionService:
     """Orchestrates the GDPR Article 17 (right to erasure) deletion cascade.
