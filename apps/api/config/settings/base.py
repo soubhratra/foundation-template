@@ -367,6 +367,7 @@ HEADLESS_ONLY = True
 HEADLESS_FRONTEND_URLS = {
     "account_confirm_email": f"{FRONTEND_URL}/auth/verify-email/{{key}}",
     "account_reset_password_from_key": f"{FRONTEND_URL}/auth/reset-password/{{key}}",
+    "socialaccount_login_error": f"{FRONTEND_URL}/auth/error",
 }
 HEADLESS_ADAPTER = "apps.accounts.headless.HeadlessAdapter"
 HEADLESS_TOKEN_STRATEGY = "apps.accounts.headless.SessionAwareJWTTokenStrategy"
@@ -374,6 +375,104 @@ HEADLESS_JWT_ALGORITHM = "HS256"
 HEADLESS_JWT_ACCESS_TOKEN_EXPIRES_IN = 900
 HEADLESS_JWT_ROTATE_REFRESH_TOKEN = True
 HEADLESS_JWT_STATEFUL_VALIDATION_ENABLED = True
+
+# ---------------------------------------------------------------------------
+# SOCIAL AUTH MODULE — remove this block to exclude social auth
+# ---------------------------------------------------------------------------
+import base64 as _base64  # noqa: E402  # SOCIAL AUTH MODULE
+
+
+def _configure_social_providers(env_dict: dict) -> dict:  # SOCIAL AUTH MODULE
+    """# SOCIAL AUTH MODULE
+    Pure function: maps an env dict to social auth configuration.  # SOCIAL AUTH MODULE
+    Called once at module load time. Also importable by tests for direct  # SOCIAL AUTH MODULE
+    unit verification of conditional provider registration logic.  # SOCIAL AUTH MODULE
+    Returns a dict with keys: extra_installed_apps, providers, auto_connect.  # SOCIAL AUTH MODULE
+    """  # SOCIAL AUTH MODULE
+    google_id = env_dict.get("GOOGLE_CLIENT_ID", "")  # SOCIAL AUTH MODULE
+    google_secret = env_dict.get("GOOGLE_CLIENT_SECRET", "")  # SOCIAL AUTH MODULE
+    github_id = env_dict.get("GITHUB_CLIENT_ID", "")  # SOCIAL AUTH MODULE
+    github_secret = env_dict.get("GITHUB_CLIENT_SECRET", "")  # SOCIAL AUTH MODULE
+    apple_id = env_dict.get("APPLE_CLIENT_ID", "")  # SOCIAL AUTH MODULE
+    apple_team = env_dict.get("APPLE_TEAM_ID", "")  # SOCIAL AUTH MODULE
+    apple_key_id = env_dict.get("APPLE_KEY_ID", "")  # SOCIAL AUTH MODULE
+    apple_pk_b64 = env_dict.get("APPLE_PRIVATE_KEY", "")  # SOCIAL AUTH MODULE
+    try:  # SOCIAL AUTH MODULE
+        apple_pk = (
+            _base64.b64decode(apple_pk_b64).decode() if apple_pk_b64 else ""
+        )  # SOCIAL AUTH MODULE
+    except Exception:  # SOCIAL AUTH MODULE
+        apple_pk = (
+            apple_pk_b64  # SOCIAL AUTH MODULE — fallback: use raw value (e.g. plain PEM in tests)
+        )
+
+    extra_installed_apps: list[str] = []  # SOCIAL AUTH MODULE
+    providers: dict = {}  # SOCIAL AUTH MODULE
+
+    if google_id and google_secret:  # SOCIAL AUTH MODULE
+        extra_installed_apps.append("allauth.socialaccount.providers.google")  # SOCIAL AUTH MODULE
+        providers["google"] = {  # SOCIAL AUTH MODULE
+            "APPS": [{"client_id": google_id, "secret": google_secret, "key": ""}],
+            "SCOPE": ["profile", "email"],
+            "AUTH_PARAMS": {"access_type": "online"},
+            "EMAIL_AUTHENTICATION": True,
+        }  # SOCIAL AUTH MODULE
+    if github_id and github_secret:  # SOCIAL AUTH MODULE
+        extra_installed_apps.append("allauth.socialaccount.providers.github")  # SOCIAL AUTH MODULE
+        providers["github"] = {  # SOCIAL AUTH MODULE
+            "APPS": [{"client_id": github_id, "secret": github_secret, "key": ""}],
+            "SCOPE": ["user:email"],
+            "VERIFIED_EMAIL": True,
+            "EMAIL_AUTHENTICATION": True,
+        }  # SOCIAL AUTH MODULE
+    if apple_id:  # SOCIAL AUTH MODULE
+        extra_installed_apps.append("allauth.socialaccount.providers.apple")  # SOCIAL AUTH MODULE
+        providers["apple"] = {  # SOCIAL AUTH MODULE
+            "APPS": [
+                {
+                    "client_id": apple_id,
+                    "secret": apple_key_id,
+                    "key": apple_team,
+                    "settings": {"certificate_key": apple_pk, "hidden": True},
+                }
+            ],
+        }  # SOCIAL AUTH MODULE
+
+    return {  # SOCIAL AUTH MODULE
+        "extra_installed_apps": extra_installed_apps,  # SOCIAL AUTH MODULE
+        "providers": providers,  # SOCIAL AUTH MODULE
+        "auto_connect": True,  # SOCIAL AUTH MODULE
+    }  # SOCIAL AUTH MODULE
+
+
+_GOOGLE_CLIENT_ID: str = env("GOOGLE_CLIENT_ID", default="")  # SOCIAL AUTH MODULE
+_GITHUB_CLIENT_ID: str = env("GITHUB_CLIENT_ID", default="")  # SOCIAL AUTH MODULE
+_APPLE_CLIENT_ID: str = env("APPLE_CLIENT_ID", default="")  # SOCIAL AUTH MODULE
+
+_social_cfg = _configure_social_providers(
+    {  # SOCIAL AUTH MODULE
+        "GOOGLE_CLIENT_ID": _GOOGLE_CLIENT_ID,  # SOCIAL AUTH MODULE
+        "GOOGLE_CLIENT_SECRET": env("GOOGLE_CLIENT_SECRET", default=""),  # SOCIAL AUTH MODULE
+        "GITHUB_CLIENT_ID": _GITHUB_CLIENT_ID,  # SOCIAL AUTH MODULE
+        "GITHUB_CLIENT_SECRET": env("GITHUB_CLIENT_SECRET", default=""),  # SOCIAL AUTH MODULE
+        "APPLE_CLIENT_ID": _APPLE_CLIENT_ID,  # SOCIAL AUTH MODULE
+        "APPLE_TEAM_ID": env("APPLE_TEAM_ID", default=""),  # SOCIAL AUTH MODULE
+        "APPLE_KEY_ID": env("APPLE_KEY_ID", default=""),  # SOCIAL AUTH MODULE
+        "APPLE_PRIVATE_KEY": env("APPLE_PRIVATE_KEY", default=""),  # SOCIAL AUTH MODULE
+    }
+)  # SOCIAL AUTH MODULE
+
+INSTALLED_APPS = INSTALLED_APPS + _social_cfg["extra_installed_apps"]  # SOCIAL AUTH MODULE
+SOCIALACCOUNT_PROVIDERS: dict = _social_cfg["providers"]  # SOCIAL AUTH MODULE
+SOCIALACCOUNT_ADAPTER = (
+    "apps.accounts.social_adapter.FoundationSocialAccountAdapter"  # SOCIAL AUTH MODULE
+)
+SOCIALACCOUNT_AUTO_SIGNUP = True  # SOCIAL AUTH MODULE
+SOCIALACCOUNT_EMAIL_AUTHENTICATION = True  # SOCIAL AUTH MODULE
+SOCIALACCOUNT_EMAIL_AUTHENTICATION_AUTO_CONNECT = True  # SOCIAL AUTH MODULE
+# ---------------------------------------------------------------------------
+# END SOCIAL AUTH MODULE
+# ---------------------------------------------------------------------------
 
 # ---------------------------------------------------------------------------
 # BILLING MODULE
