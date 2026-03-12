@@ -56,7 +56,7 @@ Full archive: `.planning/milestones/v1.2-ROADMAP.md`
 **Milestone Goal:** Every scaffolded product starts with transactional email, social login, GDPR compliance, role-based access control, and plan-gated feature entitlements already wired in.
 
 - [x] **Phase 19: Transactional Email** — `EmailAdapter` ABC with `ResendAdapter` default; Celery-queued async dispatch; HTML templates with inline CSS; `ConsoleAdapter` for dev; `--without email` scaffolder flag (completed 2026-03-12)
-- [ ] **Phase 20: Social Auth** — Google + GitHub OAuth on web; Apple Sign In on iOS mobile; email-collision account merge; `--without social-auth` scaffolder flag
+- [x] **Phase 20: Social Auth** — Google + GitHub OAuth on web; Apple Sign In on iOS mobile; email-collision account merge; `--without social-auth` scaffolder flag (completed 2026-03-12)
 - [ ] **Phase 21: GDPR Baseline** — Async account hard delete cascading all third-party data; JSON personal data export; cookie consent banner gating PostHog
 - [ ] **Phase 22: RBAC** — `@require_role("admin")` decorator; role assignment API; seeded `admin`/`member` groups via data migration
 - [ ] **Phase 23: Feature Entitlements** — `has_feature(user, key)` utility; Redis-cached results; billing-off fallback returns `True`
@@ -297,7 +297,7 @@ Plans:
 | 17. Dev-Time Security Gates      | v1.2      | 3/3            | Complete    | 2026-03-11 |
 | 18. Dev-Time Quality Gates       | v1.2      | 3/3            | Complete    | 2026-03-11 |
 | 19. Transactional Email          | 4/4       | Complete       | 2026-03-12  | -          |
-| 20. Social Auth                  | 5/6       | In Progress    |             | -          |
+| 20. Social Auth                  | 6/6       | Complete       | 2026-03-12  | -          |
 | 21. GDPR Baseline                | v1.3      | 0/TBD          | Not started | -          |
 | 22. RBAC                         | v1.3      | 0/TBD          | Not started | -          |
 | 23. Feature Entitlements         | v1.3      | 0/TBD          | Not started | -          |

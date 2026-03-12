@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: SaaS Functional Baseline
 status: planning
-stopped_at: Completed 20-social-auth-05-PLAN.md
-last_updated: "2026-03-12T12:25:18.518Z"
+stopped_at: Completed 20-social-auth-06-PLAN.md
+last_updated: "2026-03-12T12:31:54.657Z"
 last_activity: 2026-03-11 — v1.3 roadmap created; all 19 requirements mapped across Phases 19–23
 progress:
   total_phases: 11
-  completed_phases: 7
+  completed_phases: 8
   total_plans: 29
-  completed_plans: 28
+  completed_plans: 29
   percent: 0
 ---
 
@@ -56,6 +56,7 @@ _Updated after each plan completion_
 | Phase 20-social-auth P03 | 18 | 2 tasks | 2 files |
 | Phase 20-social-auth P04 | 3 | 2 tasks | 5 files |
 | Phase 20-social-auth P05 | 6 | 1 tasks | 4 files |
+| Phase 20-social-auth P06 | 8 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -85,6 +86,8 @@ _Updated after each plan completion_
 - [Phase 20-social-auth]: NEXT_PUBLIC_GOOGLE_ENABLED / NEXT_PUBLIC_GITHUB_ENABLED evaluated at module scope for tree-shaking; SocialButtons returns null (not empty JSX) when no provider enabled; Apple Sign In absent from web UI (iOS-only); SOCIAL AUTH MODULE sentinel comment enables scaffolder removeModule() detection
 - [Phase 20-social-auth]: Use useAuthContext() for token storage after Apple Sign In — useAuth() does not expose setTokens; correct field names are accessToken/refreshToken not access/refresh
 - [Phase 20-social-auth]: expo-apple-authentication must be explicitly installed even in Expo 52 managed workflow — not auto-included; use npx expo install for correct version resolution
+- [Phase 20-social-auth]: Env removal three-pass strategy: fenced block + comment-line + per-var regex covering all line forms — required because real .env.example has comment-form references
+- [Phase 20-social-auth]: SocialButtons JSX removal uses broad pattern to match inline return statements not just standalone element lines
 
 ### Pending Todos
 
@@ -104,6 +107,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-12T12:25:18.514Z
-Stopped at: Completed 20-social-auth-05-PLAN.md
+Last session: 2026-03-12T12:31:54.653Z
+Stopped at: Completed 20-social-auth-06-PLAN.md
 Resume file: None
