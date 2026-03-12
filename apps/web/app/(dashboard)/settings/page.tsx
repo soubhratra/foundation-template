@@ -5,6 +5,7 @@ import {
   readAlertPreferencesFromCookies,
   updateNotificationAction,
 } from "@/actions/profile-actions";
+import { deleteAccountAction } from "@/actions/account-actions";
 
 export default async function SettingsPage() {
   const alertPrefs = await readAlertPreferencesFromCookies();
@@ -14,6 +15,7 @@ export default async function SettingsPage() {
       alertPrefs={alertPrefs}
       changePasswordAction={changePasswordAction}
       updateNotificationAction={updateNotificationAction}
+      deleteAccountAction={deleteAccountAction}
     />
   );
 }
