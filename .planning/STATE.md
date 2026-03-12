@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: SaaS Functional Baseline
 status: planning
-stopped_at: Completed 21-gdpr-baseline-02-PLAN.md
-last_updated: "2026-03-12T20:02:09.357Z"
+stopped_at: Completed 21-gdpr-baseline-03-PLAN.md
+last_updated: "2026-03-12T20:07:04.922Z"
 last_activity: 2026-03-11 — v1.3 roadmap created; all 19 requirements mapped across Phases 19–23
 progress:
   total_phases: 11
   completed_phases: 8
   total_plans: 33
-  completed_plans: 31
+  completed_plans: 32
   percent: 0
 ---
 
@@ -59,6 +59,7 @@ _Updated after each plan completion_
 | Phase 20-social-auth P06 | 8 | 2 tasks | 3 files |
 | Phase 21-gdpr-baseline P01 | 285 | 2 tasks | 3 files |
 | Phase 21-gdpr-baseline P02 | 25 | 2 tasks | 9 files |
+| Phase 21-gdpr-baseline P03 | 3 | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -95,6 +96,7 @@ _Updated after each plan completion_
 - [Phase 21-gdpr-baseline]: Alias-import pattern for Celery task patchability: import get_adapter as PaymentAdapter so tests can patch apps.accounts.tasks.PaymentAdapter while production calls get_adapter()
 - [Phase 21-gdpr-baseline]: GDPR export plan_id is None — Subscription model stores stripe_subscription_id not internal plan_id; exposing Stripe ID would violate no-Stripe-IDs requirement
 - [Phase 21-gdpr-baseline]: conftest force_login patch scoped to tests/accounts/ via session fixture — patches ninja.testing.TestClient with ninja_extra.testing.TestClient for ControllerBase support
+- [Phase 21-gdpr-baseline]: posthog.init() moved out of providers.tsx into CookieConsentBanner — PostHogProvider wrapper stays but init is consent-gated (GDPR-03)
 
 ### Pending Todos
 
@@ -114,6 +116,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-12T20:02:09.353Z
-Stopped at: Completed 21-gdpr-baseline-02-PLAN.md
+Last session: 2026-03-12T20:07:04.918Z
+Stopped at: Completed 21-gdpr-baseline-03-PLAN.md
 Resume file: None
