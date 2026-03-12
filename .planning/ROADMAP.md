@@ -202,7 +202,14 @@ Plans:
 4. Running the app locally with no `RESEND_API_KEY` set causes all outgoing emails to appear in the Django console log — no credentials, no error, no silent drop
 5. Running `create-foundation-app --without email` produces a project with no `notifications` app, no anymail in `INSTALLED_APPS`, and `manage.py check` passes clean
 
-**Plans**: TBD
+**Plans**: 4 plans
+
+Plans:
+
+- [ ] 19-01-PLAN.md — Wave 1: RED test stubs for EMAIL-01 through EMAIL-05
+- [ ] 19-02-PLAN.md — Wave 1: notifications app scaffold, settings auto-switch, dependencies
+- [ ] 19-03-PLAN.md — Wave 2: send_email() utility, send_email_task Celery task, HTML templates
+- [ ] 19-04-PLAN.md — Wave 3: removeEmailModule() scaffolder flag, prompts.ts, index.ts wiring
 
 ### Phase 20: Social Auth
 
