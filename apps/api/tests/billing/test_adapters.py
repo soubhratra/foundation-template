@@ -36,6 +36,7 @@ class TestPaymentAdapterContract:
             "get_usage_summary",
             "retrieve_subscription",
             "reactivate_subscription",
+            "delete_customer",  # GDPR-01: permanently delete a customer (Article 17)
         }
         abstract_methods = getattr(PaymentAdapter, "__abstractmethods__", set())
         assert expected == abstract_methods, (
