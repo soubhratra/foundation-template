@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: SaaS Functional Baseline
 status: planning
-stopped_at: Completed 21-gdpr-baseline-01-PLAN.md
-last_updated: "2026-03-12T19:47:44.648Z"
+stopped_at: Completed 21-gdpr-baseline-02-PLAN.md
+last_updated: "2026-03-12T20:02:09.357Z"
 last_activity: 2026-03-11 — v1.3 roadmap created; all 19 requirements mapped across Phases 19–23
 progress:
   total_phases: 11
   completed_phases: 8
   total_plans: 33
-  completed_plans: 30
+  completed_plans: 31
   percent: 0
 ---
 
@@ -58,6 +58,7 @@ _Updated after each plan completion_
 | Phase 20-social-auth P05 | 6 | 1 tasks | 4 files |
 | Phase 20-social-auth P06 | 8 | 2 tasks | 3 files |
 | Phase 21-gdpr-baseline P01 | 285 | 2 tasks | 3 files |
+| Phase 21-gdpr-baseline P02 | 25 | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -91,6 +92,9 @@ _Updated after each plan completion_
 - [Phase 20-social-auth]: SocialButtons JSX removal uses broad pattern to match inline return statements not just standalone element lines
 - [Phase 21-gdpr-baseline]: billing signal auto-creates Customer on user save — test fixtures must use get_or_create then update stripe_customer_id (not create directly)
 - [Phase 21-gdpr-baseline]: import gate pattern (pytest.fail inside try/except ImportError) chosen for GDPR test stubs — gives actionable messages pointing to exact class/file to implement
+- [Phase 21-gdpr-baseline]: Alias-import pattern for Celery task patchability: import get_adapter as PaymentAdapter so tests can patch apps.accounts.tasks.PaymentAdapter while production calls get_adapter()
+- [Phase 21-gdpr-baseline]: GDPR export plan_id is None — Subscription model stores stripe_subscription_id not internal plan_id; exposing Stripe ID would violate no-Stripe-IDs requirement
+- [Phase 21-gdpr-baseline]: conftest force_login patch scoped to tests/accounts/ via session fixture — patches ninja.testing.TestClient with ninja_extra.testing.TestClient for ControllerBase support
 
 ### Pending Todos
 
@@ -110,6 +114,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-12T19:47:44.644Z
-Stopped at: Completed 21-gdpr-baseline-01-PLAN.md
+Last session: 2026-03-12T20:02:09.353Z
+Stopped at: Completed 21-gdpr-baseline-02-PLAN.md
 Resume file: None
