@@ -11,18 +11,6 @@ import { AuthProvider, createWebTokenStorage } from "@repo/business-logic";
 import { Toaster } from "@/components/ui/sonner";
 import { useSessionToast } from "@/hooks/use-session-toast";
 
-if (typeof window !== "undefined") {
-  posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY ?? "", {
-    api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST ?? "https://eu.i.posthog.com",
-    capture_pageview: false, // Manual via PostHogPageView
-    capture_pageleave: true,
-    session_recording: { maskAllInputs: true },
-    loaded: (ph) => {
-      if (!process.env.NEXT_PUBLIC_POSTHOG_KEY) ph.opt_out_capturing();
-    },
-  });
-}
-
 function PostHogPageView() {
   const pathname = usePathname();
   const ph = usePostHog();

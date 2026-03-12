@@ -126,7 +126,7 @@ async function downloadInvoicePdf(invoiceId: string): Promise<void> {
 
 function getCsrfToken(): string {
   const match = document.cookie.match(/csrftoken=([^;]+)/);
-  return match ? match[1] : "";
+  return match ? (match[1] ?? "") : "";
 }
 
 // ---------------------------------------------------------------------------
