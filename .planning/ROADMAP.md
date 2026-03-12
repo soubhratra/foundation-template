@@ -58,7 +58,7 @@ Full archive: `.planning/milestones/v1.2-ROADMAP.md`
 - [x] **Phase 19: Transactional Email** — `EmailAdapter` ABC with `ResendAdapter` default; Celery-queued async dispatch; HTML templates with inline CSS; `ConsoleAdapter` for dev; `--without email` scaffolder flag (completed 2026-03-12)
 - [x] **Phase 20: Social Auth** — Google + GitHub OAuth on web; Apple Sign In on iOS mobile; email-collision account merge; `--without social-auth` scaffolder flag (completed 2026-03-12)
 - [x] **Phase 21: GDPR Baseline** — Async account hard delete cascading all third-party data; JSON personal data export; cookie consent banner gating PostHog (completed 2026-03-12)
-- [ ] **Phase 22: RBAC** — `@require_role("admin")` decorator; role assignment API; seeded `admin`/`member` groups via data migration
+- [x] **Phase 22: RBAC** — `@require_role("admin")` decorator; role assignment API; seeded `admin`/`member` groups via data migration (completed 2026-03-12)
 - [ ] **Phase 23: Feature Entitlements** — `has_feature(user, key)` utility; Redis-cached results; billing-off fallback returns `True`
 
 ## Phase Details
@@ -312,5 +312,5 @@ Plans:
 | 19. Transactional Email          | 4/4       | Complete       | 2026-03-12  | -          |
 | 20. Social Auth                  | 6/6       | Complete       | 2026-03-12  | -          |
 | 21. GDPR Baseline                | 4/4       | Complete       | 2026-03-12  | -          |
-| 22. RBAC                         | 2/3       | In Progress    |             | -          |
+| 22. RBAC                         | 3/3       | Complete       | 2026-03-12  | -          |
 | 23. Feature Entitlements         | v1.3      | 0/TBD          | Not started | -          |

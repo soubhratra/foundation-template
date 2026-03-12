@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: SaaS Functional Baseline
 status: planning
-stopped_at: Completed 22-rbac-02-PLAN.md
-last_updated: "2026-03-12T21:05:55.245Z"
+stopped_at: Completed 22-rbac-03-PLAN.md
+last_updated: "2026-03-12T21:12:57.239Z"
 last_activity: 2026-03-11 — v1.3 roadmap created; all 19 requirements mapped across Phases 19–23
 progress:
   total_phases: 11
-  completed_phases: 9
+  completed_phases: 10
   total_plans: 36
-  completed_plans: 35
+  completed_plans: 36
   percent: 0
 ---
 
@@ -63,6 +63,7 @@ _Updated after each plan completion_
 | Phase 21-gdpr-baseline P04 | 4 | 2 tasks | 4 files |
 | Phase 22-rbac P01 | 252 | 1 tasks | 2 files |
 | Phase 22-rbac P02 | 525 | 2 tasks | 3 files |
+| Phase 22-rbac P03 | 6 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -106,6 +107,8 @@ _Updated after each plan completion_
 - [Phase 22-rbac]: RequireRole returns False from has_permission (not raise PermissionDenied) — ninja_extra converts False to HttpError 403, TestClient handles it via default HttpError handler
 - [Phase 22-rbac]: Migration named migration*0003_seed_roles.py (not 0003*) so Python import system can import seed_roles() for idempotency tests
 - [Phase 22-rbac]: AdminController stub added in 22-02 as test vehicle for TestRequireRole — no auth= so RequireRole is sole gate returning 403 (not 401 from auth layer)
+- [Phase 22-rbac]: GET /admin/users/{id}/roles returns list[str] directly — test_get_user_roles asserts isinstance(data, list); UserRoleOut dict would fail that check
+- [Phase 22-rbac]: AdminController retains no auth= (consistent with 22-02 pattern) — RequireRole handles both anonymous and non-admin cases; Django middleware sets request.user before ninja processes
 
 ### Pending Todos
 
@@ -125,6 +128,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-12T21:05:55.241Z
-Stopped at: Completed 22-rbac-02-PLAN.md
+Last session: 2026-03-12T21:12:57.235Z
+Stopped at: Completed 22-rbac-03-PLAN.md
 Resume file: None
