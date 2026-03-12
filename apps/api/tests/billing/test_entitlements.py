@@ -119,13 +119,31 @@ class TestCaching:
 class TestCacheInvalidation:
     """ENT-02: Cache deleted immediately when customer.subscription.updated fires."""
 
+    @pytest.mark.django_db
     def test_cache_invalidated_on_subscription_updated(self, subscription):
-        try:
-            from apps.billing.entitlements import _has_feature  # noqa: F401
-            from apps.billing.tasks import _handle_subscription_updated  # noqa: F401
-        except ImportError:
-            pytest.fail(
-                "apps/billing/entitlements.py or apps/billing/tasks.py missing required symbols"
-            )
-        # Seed cache, fire webhook handler, assert cache is empty afterward.
-        pytest.fail("not implemented")
+        from apps.billing.entitlements import _has_feature  # noqa: F401
+        from apps.billing.tasks import _handle_subscription_updated
+
+        user = subscription.customer.user
+
+        # Seed the cache (simulates a prior has_feature() call having populated it)
+        from django.core.cache import cache
+
+        cache.set(f"entitlements:{user.pk}", {"api_access": True}, timeout=300)
+
+        # Verify the cache is seeded
+        assert cache.get(f"entitlements:{user.pk}") is not None
+
+        # Fire the webhook handler with a minimal event payload
+        event_data = {
+            "customer": subscription.customer.stripe_customer_id,
+            "status": "active",
+            "cancel_at_period_end": False,
+            "current_period_start": None,
+            "current_period_end": None,
+            "items": {"data": []},  # No price_id — tests unconditional cache delete
+        }
+        _handle_subscription_updated(event_data)
+
+        # Cache must be empty immediately after the handler runs
+        assert cache.get(f"entitlements:{user.pk}") is None
