@@ -40,6 +40,8 @@ dependencies = [
     "django-ratelimit==4.1.0",
     "django-csp==4.0",
     "nplusone>=1.0",
+    "django-anymail[resend]>=14.0",
+    "premailer>=3.10.0",
 ]
 
 [dependency-groups]
