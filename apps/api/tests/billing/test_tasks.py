@@ -319,10 +319,56 @@ class TestUnknownEventType:
         assert ProcessedWebhookEvent.objects.filter(provider="stripe", event_id=event_id).exists()
 
 
-# BILL-02: org cache invalidation stub
+# BILL-02: org cache invalidation
 
 
 @pytest.mark.django_db
 def test_subscription_updated_invalidates_org_caches(db):
     """BILL-02: Org member entitlement caches are cleared when org subscription updates."""
-    pytest.fail("stub — implement after OrgCustomer and org cache extension exists")
+    from django.contrib.auth import get_user_model
+    from django.core.cache import cache
+
+    from apps.billing.tasks import _try_invalidate_org_member_caches
+    from apps.orgs.models import Membership, Organization
+
+    User = get_user_model()
+
+    # Create org — post_save signal auto-creates OrgCustomer with empty stripe_customer_id
+    org = Organization.objects.create(name="TestCo", slug="testco-bill02")
+    stripe_cid = "cus_org_bill02_test"
+
+    # Update the auto-created OrgCustomer with a known stripe_customer_id
+    org.billing_customer.stripe_customer_id = stripe_cid
+    org.billing_customer.save(update_fields=["stripe_customer_id"])
+
+    # Create 3 members
+    members = []
+    for i in range(3):
+        u = User.objects.create_user(
+            username=f"orgmember{i}",
+            email=f"member{i}@example.com",
+            password="testpass",  # pragma: allowlist secret
+        )
+        Membership.objects.create(org=org, user=u, role="member")
+        members.append(u)
+
+    # Pre-populate org entitlement cache for each member
+    for u in members:
+        cache_key = f"entitlements:org:{org.pk}:{u.pk}"
+        cache.set(cache_key, {"some_feature": True}, timeout=300)
+        assert cache.get(cache_key) is not None, f"Cache key not set for user {u.pk}"
+
+    # Also set a personal entitlement cache to confirm it is NOT touched
+    personal_key = f"entitlements:{members[0].pk}"
+    cache.set(personal_key, {"personal_feature": True}, timeout=300)
+
+    # Call the function under test
+    _try_invalidate_org_member_caches(stripe_cid)
+
+    # All org-scoped keys must have been deleted
+    for u in members:
+        cache_key = f"entitlements:org:{org.pk}:{u.pk}"
+        assert cache.get(cache_key) is None, f"Cache key not cleared for user {u.pk}"
+
+    # Personal cache key must NOT have been affected
+    assert cache.get(personal_key) == {"personal_feature": True}

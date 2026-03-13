@@ -153,6 +153,9 @@ def _handle_subscription_updated(event_data: dict[str, Any]) -> None:
     # and cases where PlanProviderMapping is missing (downgrade to unmapped plan).
     # cache.delete() is a no-op on cache miss — no extra round-trip.
     cache.delete(f"entitlements:{customer.user.pk}")
+    # B2B_START
+    _try_invalidate_org_member_caches(stripe_customer_id)
+    # B2B_END
 
 
 def _handle_subscription_deleted(event_data: dict[str, Any]) -> None:
@@ -229,6 +232,41 @@ def _handle_invoice_payment_failed(event_data: dict[str, Any]) -> None:
     )
 
     Subscription.objects.filter(customer=customer).update(status=SubscriptionStatus.PAST_DUE)
+
+
+# B2B_START
+def _try_invalidate_org_member_caches(stripe_customer_id: str) -> None:
+    """Invalidate org-scoped entitlement caches for all members of the org.
+
+    Called at the end of _handle_subscription_updated() to keep org member
+    entitlement caches consistent when an org's Stripe subscription changes.
+
+    Uses lazy imports inside the try block to avoid circular imports at Django
+    startup (orgs models depend on billing; billing tasks must not import orgs
+    at module top-level).
+
+    Silently returns when OrgCustomer is not found — this is normal for personal
+    subscription events where stripe_customer_id belongs to a user-level Customer,
+    not an OrgCustomer.
+
+    Args:
+        stripe_customer_id: The Stripe customer ID from the subscription event.
+    """
+    try:
+        from django.core.cache import cache
+
+        from apps.orgs.models import Membership, OrgCustomer
+
+        org_customer = OrgCustomer.objects.get(stripe_customer_id=stripe_customer_id)
+        org = org_customer.org
+        member_ids = Membership.objects.filter(org=org).values_list("user_id", flat=True)
+        for user_id in member_ids:
+            cache.delete(f"entitlements:org:{org.pk}:{user_id}")
+    except Exception:
+        pass  # OrgCustomer not found — personal subscription, not org
+
+
+# B2B_END
 
 
 # Mapping of Stripe event types to handler functions
