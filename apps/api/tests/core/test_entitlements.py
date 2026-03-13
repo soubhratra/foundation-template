@@ -34,3 +34,20 @@ class TestBillingOffFallback:
             has_feature(user, "any_key")
         except Exception as exc:
             pytest.fail(f"has_feature() raised unexpectedly: {exc}")
+
+
+# BILL-02: has_org_feature stubs
+
+
+def test_has_org_feature_org_plan_takes_precedence(db):
+    """BILL-02: When org has active subscription, org plan result is returned (not personal)."""
+    from apps.core.entitlements import has_org_feature  # noqa: F401
+
+    pytest.fail("stub — implement after has_org_feature exists")
+
+
+def test_has_org_feature_personal_fallback(db):
+    """BILL-02: When org has no active subscription, falls back to personal plan."""
+    from apps.core.entitlements import has_org_feature  # noqa: F401
+
+    pytest.fail("stub — implement after has_org_feature exists")

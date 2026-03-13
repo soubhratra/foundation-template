@@ -317,3 +317,12 @@ class TestUnknownEventType:
 
         # ProcessedWebhookEvent IS created (to prevent reprocessing)
         assert ProcessedWebhookEvent.objects.filter(provider="stripe", event_id=event_id).exists()
+
+
+# BILL-02: org cache invalidation stub
+
+
+@pytest.mark.django_db
+def test_subscription_updated_invalidates_org_caches(db):
+    """BILL-02: Org member entitlement caches are cleared when org subscription updates."""
+    pytest.fail("stub — implement after OrgCustomer and org cache extension exists")
