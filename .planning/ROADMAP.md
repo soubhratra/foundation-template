@@ -266,7 +266,14 @@ Plans:
 3. API key requests that exceed the per-key rate limit receive HTTP 429 with `X-RateLimit-Limit`, `X-RateLimit-Remaining`, and `X-RateLimit-Reset` response headers
 4. Every authenticated API key request updates `last_used_at` and increments `usage_count` on the key record — these values are visible to the user managing the key
 
-**Plans**: TBD
+**Plans**: 4 plans
+
+Plans:
+
+- [ ] 28-01-PLAN.md — Wave 0: RED test stubs (test_models, test_auth, test_ratelimit, test_controllers, test_checks)
+- [ ] 28-02-PLAN.md — Wave 1: apps/api_keys/ app — APIKey model, generate_key(), migration, settings, manage.py check
+- [ ] 28-03-PLAN.md — Wave 2: ApiKeyAuth backend + RequireScope + schemas + service + controller (AKEY-01, AKEY-03)
+- [ ] 28-04-PLAN.md — Wave 2: ApiKeyRateLimitMiddleware + X-RateLimit-\* headers (AKEY-02)
 
 ### Phase 29: Audit Logging
 
