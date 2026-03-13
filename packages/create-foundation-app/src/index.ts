@@ -190,8 +190,8 @@ export async function main() {
         "\n" +
         pc.dim("  http://localhost:8000/api/docs (API)"),
     );
-  } catch {
-    p.log.error(pc.red("Generation failed"));
+  } catch (err) {
+    p.log.error(pc.red(`Generation failed: ${err instanceof Error ? err.message : String(err)}`));
     if (outputDir) {
       await rollbackGeneration(outputDir);
     }
