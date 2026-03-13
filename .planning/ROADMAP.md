@@ -329,7 +329,7 @@ Plans:
 | 23. Feature Entitlements           | v1.3      | 3/3            | Complete    | 2026-03-12 |
 | 24. Social Auth OAuth Callback     | v1.3      | 2/2            | Complete    | 2026-03-12 |
 | 25. GDPR Export plan_id Accuracy   | v1.3      | 1/1            | Complete    | 2026-03-12 |
-| 26. Organization + Per-Org Billing | 4/6       | In Progress    |             | -          |
+| 26. Organization + Per-Org Billing | 5/6       | In Progress    |             | -          |
 | 27. Outbound Webhooks              | v1.4      | 0/TBD          | Not started | -          |
 | 28. API Key Authentication         | v1.4      | 0/TBD          | Not started | -          |
 | 29. Audit Logging                  | v1.4      | 0/TBD          | Not started | -          |
