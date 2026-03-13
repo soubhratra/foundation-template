@@ -4,7 +4,7 @@ milestone: v1.4
 milestone_name: B2B Module
 status: planning
 stopped_at: Completed 32-webhook-wiring-invite-url 32-02-PLAN.md
-last_updated: "2026-03-13T23:45:43.478Z"
+last_updated: "2026-03-13T23:48:47.901Z"
 last_activity: 2026-03-13 — v1.4 roadmap created; all 19 requirements mapped across Phases 26–31
 progress:
   total_phases: 15
