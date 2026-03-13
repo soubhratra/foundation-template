@@ -1,6 +1,8 @@
 """Tests: AuditEntryOut schema excludes impersonator field (AUDIT-02)."""
 
+from apps.audit.schemas import AuditEntryOut
+
 
 def test_impersonator_excluded():
     """AuditEntryOut model_fields does not contain 'impersonator'."""
-    raise AssertionError("not implemented: import AuditEntryOut, check model_fields")
+    assert "impersonator" not in AuditEntryOut.model_fields
