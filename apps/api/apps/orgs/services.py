@@ -10,6 +10,7 @@ Also provides _resolve_org_plan_id() for entitlement resolution.
 All services use class methods so callers do not need to instantiate them.
 """
 
+from django.conf import settings
 from django.db import transaction
 
 # Re-export ServiceError so callers can do: from apps.orgs.services import ServiceError
@@ -18,6 +19,7 @@ from apps.core.exceptions import (  # noqa: F401
     PermissionDeniedError,
     ServiceError,
 )
+from apps.webhooks.utils import fire_webhook_event
 
 # Session key used to persist a pending invite token across the login/signup flow.
 # Stored when an unauthenticated user follows an invite link; consumed by
@@ -58,6 +60,43 @@ class MembershipService:
         from apps.orgs.models import Membership
 
         return Membership.objects.filter(org=org).select_related("user")
+
+    @classmethod
+    def add_member(cls, *, org, user, role: str = "member") -> object:
+        """Create a Membership and fire webhook events.
+
+        Fires user.created if this is the user's first org membership.
+        Always fires org.member_added.
+
+        Args:
+            org: The Organization the user is joining.
+            user: The user joining the org.
+            role: The role to assign (default: "member").
+
+        Returns:
+            The created Membership instance.
+        """
+        from apps.orgs.models import Membership
+
+        # Check before creating to avoid .exclude(pk=...) complexity
+        is_first_org = not Membership.objects.filter(user=user).exists()
+
+        membership = Membership.objects.create(org=org, user=user, role=role)
+
+        if is_first_org:
+            fire_webhook_event(
+                org,
+                "user.created",
+                {"user_id": str(user.pk), "email": user.email},
+            )
+
+        fire_webhook_event(
+            org,
+            "org.member_added",
+            {"org_slug": org.slug, "user_id": str(user.pk), "role": role},
+        )
+
+        return membership
 
     @classmethod
     def update_role(cls, *, org, target_user, new_role: str, acting_user) -> object:
@@ -214,7 +253,7 @@ class InvitationService:
             template_name="org_invitation.html",
             context={
                 "org_name": org.name,
-                "accept_url": f"https://app.example.com/accept-invite?token={invitation.token}",
+                "accept_url": f"{settings.FRONTEND_URL}/accept-invite?token={invitation.token}",
                 "expires_hours": 72,
             },
         )
@@ -266,7 +305,7 @@ class InvitationService:
             invitation.status = Invitation.Status.ACCEPTED
             invitation.save(update_fields=["status"])
             try:
-                Membership.objects.create(
+                MembershipService.add_member(
                     org=invitation.org, user=user, role=Membership.Role.MEMBER
                 )
             except IntegrityError:
