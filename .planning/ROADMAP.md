@@ -75,7 +75,7 @@ Full archive: `.planning/milestones/v1.3-ROADMAP.md`
 - [x] **Phase 27: Outbound Webhooks** - Webhook endpoint registry, HMAC-signed Celery delivery with exponential backoff, delivery log, manual retry, auto-disable circuit breaker (completed 2026-03-13)
 - [x] **Phase 28: API Key Authentication** - API key create/revoke/scopes, SHA-256 hash storage, Ninja auth backend, per-key rate limiting, usage tracking (completed 2026-03-13)
 - [x] **Phase 29: Audit Logging** - pghistory triggers on all B2B models, AuditContextMiddleware, org-scoped paginated audit log read API (completed 2026-03-13)
-- [ ] **Phase 30: Admin Backoffice** - django-unfold theme across all ModelAdmins, django-hijack impersonation wired to AuditLog
+- [x] **Phase 30: Admin Backoffice** - django-unfold theme across all ModelAdmins, django-hijack impersonation wired to AuditLog (completed 2026-03-13)
 - [ ] **Phase 31: CLI Scaffolder Integration** - `--with b2b` flag, B2B_START/B2B_END markers throughout, clean removal, `manage.py check` verified
 
 ## Phase Details
@@ -359,5 +359,5 @@ Plans:
 | 27. Outbound Webhooks              | 4/4       | Complete       | 2026-03-13  | -          |
 | 28. API Key Authentication         | 4/4       | Complete       | 2026-03-13  | -          |
 | 29. Audit Logging                  | 3/3       | Complete       | 2026-03-13  | -          |
-| 30. Admin Backoffice               | 2/3       | In Progress    |             | -          |
+| 30. Admin Backoffice               | 3/3       | Complete       | 2026-03-13  | -          |
 | 31. CLI Scaffolder Integration     | v1.4      | 0/TBD          | Not started | -          |

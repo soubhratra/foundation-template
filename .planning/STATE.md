@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: B2B Module
 status: planning
-stopped_at: Completed 30-admin-backoffice-02-PLAN.md
-last_updated: "2026-03-13T16:47:45.474Z"
+stopped_at: "Completed 30-admin-backoffice-03-PLAN.md (checkpoint:human-verify pending)"
+last_updated: "2026-03-13T16:56:40.699Z"
 last_activity: 2026-03-13 — v1.4 roadmap created; all 19 requirements mapped across Phases 26–31
 progress:
   total_phases: 12
-  completed_phases: 10
+  completed_phases: 11
   total_plans: 39
-  completed_plans: 38
+  completed_plans: 39
   percent: 0
 ---
 
@@ -66,6 +66,7 @@ _Updated after each plan completion_
 | Phase 29-audit-logging P03 | 848 | 2 tasks | 5 files |
 | Phase 30-admin-backoffice P01 | 3 | 3 tasks | 5 files |
 | Phase 30-admin-backoffice P02 | 7 | 2 tasks | 10 files |
+| Phase 30-admin-backoffice P03 | 7 | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -127,6 +128,8 @@ _Updated after each plan completion_
 - [Phase 30-admin-backoffice]: 30-02: Migration numbered 0001 (not 0002) — audit app had no prior migrations directory; Django auto-numbered it correctly
 - [Phase 30-admin-backoffice]: 30-02: AuditConfig.ready() uses try/except ImportError for hijack import — allows non-B2B scaffolds to remove hijack without breaking audit app startup
 - [Phase 30-admin-backoffice]: 30-02: HijackUserMiddleware positioned after AuthenticationMiddleware and before allauth AccountMiddleware — required by django-hijack (needs auth user populated)
+- [Phase 30-admin-backoffice]: 30-03: webhooks/admin.py readonly_fields uses signing_key + secret_hash (actual model field names), not 'secret' as plan specified — plan had wrong field name
+- [Phase 30-admin-backoffice]: 30-03: audit/admin.py ImpersonationEventAdmin list_display uses hijacker_email/hijacked_email computed columns (not actor_email/model_name/object_id) — ImpersonationEvent has hijacker/hijacked FKs, not general audit log fields
 
 ### Pending Todos
 
@@ -140,6 +143,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-13T16:47:45.469Z
-Stopped at: Completed 30-admin-backoffice-02-PLAN.md
+Last session: 2026-03-13T16:56:40.694Z
+Stopped at: Completed 30-admin-backoffice-03-PLAN.md (checkpoint:human-verify pending)
 Resume file: None
