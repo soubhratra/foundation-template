@@ -155,6 +155,7 @@ def _handle_subscription_updated(event_data: dict[str, Any]) -> None:
     cache.delete(f"entitlements:{customer.user.pk}")
     # B2B_START
     _try_invalidate_org_member_caches(stripe_customer_id)
+    _fire_subscription_updated_webhooks(customer.user, subscription)
     # B2B_END
 
 
@@ -235,6 +236,31 @@ def _handle_invoice_payment_failed(event_data: dict[str, Any]) -> None:
 
 
 # B2B_START
+from apps.webhooks.utils import fire_webhook_event  # noqa: E402
+
+
+def _fire_subscription_updated_webhooks(user, subscription) -> None:
+    """Fire subscription.updated webhook for every org the user belongs to.
+
+    Uses lazy imports to avoid circular import:
+    billing.tasks → webhooks.utils → orgs.models → billing.models.
+    Never raises — webhook wiring must never crash Stripe event processing.
+    """
+    try:
+        from apps.orgs.models import Membership
+
+        orgs = [m.org for m in Membership.objects.filter(user=user).select_related("org")]
+        payload = {
+            "user_id": str(user.pk),
+            "plan": subscription.plan_id or "",
+            "status": subscription.status,
+        }
+        for org in orgs:
+            fire_webhook_event(org, "subscription.updated", payload)
+    except Exception:
+        pass  # Never let webhook wiring crash Stripe event processing
+
+
 def _try_invalidate_org_member_caches(stripe_customer_id: str) -> None:
     """Invalidate org-scoped entitlement caches for all members of the org.
 
