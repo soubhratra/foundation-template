@@ -4,7 +4,7 @@ milestone: v1.4
 milestone_name: B2B Module
 status: planning
 stopped_at: Completed 26-06-PLAN.md (org entitlements and cache invalidation)
-last_updated: "2026-03-13T03:35:59.139Z"
+last_updated: "2026-03-13T03:40:07.288Z"
 last_activity: 2026-03-13 — v1.4 roadmap created; all 19 requirements mapped across Phases 26–31
 progress:
   total_phases: 12
