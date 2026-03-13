@@ -794,6 +794,18 @@ wheels = [
 ]
 
 [[package]]
+name = "django-hijack"
+version = "3.7.6"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "django" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/44/84/9b525b0ae0236f2d7b099809cea4c711adedda853cc63b5f1c1017d46429/django_hijack-3.7.6.tar.gz", hash = "sha256:a1f3b16d0eae3d72c27988692453f0a923c665d96783325034798a8020f0ceb4", size = 14310, upload-time = "2026-01-06T16:49:49.254Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/1f/5e/e076ed1056dec17879f842655e4034cb17c079f40473d53d73c8e9041905/django_hijack-3.7.6-py3-none-any.whl", hash = "sha256:b43703b57b77b17a2f754dced65356899178d8d3664b36e7e26a7d414fd61e7f", size = 31484, upload-time = "2026-01-06T16:49:48.098Z" },
+]
+
+[[package]]
 name = "django-ipware"
 version = "7.0.1"
 source = { registry = "https://pypi.org/simple" }
@@ -942,6 +954,18 @@ wheels = [
 ]
 
 [[package]]
+name = "django-unfold"
+version = "0.84.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "django" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/ef/ad/1010c6667058f9da7cebf24e590418dfed3729695304cebae1925af90e61/django_unfold-0.84.0.tar.gz", hash = "sha256:061d8d11bfe02c48f11d29f9c550dd097ee7d6bc301d79a28e497d3c08e16955", size = 1114203, upload-time = "2026-03-13T15:38:33.577Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ff/9f/83f8cc1d744979760fb4e953aa56c0d421cd29b4aaefbce8b2d8dd5f1e35/django_unfold-0.84.0-py3-none-any.whl", hash = "sha256:3c9365c2003a33b18d69cde8554f802961bfc14a3e692f93371aacfe95a15753", size = 1230269, upload-time = "2026-03-13T15:38:35.217Z" },
+]
+
+[[package]]
 name = "filelock"
 version = "3.24.2"
 source = { registry = "https://pypi.org/simple" }
@@ -1029,11 +1053,13 @@ dependencies = [
     { name = "django-cors-headers" },
     { name = "django-csp" },
     { name = "django-environ" },
+    { name = "django-hijack" },
     { name = "django-ninja-extra" },
     { name = "django-pghistory" },
     { name = "django-ratelimit" },
     { name = "django-redis" },
     { name = "django-structlog", extra = ["celery"] },
+    { name = "django-unfold" },
     { name = "flower" },
     { name = "gunicorn" },
     { name = "httpx" },
@@ -1093,11 +1119,13 @@ requires-dist = [
     { name = "django-cors-headers", specifier = ">=4.4" },
     { name = "django-csp", specifier = "==4.0" },
     { name = "django-environ", specifier = ">=0.11" },
+    { name = "django-hijack", specifier = ">=3.7.6" },
     { name = "django-ninja-extra", specifier = ">=0.21" },
     { name = "django-pghistory", specifier = ">=3.9.2" },
     { name = "django-ratelimit", specifier = "==4.1.0" },
     { name = "django-redis", specifier = "==6.0.0" },
     { name = "django-structlog", extras = ["celery"], specifier = ">=10.0" },
+    { name = "django-unfold", specifier = ">=0.84.0" },
     { name = "flower", specifier = ">=2.0" },
     { name = "gunicorn", specifier = ">=22.0" },
     { name = "httpx", specifier = ">=0.27,<1" },

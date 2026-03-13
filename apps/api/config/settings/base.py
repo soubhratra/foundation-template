@@ -95,6 +95,12 @@ OBSERVABILITY_ADAPTER: str = env(
 # ---------------------------------------------------------------------------
 
 INSTALLED_APPS = [
+    "unfold",  # MUST be before django.contrib.admin
+    "unfold.contrib.filters",  # Enhanced filter widgets for admin
+    # B2B_START
+    "hijack",  # B2B MODULE — impersonation
+    "hijack.contrib.admin",  # B2B MODULE — admin button integration
+    # B2B_END
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -137,6 +143,9 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    # B2B_START
+    "hijack.middleware.HijackUserMiddleware",  # B2B MODULE — must be after AuthenticationMiddleware
+    # B2B_END
     "allauth.account.middleware.AccountMiddleware",
     "apps.core.middleware.RequestContextMiddleware",
     "apps.core.middleware.ObservabilityMiddleware",  # OBSERVABILITY MODULE
@@ -495,6 +504,122 @@ SOCIALACCOUNT_EMAIL_AUTHENTICATION_AUTO_CONNECT = True  # SOCIAL AUTH MODULE
 # ---------------------------------------------------------------------------
 
 # ---------------------------------------------------------------------------
+# django-unfold Admin Theme
+# ---------------------------------------------------------------------------
+from django.urls import reverse_lazy  # noqa: E402 — used in UNFOLD dict
+
+UNFOLD = {
+    "SITE_TITLE": "Foundation Admin",
+    "SITE_HEADER": "Foundation",
+    "SIDEBAR": {
+        "show_search": False,
+        "show_all_applications": False,
+        "navigation": [
+            # NOTE: CONTEXT.md specified Heroicons (outline style) for icons.
+            # django-unfold uses Material Symbols (Google Material Icons) — confirmed
+            # HIGH confidence in RESEARCH.md pitfall (ICON CORRECTION). Heroicon names
+            # would render as blank icons; Material Symbols names (e.g., 'business',
+            # 'people', 'vpn_key') are the correct values here.
+            # B2B_START
+            {
+                "title": "B2B",
+                "separator": False,
+                "collapsible": False,
+                "items": [
+                    {
+                        "title": "Organizations",
+                        "icon": "business",
+                        "link": reverse_lazy("admin:orgs_organization_changelist"),
+                    },
+                    {
+                        "title": "Memberships",
+                        "icon": "people",
+                        "link": reverse_lazy("admin:orgs_membership_changelist"),
+                    },
+                    {
+                        "title": "API Keys",
+                        "icon": "vpn_key",
+                        "link": reverse_lazy("admin:api_keys_apikey_changelist"),
+                    },
+                    {
+                        "title": "Webhooks",
+                        "icon": "webhook",
+                        "link": reverse_lazy("admin:webhooks_webhookendpoint_changelist"),
+                    },
+                    {
+                        "title": "Audit Log",
+                        "icon": "history",
+                        "link": reverse_lazy("admin:audit_impersonationevent_changelist"),
+                    },
+                ],
+            },
+            # B2B_END
+            {
+                "title": "Users & Auth",
+                "separator": True,
+                "collapsible": False,
+                "items": [
+                    {
+                        "title": "Users",
+                        "icon": "manage_accounts",
+                        "link": reverse_lazy("admin:accounts_user_changelist"),
+                    },
+                ],
+            },
+            {
+                "title": "Billing",
+                "separator": True,
+                "collapsible": False,
+                "items": [
+                    {
+                        "title": "Customers",
+                        "icon": "credit_card",
+                        "link": reverse_lazy("admin:billing_customer_changelist"),
+                    },
+                    {
+                        "title": "Subscriptions",
+                        "icon": "receipt_long",
+                        "link": reverse_lazy("admin:billing_subscription_changelist"),
+                    },
+                    {
+                        "title": "Payments",
+                        "icon": "payments",
+                        "link": reverse_lazy("admin:billing_payment_changelist"),
+                    },
+                    {
+                        "title": "Plan Provider Mappings",
+                        "icon": "map",
+                        "link": reverse_lazy("admin:billing_planprovidermapping_changelist"),
+                    },
+                    {
+                        "title": "Processed Webhook Events",
+                        "icon": "event",
+                        "link": reverse_lazy("admin:billing_processedwebhookevent_changelist"),
+                    },
+                ],
+            },
+            {
+                "title": "System",
+                "separator": True,
+                "collapsible": True,
+                "items": [
+                    {
+                        "title": "Periodic Tasks",
+                        "icon": "schedule",
+                        "link": reverse_lazy("admin:django_celery_beat_periodictask_changelist"),
+                    },
+                    {
+                        "title": "Task Results",
+                        "icon": "task_alt",
+                        "link": reverse_lazy("admin:django_celery_results_taskresult_changelist"),
+                    },
+                ],
+            },
+        ],
+    },
+}
+
+# ---------------------------------------------------------------------------
 # BILLING MODULE
 # ---------------------------------------------------------------------------
 STRIPE_SECRET_KEY: str = env("STRIPE_SECRET_KEY", default="")
@@ -570,6 +695,9 @@ API_KEY_SCOPES: dict = {
     "write": {"description": "Create and update resources"},
     "admin": {"description": "Full access including destructive operations"},
 }
+# B2B_START
+HIJACK_PERMISSION_CHECK = "apps.accounts.permissions.staff_can_hijack_regular_users"
+HIJACK_LOGOUT_REDIRECT_URL = "/admin/accounts/user/"
 # B2B_END
 # ---------------------------------------------------------------------------
 # END BILLING MODULE

@@ -167,6 +167,9 @@ api.auto_discover_controllers()
 
 urlpatterns = [
     path("admin/", admin.site.urls),
+    # B2B_START
+    path("hijack/", include("hijack.urls")),  # B2B MODULE — impersonation
+    # B2B_END
     # Health probes — mounted before Ninja api/ to avoid URL shadowing
     path("api/health/", include("apps.core.health_urls")),
     path(
