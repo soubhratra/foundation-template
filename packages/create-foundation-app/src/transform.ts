@@ -101,3 +101,30 @@ export async function replaceInFiles(
     await writeFile(file, content, "utf-8");
   }
 }
+
+/**
+ * Strip all marker-fenced blocks from a string.
+ *
+ * Removes every region bounded by:
+ *   <optional whitespace># MARKER_START<optional trailing text><newline>
+ *   ...content...
+ *   <optional whitespace># MARKER_END<optional trailing text><newline>
+ *
+ * Uses non-greedy matching so multiple blocks in one file are each stripped
+ * independently. After stripping, collapses 3+ consecutive blank lines to 2.
+ *
+ * @param content - File content string
+ * @param markerName - Marker prefix (e.g. "B2B" matches # B2B_START / # B2B_END)
+ * @returns Stripped content
+ */
+export function stripMarkerBlocks(content: string, markerName: string): string {
+  const regex = new RegExp(
+    `[ \\t]*# ${markerName}_START[^\\n]*\\n[\\s\\S]*?[ \\t]*# ${markerName}_END[^\\n]*\\n`,
+    "g",
+  );
+  let stripped = content.replace(regex, "");
+  if (stripped !== content) {
+    stripped = stripped.replace(/\n{3,}/g, "\n\n");
+  }
+  return stripped;
+}

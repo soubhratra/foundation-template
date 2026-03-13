@@ -3,6 +3,7 @@ const { readFile, writeFile, remove } = fse;
 import { join } from "node:path";
 import { logger } from "./utils.js";
 import { rm } from "node:fs/promises";
+import { stripMarkerBlocks } from "./transform.js";
 
 /**
  * Remove AI module from generated project
@@ -796,4 +797,86 @@ export async function removeSocialAuthModule(outputDir: string): Promise<void> {
   }
 
   logger.info("✓ Social auth module removed successfully");
+}
+
+/**
+ * Remove B2B module from generated project
+ *
+ * Steps:
+ * 1. Delete four B2B app directories (orgs, api_keys, webhooks, audit)
+ * 2. Remove B2B dependencies from pyproject.toml (django-pghistory, django-hijack)
+ *    Note: django-unfold is NOT removed — admin theme is unconditional
+ * 3. Strip all # B2B_START / # B2B_END marker blocks from remaining Python files
+ *    (covers base.py, urls.py, accounts/permissions.py, billing/tasks.py)
+ */
+export async function removeB2BModule(outputDir: string): Promise<void> {
+  logger.info("Removing B2B module...");
+
+  // 1. Delete four B2B app directories (ENOENT-tolerant)
+  const b2bDirs = ["orgs", "api_keys", "webhooks", "audit"];
+  for (const dir of b2bDirs) {
+    const dirPath = join(outputDir, `apps/api/apps/${dir}`);
+    try {
+      await remove(dirPath);
+      logger.info(`  ✓ Deleted ${dirPath}`);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+        throw new Error(`Failed to delete B2B directory ${dir}: ${error}`);
+      }
+      logger.warning(`  ⚠ ${dir} directory not found (already removed)`);
+    }
+  }
+
+  // 2. Remove B2B dependencies from pyproject.toml
+  // Removes: django-pghistory, django-hijack
+  // Does NOT remove: django-unfold (admin theme is unconditional, not B2B-only)
+  const pyprojectPath = join(outputDir, "apps/api/pyproject.toml");
+  try {
+    let pyprojectContent = await readFile(pyprojectPath, "utf-8");
+    const b2bDeps = ["django-pghistory", "django-hijack"];
+    for (const dep of b2bDeps) {
+      const depRegex = new RegExp(`^\\s*"${dep}[^"]*",?\\s*$`, "gm");
+      pyprojectContent = pyprojectContent.replace(depRegex, "");
+    }
+    await writeFile(pyprojectPath, pyprojectContent, "utf-8");
+    logger.info(`  ✓ Removed B2B dependencies from pyproject.toml`);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+      throw new Error(`Failed to modify pyproject.toml: ${error}`);
+    }
+    logger.warning(`  ⚠ pyproject.toml not found (skipping dep removal)`);
+  }
+
+  // 3. Strip # B2B_START / # B2B_END marker blocks from all remaining Python files.
+  // Runs AFTER directory deletion so deleted-dir files are not processed.
+  // This covers: config/settings/base.py, config/urls.py,
+  //              apps/accounts/permissions.py, apps/billing/tasks.py
+  const { globby } = await import("globby");
+  const pyFiles = await globby(["**/*.py"], {
+    cwd: outputDir,
+    absolute: true,
+    ignore: ["**/node_modules/**", "**/.venv/**"],
+  });
+
+  let strippedCount = 0;
+  const warnings: string[] = [];
+  for (const filePath of pyFiles) {
+    const content = await readFile(filePath, "utf-8");
+    const stripped = stripMarkerBlocks(content, "B2B");
+    if (stripped !== content) {
+      await writeFile(filePath, stripped, "utf-8");
+      strippedCount++;
+    }
+    // Warn on any remaining (unmatched) markers after stripping
+    const remaining = stripped.match(/[ \t]*# B2B_(START|END)[^\n]*/g);
+    if (remaining) {
+      warnings.push(`Unmatched B2B marker in ${filePath}: ${remaining.join(", ")}`);
+    }
+  }
+  for (const w of warnings) {
+    logger.warning(`  ⚠ ${w}`);
+  }
+  logger.info(`  ✓ Stripped B2B marker blocks from ${strippedCount} file(s)`);
+
+  logger.info("✓ B2B module removed successfully");
 }

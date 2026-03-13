@@ -695,6 +695,7 @@ API_KEY_SCOPES: dict = {
     "write": {"description": "Create and update resources"},
     "admin": {"description": "Full access including destructive operations"},
 }
+# B2B_END
 # B2B_START
 HIJACK_PERMISSION_CHECK = "apps.accounts.permissions.staff_can_hijack_regular_users"
 HIJACK_LOGOUT_REDIRECT_URL = "/admin/accounts/user/"
