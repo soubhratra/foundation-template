@@ -345,7 +345,7 @@ Plans:
 | 25. GDPR Export plan_id Accuracy   | v1.3      | 1/1            | Complete    | 2026-03-12 |
 | 26. Organization + Per-Org Billing | 6/6       | Complete       | 2026-03-13  | -          |
 | 27. Outbound Webhooks              | 4/4       | Complete       | 2026-03-13  | -          |
-| 28. API Key Authentication         | 1/4       | In Progress    |             | -          |
+| 28. API Key Authentication         | 2/4       | In Progress    |             | -          |
 | 29. Audit Logging                  | v1.4      | 0/TBD          | Not started | -          |
 | 30. Admin Backoffice               | v1.4      | 0/TBD          | Not started | -          |
 | 31. CLI Scaffolder Integration     | v1.4      | 0/TBD          | Not started | -          |
