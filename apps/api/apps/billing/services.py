@@ -102,7 +102,7 @@ class BillingService:
         """
         customer = self._get_customer(user)
         try:
-            sub = Subscription.objects.select_related("customer").get(customer=customer)
+            sub = Subscription.objects.get(customer=customer)
         except Subscription.DoesNotExist as exc:
             raise ServiceError(
                 code="no_subscription",
