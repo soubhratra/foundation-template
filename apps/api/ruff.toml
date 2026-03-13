@@ -3,6 +3,7 @@ line-length = 100
 target-version = "py312"
 
 [lint]
+exclude = ["apps/*/migrations/*.py"]
 select = [
     "E",   # pycodestyle errors
     "W",   # pycodestyle warnings

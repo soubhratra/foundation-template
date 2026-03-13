@@ -118,6 +118,7 @@ INSTALLED_APPS = [
     "apps.billing",  # BILLING MODULE — remove this line to exclude billing
     # B2B_START
     "apps.orgs",  # B2B MODULE — remove this line to exclude B2B
+    "apps.webhooks",  # B2B MODULE — outbound webhooks
     # B2B_END
     "anymail",  # EMAIL MODULE — remove this line to exclude email
     "apps.notifications",  # EMAIL MODULE — remove this line to exclude email
@@ -526,6 +527,26 @@ BILLING_PLANS: dict = {
         },
     },
 }
+
+# B2B_START
+WEBHOOK_EVENTS: dict[str, dict] = {
+    "user.created": {
+        "description": "Fired when a new user account is created.",
+        "example_payload": {"user_id": 1, "email": "user@example.com"},
+    },
+    "subscription.updated": {
+        "description": "Fired when a user's subscription status changes.",
+        "example_payload": {"user_id": 1, "plan": "pro", "status": "active"},
+    },
+    "org.member_added": {
+        "description": "Fired when a user accepts an org invitation.",
+        "example_payload": {"org_slug": "acme", "user_id": 2, "role": "member"},
+    },
+}
+
+WEBHOOK_DELIVERY_RETENTION_DAYS: int = 30
+WEBHOOK_CIRCUIT_BREAKER_THRESHOLD: int = 5
+# B2B_END
 # ---------------------------------------------------------------------------
 # END BILLING MODULE
 # ---------------------------------------------------------------------------
