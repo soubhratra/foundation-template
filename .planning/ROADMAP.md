@@ -76,7 +76,7 @@ Full archive: `.planning/milestones/v1.3-ROADMAP.md`
 - [x] **Phase 28: API Key Authentication** - API key create/revoke/scopes, SHA-256 hash storage, Ninja auth backend, per-key rate limiting, usage tracking (completed 2026-03-13)
 - [x] **Phase 29: Audit Logging** - pghistory triggers on all B2B models, AuditContextMiddleware, org-scoped paginated audit log read API (completed 2026-03-13)
 - [x] **Phase 30: Admin Backoffice** - django-unfold theme across all ModelAdmins, django-hijack impersonation wired to AuditLog (completed 2026-03-13)
-- [ ] **Phase 31: CLI Scaffolder Integration** - `--with b2b` flag, B2B_START/B2B_END markers throughout, clean removal, `manage.py check` verified
+- [x] **Phase 31: CLI Scaffolder Integration** - `--with b2b` flag, B2B_START/B2B_END markers throughout, clean removal, `manage.py check` verified (completed 2026-03-13)
 
 ## Phase Details
 
@@ -366,4 +366,4 @@ Plans:
 | 28. API Key Authentication         | 4/4       | Complete       | 2026-03-13 | -          |
 | 29. Audit Logging                  | 3/3       | Complete       | 2026-03-13 | -          |
 | 30. Admin Backoffice               | 3/3       | Complete       | 2026-03-13 | -          |
-| 31. CLI Scaffolder Integration     | 2/3       | In Progress    |            | -          |
+| 31. CLI Scaffolder Integration     | 3/3       | Complete       | 2026-03-13 | -          |
