@@ -372,3 +372,37 @@ def test_subscription_updated_invalidates_org_caches(db):
 
     # Personal cache key must NOT have been affected
     assert cache.get(personal_key) == {"personal_feature": True}
+
+
+# ---------------------------------------------------------------------------- #
+# Phase 32: Webhook wiring (RED stub — Plan 32-02 makes GREEN)
+# ---------------------------------------------------------------------------- #
+
+
+@pytest.mark.django_db(transaction=True)
+def test_subscription_updated_fires_webhook_for_member_orgs(user):
+    """HOOK-01: _handle_subscription_updated fires subscription.updated webhook for member orgs."""
+    from unittest.mock import patch
+
+    from apps.orgs.models import Membership, Organization
+
+    # post_save signal on User auto-creates Customer — update it with a known stripe ID
+    customer, _ = Customer.objects.get_or_create(user=user)
+    customer.stripe_customer_id = "cus_test_webhook"
+    customer.save(update_fields=["stripe_customer_id"])
+
+    Subscription.objects.get_or_create(customer=customer, defaults={"status": "active"})
+
+    org = Organization.objects.create(name="Test Org", slug="test-org-wh", owner=user)
+    Membership.objects.create(org=org, user=user, role="owner")
+
+    event_data = {"customer": "cus_test_webhook", "status": "active"}
+
+    with patch("apps.billing.tasks.fire_webhook_event") as mock_fire:
+        billing_tasks._handle_subscription_updated(event_data)
+
+    assert mock_fire.called, "fire_webhook_event should have been called for member orgs"
+    event_types = [c.args[1] for c in mock_fire.call_args_list]
+    assert any(et == "subscription.updated" for et in event_types), (
+        f"Expected 'subscription.updated' in fired events, got: {event_types}"
+    )
