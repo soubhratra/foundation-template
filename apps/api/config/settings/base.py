@@ -116,6 +116,9 @@ INSTALLED_APPS = [
     "apps.core",
     "apps.ai",
     "apps.billing",  # BILLING MODULE — remove this line to exclude billing
+    # B2B_START
+    "apps.orgs",  # B2B MODULE — remove this line to exclude B2B
+    # B2B_END
     "anymail",  # EMAIL MODULE — remove this line to exclude email
     "apps.notifications",  # EMAIL MODULE — remove this line to exclude email
 ]
