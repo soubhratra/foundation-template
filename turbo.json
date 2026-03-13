@@ -23,9 +23,17 @@
     "generate:api-types": {
       "cache": false,
       "inputs": ["apps/api/**/*.py", "apps/api/**/*.json"],
-      "outputs": [
-        "packages/api-client/openapi.json",
-        "packages/api-client/src/gen/v1.d.ts"
+      "outputs": ["packages/api-client/openapi.json", "packages/api-client/src/gen/v1.d.ts"]
+    },
+    "test:e2e": {
+      "cache": false,
+      "env": [
+        "ADMIN_BASE_URL",
+        "WEB_BASE_URL",
+        "ADMIN_EMAIL",
+        "ADMIN_PASSWORD",
+        "REGULAR_USER_EMAIL",
+        "STAFF_USER_EMAIL"
       ]
     },
     "clean": {

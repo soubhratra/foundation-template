@@ -1,0 +1,17 @@
+{
+  "name": "@repo/e2e",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:admin": "playwright test --project=admin",
+    "test:e2e:web": "playwright test --project=web"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.50.0",
+    "@repo/config-ts": "workspace:*",
+    "typescript": "^5.0.0"
+  }
+}

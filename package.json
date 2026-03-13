@@ -18,7 +18,10 @@
     "db:reset": "docker compose down -v && docker compose up -d && sleep 5 && cd apps/api && uv run python manage.py migrate",
     "setup": "pnpm install && cd apps/api && uv sync && cd ../.. && docker compose up -d && sleep 5 && cd apps/api && uv run python manage.py migrate",
     "generate:api-types": "node ./scripts/generate-api-types.mjs",
-    "generate:types": "turbo run generate:api-types --filter=@repo/api"
+    "generate:types": "turbo run generate:api-types --filter=@repo/api",
+    "test:e2e": "turbo test:e2e --filter=@repo/e2e",
+    "test:e2e:admin": "pnpm --filter=@repo/e2e test:e2e:admin",
+    "test:e2e:web": "pnpm --filter=@repo/e2e test:e2e:web"
   },
   "pnpm": {
     "overrides": {
