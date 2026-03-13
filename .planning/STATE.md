@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: B2B Module
 status: planning
-stopped_at: Completed 31-01-PLAN.md
-last_updated: "2026-03-13T19:37:33.761Z"
+stopped_at: Completed 31-02-PLAN.md
+last_updated: "2026-03-13T19:42:28.748Z"
 last_activity: 2026-03-13 — v1.4 roadmap created; all 19 requirements mapped across Phases 26–31
 progress:
   total_phases: 12
   completed_phases: 11
   total_plans: 42
-  completed_plans: 40
+  completed_plans: 41
   percent: 0
 ---
 
@@ -68,6 +68,7 @@ _Updated after each plan completion_
 | Phase 30-admin-backoffice P02 | 7 | 2 tasks | 10 files |
 | Phase 30-admin-backoffice P03 | 7 | 2 tasks | 6 files |
 | Phase 31-cli-scaffolder-integration P01 | 2 | 1 tasks | 2 files |
+| Phase 31-cli-scaffolder-integration P02 | 2 | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -134,6 +135,9 @@ _Updated after each plan completion_
 - [Phase 31-cli-scaffolder-integration]: sys.executable used instead of 'python' literal in test_scaffold_with_b2b subprocess call — cross-env portability (avoids FileNotFoundError when 'python' not on PATH)
 - [Phase 31-cli-scaffolder-integration]: test_scaffold_with_b2b runs manage.py check against real template source not tmp_path — full Django project tree required for system check
 - [Phase 31-cli-scaffolder-integration]: parents[4] for PROJECT_ROOT in tests/scaffolder/ (not parents[3]) — test file is one directory deeper than root-level tests/
+- [Phase 31-cli-scaffolder-integration]: B2B is opt-in via --with b2b flag (not opt-out); default scaffold excludes B2B — enterprise feature not needed in every project
+- [Phase 31-cli-scaffolder-integration]: django-unfold NOT removed by removeB2BModule — admin theme is unconditional, not B2B-only
+- [Phase 31-cli-scaffolder-integration]: stripMarkerBlocks uses dynamic globby import inside function body to avoid ESM circular dep issues in remove.ts
 
 ### Pending Todos
 
@@ -147,6 +151,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-13T19:37:33.756Z
-Stopped at: Completed 31-01-PLAN.md
+Last session: 2026-03-13T19:42:28.743Z
+Stopped at: Completed 31-02-PLAN.md
 Resume file: None

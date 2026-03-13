@@ -366,4 +366,4 @@ Plans:
 | 28. API Key Authentication         | 4/4       | Complete       | 2026-03-13 | -          |
 | 29. Audit Logging                  | 3/3       | Complete       | 2026-03-13 | -          |
 | 30. Admin Backoffice               | 3/3       | Complete       | 2026-03-13 | -          |
-| 31. CLI Scaffolder Integration     | 1/3       | In Progress    |            | -          |
+| 31. CLI Scaffolder Integration     | 2/3       | In Progress    |            | -          |
