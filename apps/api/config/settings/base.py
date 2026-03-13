@@ -119,6 +119,7 @@ INSTALLED_APPS = [
     # B2B_START
     "apps.orgs",  # B2B MODULE — remove this line to exclude B2B
     "apps.webhooks",  # B2B MODULE — outbound webhooks
+    "apps.api_keys",  # B2B MODULE — API key authentication
     # B2B_END
     "anymail",  # EMAIL MODULE — remove this line to exclude email
     "apps.notifications",  # EMAIL MODULE — remove this line to exclude email
@@ -552,6 +553,16 @@ WEBHOOK_EVENTS: dict[str, dict] = {
 
 WEBHOOK_DELIVERY_RETENTION_DAYS: int = 30
 WEBHOOK_CIRCUIT_BREAKER_THRESHOLD: int = 5
+
+# Products override API_KEY_PREFIX to brand their keys (e.g. "gh_", "sk_")
+API_KEY_PREFIX: str = "ft_"  # pragma: allowlist secret
+# Global per-key rate limit; products override per tier
+API_KEY_RATE_LIMIT: str = "1000/h"  # pragma: allowlist secret
+API_KEY_SCOPES: dict = {
+    "read": {"description": "Read-only access to all resources"},
+    "write": {"description": "Create and update resources"},
+    "admin": {"description": "Full access including destructive operations"},
+}
 # B2B_END
 # ---------------------------------------------------------------------------
 # END BILLING MODULE
