@@ -19,6 +19,7 @@ import {
   removeObservability,
   removeEmailModule,
   removeSocialAuthModule,
+  removeB2BModule,
 } from "./remove.js";
 import { runValidation } from "./validation-runner.js";
 import { rollbackGeneration } from "./rollback.js";
@@ -57,6 +58,12 @@ export async function main() {
     (withoutIdx !== -1 && withoutArgs[withoutIdx + 1] === "social-auth") ||
     withoutArgs.includes("--without-social-auth");
 
+  // Parse --with b2b / --with-b2b flag (opt-in — B2B is excluded by default)
+  const withArgs = process.argv.slice(2);
+  const withIdx = withArgs.indexOf("--with");
+  const withB2bFlag =
+    (withIdx !== -1 && withArgs[withIdx + 1] === "b2b") || withArgs.includes("--with-b2b");
+
   // Track output directory for rollback
   let outputDir = "";
 
@@ -72,10 +79,14 @@ export async function main() {
     const rawFeatures = await promptFeatures();
     // If --without billing flag was passed, remove billing from selected features
     // If --without observability flag was passed, remove observability from selected features
-    const features = rawFeatures
-      .filter((f) => !(withoutBillingFlag && f === "billing"))
-      .filter((f) => !(withoutObservabilityFlag && f === "observability"))
-      .filter((f) => !(withoutSocialAuthFlag && f === "social-auth"));
+    // If --with b2b flag was passed, add b2b to selected features
+    const features: SelectedFeatures = [
+      ...rawFeatures
+        .filter((f) => !(withoutBillingFlag && f === "billing"))
+        .filter((f) => !(withoutObservabilityFlag && f === "observability"))
+        .filter((f) => !(withoutSocialAuthFlag && f === "social-auth")),
+      ...(withB2bFlag && !rawFeatures.includes("b2b") ? (["b2b"] as const) : []),
+    ];
     outputDir = await promptOutputDir();
 
     // Build configuration object
@@ -138,6 +149,9 @@ export async function main() {
     }
     if (!config.features.includes("social-auth")) {
       await removeSocialAuthModule(config.outputDir);
+    }
+    if (!config.features.includes("b2b")) {
+      await removeB2BModule(config.outputDir);
     }
     s4.stop(pc.green("✓ Features configured"));
 
