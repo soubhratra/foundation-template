@@ -45,7 +45,7 @@ Requirements for the B2B Module milestone. Each maps to a roadmap phase.
 
 ### CLI Scaffolder
 
-- [ ] **SCAFF-01**: `--with b2b` flag in `create-foundation-app`; all B2B code uses `# B2B_START`/`# B2B_END` markers; `--without b2b` removes module cleanly; `manage.py check` passes post-removal
+- [x] **SCAFF-01**: `--with b2b` flag in `create-foundation-app`; all B2B code uses `# B2B_START`/`# B2B_END` markers; `--without b2b` removes module cleanly; `manage.py check` passes post-removal
 
 ## Future Requirements
 
@@ -91,7 +91,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | AUDIT-02    | Phase 29 | Complete |
 | ADMIN-01    | Phase 30 | Complete |
 | ADMIN-02    | Phase 30 | Complete |
-| SCAFF-01    | Phase 31 | Pending  |
+| SCAFF-01    | Phase 31 | Complete |
 
 **Coverage:**
 
