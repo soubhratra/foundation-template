@@ -1,0 +1,18 @@
+<!-- SUBJECT: You've been invited to join {{ org_name }} -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <h2>You've been invited to join {{ org_name }}</h2>
+  <p>Click the link below to accept your invitation. This link expires in {{ expires_hours }} hours.</p>
+  <p>
+    <a href="{{ accept_url }}" style="background: #0070f3; color: white; padding: 12px 24px; border-radius: 4px; text-decoration: none; display: inline-block;">
+      Accept Invitation
+    </a>
+  </p>
+  <p style="color: #666; font-size: 14px;">If you didn't expect this invitation, you can ignore this email.</p>
+</body>
+</html>

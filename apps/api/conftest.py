@@ -117,6 +117,57 @@ sys.modules["nplusone.ext.pytest"] = _pytest_module
 
 
 @pytest.fixture(autouse=True)
+def _test_email_backend(settings):
+    """Force locmem email backend in all tests so mailoutbox fixture works.
+
+    The production email backend (Resend/console) cannot capture outgoing mail
+    in test assertions. locmem stores sent messages in django.core.mail.outbox,
+    which is what pytest-django's mailoutbox fixture reads.
+    """
+    settings.EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
+
+
+@pytest.fixture(autouse=True)
+def _celery_eager(settings):
+    """Run Celery tasks synchronously in tests.
+
+    Without task_always_eager, send_email_task.delay() queues the task but
+    never executes it during the test run, so mailoutbox stays empty.
+    TASK_ALWAYS_EAGER makes delay() call the task function inline immediately.
+    """
+    settings.CELERY_TASK_ALWAYS_EAGER = True
+    settings.CELERY_TASK_EAGER_PROPAGATES = True
+
+
+@pytest.fixture()
+def on_commit_immediately(monkeypatch):
+    """Patch transaction.on_commit to fire callbacks immediately.
+
+    Use this fixture explicitly in tests that call send_email() and need to
+    assert on mailoutbox. In @pytest.mark.django_db (non-transaction) tests,
+    the outer test transaction is never committed so on_commit callbacks never
+    fire — this patch bypasses that for test assertions only.
+
+    Do NOT use this fixture in tests that specifically verify rollback behavior
+    (e.g. test_send_email_on_commit_rollback). Those tests use transaction=True
+    and test real on_commit semantics.
+    """
+    from django import db as django_db
+
+    def immediate_on_commit(func, using=None):
+        func()
+
+    monkeypatch.setattr(django_db.transaction, "on_commit", immediate_on_commit)
+    # Also patch the apps.notifications.utils module's transaction reference
+    try:
+        import apps.notifications.utils as notif_utils
+
+        monkeypatch.setattr(notif_utils.transaction, "on_commit", immediate_on_commit)
+    except (ImportError, AttributeError):
+        pass
+
+
+@pytest.fixture(autouse=True)
 def _nplusone_guard(request):
     """Activate nplusone lazy-load (N+1) detection for this test.
 

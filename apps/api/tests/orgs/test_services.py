@@ -33,7 +33,7 @@ def test_create_org_creates_owner_membership(db):
 
 
 @pytest.mark.django_db
-def test_invite_sends_email(db, org, org_owner, mailoutbox):
+def test_invite_sends_email(db, org, org_owner, mailoutbox, on_commit_immediately):
     """ORG-02: InvitationService.invite() sends an email containing the invitation token."""
     invitation = InvitationService.invite(
         org=org,
@@ -116,7 +116,7 @@ def test_invite_accept_new_user_session_flow(db, org, org_owner):
 
 
 @pytest.mark.django_db
-def test_transfer_ownership(db, org, org_owner):
+def test_transfer_ownership(db, org, org_owner, org_membership):
     """ORG-04: transfer_ownership() promotes new owner, demotes old owner to admin."""
     from apps.orgs.models import Membership
 
