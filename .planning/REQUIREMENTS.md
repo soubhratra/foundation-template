@@ -10,7 +10,7 @@ Requirements for the B2B Module milestone. Each maps to a roadmap phase.
 ### Organizations & Membership
 
 - [x] **ORG-01**: User can create an organization with a name and slug; becomes owner automatically
-- [ ] **ORG-02**: Org owner can invite members by email (72h token expiry); accepted via new signup or existing login using existing EmailAdapter
+- [x] **ORG-02**: Org owner can invite members by email (72h token expiry); accepted via new signup or existing login using existing EmailAdapter
 - [x] **ORG-03**: Org members have owner/admin/member roles; `IsOrgAdmin`/`IsOrgMember` Ninja permission classes enforce access
 - [x] **ORG-04**: Org owner can transfer ownership to another member via dedicated endpoint
 - [x] **ORG-05**: All service methods validate org membership before any ORM access; cross-org resource access returns 403
@@ -22,7 +22,7 @@ Requirements for the B2B Module milestone. Each maps to a roadmap phase.
 
 ### Outbound Webhooks
 
-- [ ] **HOOK-01**: Org admin can register webhook endpoints; deliveries are sent via Celery with exponential backoff (7 retries), HMAC-SHA256 signed, payload versioned
+- [x] **HOOK-01**: Org admin can register webhook endpoints; deliveries are sent via Celery with exponential backoff (7 retries), HMAC-SHA256 signed, payload versioned
 - [x] **HOOK-02**: User can view paginated delivery history for a webhook endpoint (`GET /api/v1/webhooks/endpoints/{id}/deliveries`)
 - [x] **HOOK-03**: User can manually retry a failed delivery (`POST /api/v1/webhooks/deliveries/{id}/retry`)
 - [x] **HOOK-04**: System auto-disables endpoint after N consecutive failures and notifies org admin by email
@@ -74,13 +74,13 @@ Which phases cover which requirements. Updated during roadmap creation.
 | Requirement | Phase    | Status   |
 | ----------- | -------- | -------- |
 | ORG-01      | Phase 26 | Complete |
-| ORG-02      | Phase 32 | Pending  |
+| ORG-02      | Phase 32 | Complete |
 | ORG-03      | Phase 26 | Complete |
 | ORG-04      | Phase 26 | Complete |
 | ORG-05      | Phase 26 | Complete |
 | BILL-01     | Phase 34 | Pending  |
 | BILL-02     | Phase 26 | Complete |
-| HOOK-01     | Phase 32 | Pending  |
+| HOOK-01     | Phase 32 | Complete |
 | HOOK-02     | Phase 27 | Complete |
 | HOOK-03     | Phase 27 | Complete |
 | HOOK-04     | Phase 27 | Complete |
