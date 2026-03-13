@@ -221,7 +221,16 @@ Plans:
 4. When an organization has an active Stripe subscription, all org members receive entitlements from the org plan — `has_org_feature(user, org, key)` returns the org-plan result; personal plan is only consulted when no org subscription exists
 5. Updating an org subscription via Stripe webhook invalidates the entitlement cache for all current org members, not just the billing contact
 
-**Plans**: TBD
+**Plans**: 6 plans
+
+Plans:
+
+- [ ] 26-01-PLAN.md — Wave 1: RED test stubs for all org requirements
+- [ ] 26-02-PLAN.md — Wave 2: Organization, Membership, Invitation, OrgCustomer models + migration
+- [ ] 26-03-PLAN.md — Wave 3: IsOrgMember and IsOrgAdmin permission classes
+- [ ] 26-04-PLAN.md — Wave 3: OrgService, MembershipService, InvitationService, \_resolve_org_plan_id
+- [ ] 26-05-PLAN.md — Wave 4: Schemas + controllers (OrgController, MembershipController, InvitationController)
+- [ ] 26-06-PLAN.md — Wave 5: has_org_feature() + org member cache invalidation on webhook
 
 ### Phase 27: Outbound Webhooks
 
@@ -320,7 +329,7 @@ Plans:
 | 23. Feature Entitlements           | v1.3      | 3/3            | Complete    | 2026-03-12 |
 | 24. Social Auth OAuth Callback     | v1.3      | 2/2            | Complete    | 2026-03-12 |
 | 25. GDPR Export plan_id Accuracy   | v1.3      | 1/1            | Complete    | 2026-03-12 |
-| 26. Organization + Per-Org Billing | v1.4      | 0/TBD          | Not started | -          |
+| 26. Organization + Per-Org Billing | v1.4      | 0/6            | Not started | -          |
 | 27. Outbound Webhooks              | v1.4      | 0/TBD          | Not started | -          |
 | 28. API Key Authentication         | v1.4      | 0/TBD          | Not started | -          |
 | 29. Audit Logging                  | v1.4      | 0/TBD          | Not started | -          |
