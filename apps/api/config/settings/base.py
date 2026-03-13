@@ -317,6 +317,12 @@ CELERY_BEAT_SCHEDULE = {
         "schedule": 60.0,  # every 60 seconds — change to crontab() for cron expressions
         "options": {"expires": 30},  # drop if no worker picks it up in 30s
     },
+    # B2B_START
+    "webhook-delivery-cleanup": {
+        "task": "apps.webhooks.tasks.webhook_delivery_cleanup",
+        "schedule": crontab(hour=2, minute=0),  # Daily at 2am
+    },
+    # B2B_END
 }
 
 # --------------------------------------------------------------------------

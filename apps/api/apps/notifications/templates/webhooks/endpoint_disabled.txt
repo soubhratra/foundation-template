@@ -1,0 +1,7 @@
+Your webhook endpoint {{ endpoint_name }} has been automatically disabled
+for organization {{ org_name }} after repeated delivery failures.
+
+Endpoint URL: {{ endpoint_url }}
+Last failure reason: {{ last_failure_reason }}
+
+You can re-enable this endpoint from your webhook settings dashboard.
