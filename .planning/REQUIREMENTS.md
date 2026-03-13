@@ -22,10 +22,10 @@ Requirements for the B2B Module milestone. Each maps to a roadmap phase.
 
 ### Outbound Webhooks
 
-- [ ] **HOOK-01**: Org admin can register webhook endpoints; deliveries are sent via Celery with exponential backoff (7 retries), HMAC-SHA256 signed, payload versioned
-- [ ] **HOOK-02**: User can view paginated delivery history for a webhook endpoint (`GET /api/v1/webhooks/endpoints/{id}/deliveries`)
-- [ ] **HOOK-03**: User can manually retry a failed delivery (`POST /api/v1/webhooks/deliveries/{id}/retry`)
-- [ ] **HOOK-04**: System auto-disables endpoint after N consecutive failures and notifies org admin by email
+- [x] **HOOK-01**: Org admin can register webhook endpoints; deliveries are sent via Celery with exponential backoff (7 retries), HMAC-SHA256 signed, payload versioned
+- [x] **HOOK-02**: User can view paginated delivery history for a webhook endpoint (`GET /api/v1/webhooks/endpoints/{id}/deliveries`)
+- [x] **HOOK-03**: User can manually retry a failed delivery (`POST /api/v1/webhooks/deliveries/{id}/retry`)
+- [x] **HOOK-04**: System auto-disables endpoint after N consecutive failures and notifies org admin by email
 
 ### API Keys
 
@@ -80,10 +80,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ORG-05      | Phase 26 | Complete |
 | BILL-01     | Phase 26 | Complete |
 | BILL-02     | Phase 26 | Complete |
-| HOOK-01     | Phase 27 | Pending  |
-| HOOK-02     | Phase 27 | Pending  |
-| HOOK-03     | Phase 27 | Pending  |
-| HOOK-04     | Phase 27 | Pending  |
+| HOOK-01     | Phase 27 | Complete |
+| HOOK-02     | Phase 27 | Complete |
+| HOOK-03     | Phase 27 | Complete |
+| HOOK-04     | Phase 27 | Complete |
 | AKEY-01     | Phase 28 | Pending  |
 | AKEY-02     | Phase 28 | Pending  |
 | AKEY-03     | Phase 28 | Pending  |

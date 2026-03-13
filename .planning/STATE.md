@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: B2B Module
 status: planning
-stopped_at: Phase 27 context gathered
-last_updated: "2026-03-13T10:36:14.857Z"
+stopped_at: Completed 27-01-PLAN.md (RED test stubs for outbound webhooks)
+last_updated: "2026-03-13T11:18:52.363Z"
 last_activity: 2026-03-13 — v1.4 roadmap created; all 19 requirements mapped across Phases 26–31
 progress:
   total_phases: 12
   completed_phases: 7
-  total_plans: 25
-  completed_plans: 25
+  total_plans: 29
+  completed_plans: 26
   percent: 0
 ---
 
@@ -53,6 +53,7 @@ _Updated after each plan completion_
 | Phase 26-organization-model-per-org-billing P04 | 13 | 2 tasks | 6 files |
 | Phase 26-organization-model-per-org-billing P05 | 4 | 2 tasks | 2 files |
 | Phase 26-organization-model-per-org-billing P06 | 7 | 2 tasks | 4 files |
+| Phase 27-outbound-webhooks P01 | 2 | 1 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -81,6 +82,8 @@ _Updated after each plan completion_
 - [Phase 26-organization-model-per-org-billing]: 26-05: No explicit orgs import in urls.py — auto_discover_controllers() imports apps.orgs.controllers because apps.orgs is in INSTALLED_APPS
 - [Phase 26-organization-model-per-org-billing]: 26-06: OrgCustomer auto-created by post_save signal — tests must update existing OrgCustomer stripe_customer_id, not create a second one
 - [Phase 26-organization-model-per-org-billing]: 26-06: Lazy imports inside \_try_invalidate_org_member_caches() body prevent circular imports between orgs models and billing tasks at Django startup
+- [Phase 27-outbound-webhooks]: Module-level import in **init**.py causes ImportError at collection time — ensures all test files fail RED before any implementation exists
+- [Phase 27-outbound-webhooks]: conftest.py uses lazy imports inside fixture bodies for WebhookEndpoint/WebhookDelivery to prevent double-import errors while keeping **init**.py as the RED trigger
 
 ### Pending Todos
 
@@ -94,6 +97,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-13T10:36:14.853Z
-Stopped at: Phase 27 context gathered
-Resume file: .planning/phases/27-outbound-webhooks/27-CONTEXT.md
+Last session: 2026-03-13T11:18:52.359Z
+Stopped at: Completed 27-01-PLAN.md (RED test stubs for outbound webhooks)
+Resume file: None
