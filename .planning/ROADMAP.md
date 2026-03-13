@@ -352,8 +352,8 @@ Plans:
 
 Plans:
 
-- [ ] 32-01-PLAN.md — Wire `fire_webhook_event()` to `user.created` signal, `subscription.updated` Stripe handler, and `org.member_added` service + tests
-- [ ] 32-02-PLAN.md — Fix `InvitationService.invite()` to use `settings.FRONTEND_URL` + test covering broken-URL regression
+- [ ] 32-01-PLAN.md — Wave 1: RED test stubs (5 tests across test_services.py + test_tasks.py covering HOOK-01 + ORG-02)
+- [ ] 32-02-PLAN.md — Wave 2: MembershipService.add_member() + InvitationService routing + subscription webhook wiring + FRONTEND_URL fix
 
 ### Phase 33: ApiKeyAuth Example Endpoint
 
