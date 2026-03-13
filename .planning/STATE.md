@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: B2B Module
 status: planning
-stopped_at: Completed 27-02-PLAN.md (webhooks models, fire_webhook_event, WEBHOOK_EVENTS check)
-last_updated: "2026-03-13T11:29:35.217Z"
+stopped_at: Completed 27-03-PLAN.md (deliver_webhook task, circuit breaker, cleanup, email templates)
+last_updated: "2026-03-13T11:39:53.091Z"
 last_activity: 2026-03-13 — v1.4 roadmap created; all 19 requirements mapped across Phases 26–31
 progress:
   total_phases: 12
   completed_phases: 7
   total_plans: 29
-  completed_plans: 27
+  completed_plans: 28
   percent: 0
 ---
 
@@ -55,6 +55,7 @@ _Updated after each plan completion_
 | Phase 26-organization-model-per-org-billing P06 | 7 | 2 tasks | 4 files |
 | Phase 27-outbound-webhooks P01 | 2 | 1 tasks | 7 files |
 | Phase 27-outbound-webhooks P02 | 8 | 2 tasks | 12 files |
+| Phase 27-outbound-webhooks P03 | 10 | 1 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -88,6 +89,9 @@ _Updated after each plan completion_
 - [Phase 27-outbound-webhooks]: WebhookDeliveryAttempt truncates response_body at save() so direct objects.create() test assertions work
 - [Phase 27-outbound-webhooks]: fire_webhook_event() tests use transaction=True — default atomic() wrapper defers on_commit indefinitely
 - [Phase 27-outbound-webhooks]: ruff.toml migration exclusion: auto-generated migration files have long lines that cannot be shortened
+- [Phase 27-outbound-webhooks]: select_related('endpoint') not endpoint\_\_org in deliver_webhook — org accessed lazily only in circuit breaker path to avoid NPlusOneError on common success path
+- [Phase 27-outbound-webhooks]: \_handle_terminal_failure is module-level (not task-internal) to enable direct testing without mocking full Celery retry chain
+- [Phase 27-outbound-webhooks]: Email template at email/webhooks/endpoint_disabled.html (send_email_task resolves email/{template_name})
 
 ### Pending Todos
 
@@ -101,6 +105,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-13T11:29:35.212Z
-Stopped at: Completed 27-02-PLAN.md (webhooks models, fire_webhook_event, WEBHOOK_EVENTS check)
+Last session: 2026-03-13T11:39:53.087Z
+Stopped at: Completed 27-03-PLAN.md (deliver_webhook task, circuit breaker, cleanup, email templates)
 Resume file: None
