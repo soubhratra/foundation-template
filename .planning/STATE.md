@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: B2B Module
 status: planning
-stopped_at: Phase 26 context gathered
-last_updated: "2026-03-13T02:24:51.872Z"
+stopped_at: Completed 26-01-PLAN.md (RED test stubs for orgs app)
+last_updated: "2026-03-13T02:53:02.790Z"
 last_activity: 2026-03-13 — v1.4 roadmap created; all 19 requirements mapped across Phases 26–31
 progress:
   total_phases: 12
   completed_phases: 6
-  total_plans: 19
-  completed_plans: 19
+  total_plans: 25
+  completed_plans: 20
   percent: 0
 ---
 
@@ -47,6 +47,7 @@ Progress: [░░░░░░░░░░] 0% (v1.4 IN PROGRESS) | 6 phases pend
 | -     | -     | -     | -        |
 
 _Updated after each plan completion_
+| Phase 26-organization-model-per-org-billing P01 | 277 | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -61,6 +62,8 @@ _Updated after each plan completion_
 - v1.4 billing atomicity: `OrgCustomer` + `_resolve_plan_id` update ships in Phase 26 (same phase as org model) — intermediate state where org model exists but entitlement resolution is still user-only is a correctness bug
 - v1.4 API key security: SHA-256 hash only; `hmac.compare_digest` not `==`; raw key shown once at creation; no migration path from plaintext — must be correct from first commit (Phase 28)
 - v1.4 Phase 30 risk: unfold + hijack compatibility is MEDIUM confidence — no single joint integration guide; run smoke test early before building out full admin registrations
+- [Phase 26-organization-model-per-org-billing]: 26-01: Module-top-level imports in tests/orgs/ ensure immediate ImportError at collection time (clean RED state before orgs app exists)
+- [Phase 26-organization-model-per-org-billing]: 26-01: Lazy imports in BILL-02 test stubs appended to existing files prevent breaking 10 passing tests while still defining RED stubs
 
 ### Pending Todos
 
@@ -74,6 +77,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-13T02:24:51.869Z
-Stopped at: Phase 26 context gathered
-Resume file: .planning/phases/26-organization-model-per-org-billing/26-CONTEXT.md
+Last session: 2026-03-13T02:53:02.786Z
+Stopped at: Completed 26-01-PLAN.md (RED test stubs for orgs app)
+Resume file: None

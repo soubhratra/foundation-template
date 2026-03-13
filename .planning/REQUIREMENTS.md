@@ -9,16 +9,16 @@ Requirements for the B2B Module milestone. Each maps to a roadmap phase.
 
 ### Organizations & Membership
 
-- [ ] **ORG-01**: User can create an organization with a name and slug; becomes owner automatically
-- [ ] **ORG-02**: Org owner can invite members by email (72h token expiry); accepted via new signup or existing login using existing EmailAdapter
-- [ ] **ORG-03**: Org members have owner/admin/member roles; `IsOrgAdmin`/`IsOrgMember` Ninja permission classes enforce access
-- [ ] **ORG-04**: Org owner can transfer ownership to another member via dedicated endpoint
-- [ ] **ORG-05**: All service methods validate org membership before any ORM access; cross-org resource access returns 403
+- [x] **ORG-01**: User can create an organization with a name and slug; becomes owner automatically
+- [x] **ORG-02**: Org owner can invite members by email (72h token expiry); accepted via new signup or existing login using existing EmailAdapter
+- [x] **ORG-03**: Org members have owner/admin/member roles; `IsOrgAdmin`/`IsOrgMember` Ninja permission classes enforce access
+- [x] **ORG-04**: Org owner can transfer ownership to another member via dedicated endpoint
+- [x] **ORG-05**: All service methods validate org membership before any ORM access; cross-org resource access returns 403
 
 ### Per-Org Billing
 
-- [ ] **BILL-01**: System creates `OrgCustomer` (linked to `Organization`) for per-org Stripe billing, parallel to existing user `Customer` model
-- [ ] **BILL-02**: `_resolve_plan_id` checks org plan before personal plan; entitlement cache invalidated for all org members on subscription update; `has_org_feature()` utility available
+- [x] **BILL-01**: System creates `OrgCustomer` (linked to `Organization`) for per-org Stripe billing, parallel to existing user `Customer` model
+- [x] **BILL-02**: `_resolve_plan_id` checks org plan before personal plan; entitlement cache invalidated for all org members on subscription update; `has_org_feature()` utility available
 
 ### Outbound Webhooks
 
@@ -71,27 +71,27 @@ Requirements for the B2B Module milestone. Each maps to a roadmap phase.
 
 Which phases cover which requirements. Updated during roadmap creation.
 
-| Requirement | Phase    | Status  |
-| ----------- | -------- | ------- |
-| ORG-01      | Phase 26 | Pending |
-| ORG-02      | Phase 26 | Pending |
-| ORG-03      | Phase 26 | Pending |
-| ORG-04      | Phase 26 | Pending |
-| ORG-05      | Phase 26 | Pending |
-| BILL-01     | Phase 26 | Pending |
-| BILL-02     | Phase 26 | Pending |
-| HOOK-01     | Phase 27 | Pending |
-| HOOK-02     | Phase 27 | Pending |
-| HOOK-03     | Phase 27 | Pending |
-| HOOK-04     | Phase 27 | Pending |
-| AKEY-01     | Phase 28 | Pending |
-| AKEY-02     | Phase 28 | Pending |
-| AKEY-03     | Phase 28 | Pending |
-| AUDIT-01    | Phase 29 | Pending |
-| AUDIT-02    | Phase 29 | Pending |
-| ADMIN-01    | Phase 30 | Pending |
-| ADMIN-02    | Phase 30 | Pending |
-| SCAFF-01    | Phase 31 | Pending |
+| Requirement | Phase    | Status   |
+| ----------- | -------- | -------- |
+| ORG-01      | Phase 26 | Complete |
+| ORG-02      | Phase 26 | Complete |
+| ORG-03      | Phase 26 | Complete |
+| ORG-04      | Phase 26 | Complete |
+| ORG-05      | Phase 26 | Complete |
+| BILL-01     | Phase 26 | Complete |
+| BILL-02     | Phase 26 | Complete |
+| HOOK-01     | Phase 27 | Pending  |
+| HOOK-02     | Phase 27 | Pending  |
+| HOOK-03     | Phase 27 | Pending  |
+| HOOK-04     | Phase 27 | Pending  |
+| AKEY-01     | Phase 28 | Pending  |
+| AKEY-02     | Phase 28 | Pending  |
+| AKEY-03     | Phase 28 | Pending  |
+| AUDIT-01    | Phase 29 | Pending  |
+| AUDIT-02    | Phase 29 | Pending  |
+| ADMIN-01    | Phase 30 | Pending  |
+| ADMIN-02    | Phase 30 | Pending  |
+| SCAFF-01    | Phase 31 | Pending  |
 
 **Coverage:**
 
