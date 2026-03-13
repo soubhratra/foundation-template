@@ -18,7 +18,7 @@ Not in scope: per-field diff exposure in the API (stored internally, not returne
 ### Audit entry response schema
 
 - **Summary-only response** — no raw before/after diffs in `AuditEntryOut`; pghistory stores full row snapshots internally but Phase 29 does not expose them; diff endpoint is a future phase
-- **Actor fields:** both `actor_id` (UUID) and `actor_email` in every entry; both become `null` if the actor was later deleted — no FK constraint on audit entries referencing users
+- **Actor fields:** both `actor_id` (int — user pk, BigAutoField) and `actor_email` in every entry; both become `null` if the actor was later deleted — no FK constraint on audit entries referencing users
 - **Object identification:** `model_name` (e.g. `"Organization"`) + `object_id` (UUID/PK) — generic across all 4 tracked models; no `object_repr` in Phase 29
 - **Timestamp:** ISO 8601 UTC string
 - **Impersonator field:** stored in pghistory context JSON but excluded from `AuditEntryOut`; never serialised for org-level callers; staff-only (future phase)
@@ -49,7 +49,7 @@ Not in scope: per-field diff exposure in the API (stored internally, not returne
 
 ### Filtering interface
 
-- **Query params** (all optional, combinable): `actor_id` (UUID exact match), `from` (ISO 8601 datetime), `to` (ISO 8601 datetime), `action` (exact string match, e.g. `org.updated`)
+- **Query params** (all optional, combinable): `actor_id` (int — user pk, BigAutoField exact match), `from` (ISO 8601 datetime), `to` (ISO 8601 datetime), `action` (exact string match, e.g. `org.updated`)
 - **Pagination:** cursor-based; default `page_size=50`, max 200; stable for append-only logs — offset pagination would break when new entries are inserted mid-query
 - **Default sort:** newest first (`ORDER BY timestamp DESC`)
 
