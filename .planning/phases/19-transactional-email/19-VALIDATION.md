@@ -1,10 +1,11 @@
 ---
 phase: 19
 slug: transactional-email
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: complete
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-03-11
+audited: 2026-03-12
 ---
 
 # Phase 19 — Validation Strategy
@@ -36,15 +37,15 @@ created: 2026-03-11
 
 ## Per-Task Verification Map
 
-| Task ID  | Plan | Wave | Requirement  | Test Type   | Automated Command                                                                 | File Exists | Status     |
-| -------- | ---- | ---- | ------------ | ----------- | --------------------------------------------------------------------------------- | ----------- | ---------- |
-| 19-01-01 | 01   | 0    | EMAIL-01..05 | setup       | `ls tests/notifications/`                                                         | ❌ W0       | ⬜ pending |
-| 19-02-01 | 02   | 1    | EMAIL-01     | unit        | `pytest tests/notifications/test_utils.py::test_send_email_queues_task -x`        | ❌ W0       | ⬜ pending |
-| 19-02-02 | 02   | 1    | EMAIL-01     | unit        | `pytest tests/notifications/test_settings.py::test_email_backend_selection -x`    | ❌ W0       | ⬜ pending |
-| 19-02-03 | 02   | 1    | EMAIL-02     | unit        | `pytest tests/notifications/test_utils.py::test_send_email_on_commit_rollback -x` | ❌ W0       | ⬜ pending |
-| 19-03-01 | 03   | 2    | EMAIL-03     | unit        | `pytest tests/notifications/test_tasks.py::test_css_is_inlined -x`                | ❌ W0       | ⬜ pending |
-| 19-03-02 | 03   | 2    | EMAIL-04     | unit        | `pytest tests/notifications/test_settings.py::test_no_api_key_uses_console -x`    | ❌ W0       | ⬜ pending |
-| 19-04-01 | 04   | 3    | EMAIL-05     | integration | `pytest tests/test_scaffolder_email_removal.py -x`                                | ❌ W0       | ⬜ pending |
+| Task ID  | Plan | Wave | Requirement  | Test Type   | Automated Command                                                                                                | File Exists | Status   |
+| -------- | ---- | ---- | ------------ | ----------- | ---------------------------------------------------------------------------------------------------------------- | ----------- | -------- |
+| 19-01-01 | 01   | 0    | EMAIL-01..05 | setup       | `ls tests/notifications/`                                                                                        | ✅          | ✅ green |
+| 19-02-01 | 02   | 1    | EMAIL-01     | unit        | `pytest tests/notifications/test_utils.py::TestSendEmailQueuesTask::test_send_email_queues_task -x`              | ✅          | ✅ green |
+| 19-02-02 | 02   | 1    | EMAIL-01     | unit        | `pytest tests/notifications/test_settings.py::TestEmailBackendSelection::test_email_backend_selection -x`        | ✅          | ✅ green |
+| 19-02-03 | 02   | 1    | EMAIL-02     | unit        | `pytest tests/notifications/test_utils.py::TestSendEmailOnCommitRollback::test_send_email_on_commit_rollback -x` | ✅          | ✅ green |
+| 19-03-01 | 03   | 2    | EMAIL-03     | unit        | `pytest tests/notifications/test_tasks.py::TestCssIsInlined::test_css_is_inlined -x`                             | ✅          | ✅ green |
+| 19-03-02 | 03   | 2    | EMAIL-04     | unit        | `pytest tests/notifications/test_settings.py::TestNoApiKeyUsesConsole::test_no_api_key_uses_console -x`          | ✅          | ✅ green |
+| 19-04-01 | 04   | 3    | EMAIL-05     | integration | `pytest tests/test_scaffolder_email_removal.py -x`                                                               | ✅          | ✅ green |
 
 _Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky_
 
@@ -52,11 +53,11 @@ _Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky_
 
 ## Wave 0 Requirements
 
-- [ ] `apps/api/tests/notifications/__init__.py` — package init
-- [ ] `apps/api/tests/notifications/test_utils.py` — stubs for EMAIL-01, EMAIL-02
-- [ ] `apps/api/tests/notifications/test_tasks.py` — stubs for EMAIL-03
-- [ ] `apps/api/tests/notifications/test_settings.py` — stubs for EMAIL-01, EMAIL-04
-- [ ] `apps/api/tests/test_scaffolder_email_removal.py` — stubs for EMAIL-05; mirrors `test_scaffolder_billing_removal.py`
+- [x] `apps/api/tests/notifications/__init__.py` — package init
+- [x] `apps/api/tests/notifications/test_utils.py` — EMAIL-01, EMAIL-02 (3 tests)
+- [x] `apps/api/tests/notifications/test_tasks.py` — EMAIL-03 (2 tests)
+- [x] `apps/api/tests/notifications/test_settings.py` — EMAIL-01, EMAIL-04 (3 tests)
+- [x] `apps/api/tests/test_scaffolder_email_removal.py` — EMAIL-05 (1 test)
 
 ---
 
@@ -71,11 +72,23 @@ _Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky_
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 15s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references
+- [x] No watch-mode flags
+- [x] Feedback latency < 15s (actual: 3.05s for 9 tests)
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** ✅ 2026-03-12 — 9/9 tests passing
+
+---
+
+## Validation Audit 2026-03-12
+
+| Metric        | Count |
+| ------------- | ----- |
+| Gaps found    | 0     |
+| Resolved      | 0     |
+| Escalated     | 0     |
+| Tests run     | 9     |
+| Tests passing | 9     |
