@@ -286,7 +286,13 @@ Plans:
 2. Every audit entry includes the acting user, the org context, the changed model, the before/after values, and the request URL — Celery task actions include the actor ID passed explicitly (no `request.user` inside tasks)
 3. An org owner or admin can query a paginated, filterable audit log for their organization via `GET /api/v1/org/{slug}/audit-log` — entries from impersonation sessions are present in the log but the `impersonator` field is not exposed to org-level queries (staff-only)
 
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+
+- [ ] 29-01-PLAN.md — Wave 1: RED test stubs (test_middleware, test_controllers)
+- [ ] 29-02-PLAN.md — Wave 2: apps/audit/ app + model decorators + AuditContextMiddleware + migrations
+- [ ] 29-03-PLAN.md — Wave 3: AuditLogController + AuditEntryOut schema + org-scoped query API
 
 ### Phase 30: Admin Backoffice
 
