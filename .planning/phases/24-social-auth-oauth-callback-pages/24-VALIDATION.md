@@ -1,10 +1,11 @@
 ---
 phase: 24
 slug: social-auth-oauth-callback-pages
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: complete
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-03-12
+audited: 2026-03-12
 ---
 
 # Phase 24 — Validation Strategy
@@ -36,12 +37,12 @@ created: 2026-03-12
 
 ## Per-Task Verification Map
 
-| Task ID  | Plan | Wave | Requirement | Test Type | Automated Command                          | File Exists | Status     |
-| -------- | ---- | ---- | ----------- | --------- | ------------------------------------------ | ----------- | ---------- |
-| 24-01-01 | 01   | 0    | SOCIAL-01   | unit      | `pnpm --filter @repo/web test -- callback` | ❌ W0       | ⬜ pending |
-| 24-01-02 | 01   | 1    | SOCIAL-01   | unit      | `pnpm --filter @repo/web test -- callback` | ❌ W0       | ⬜ pending |
-| 24-02-01 | 02   | 0    | SOCIAL-02   | unit      | `pnpm --filter @repo/web test -- error`    | ❌ W0       | ⬜ pending |
-| 24-02-02 | 02   | 2    | SOCIAL-02   | unit      | `pnpm --filter @repo/web test -- error`    | ❌ W0       | ⬜ pending |
+| Task ID  | Plan | Wave | Requirement | Test Type | Automated Command                          | File Exists | Status   |
+| -------- | ---- | ---- | ----------- | --------- | ------------------------------------------ | ----------- | -------- |
+| 24-01-01 | 01   | 0    | SOCIAL-01   | unit      | `pnpm --filter @repo/web test -- callback` | ✅          | ✅ green |
+| 24-01-02 | 01   | 1    | SOCIAL-01   | unit      | `pnpm --filter @repo/web test -- callback` | ✅          | ✅ green |
+| 24-02-01 | 02   | 0    | SOCIAL-02   | unit      | `pnpm --filter @repo/web test -- error`    | ✅          | ✅ green |
+| 24-02-02 | 02   | 2    | SOCIAL-02   | unit      | `pnpm --filter @repo/web test -- error`    | ✅          | ✅ green |
 
 _Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky_
 
@@ -49,8 +50,8 @@ _Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky_
 
 ## Wave 0 Requirements
 
-- [ ] `apps/web/src/__tests__/app/(auth)/callback.test.tsx` — stubs for SOCIAL-01 (callback page behavior: loading state, refetch call, redirect to dashboard, redirect to error)
-- [ ] `apps/web/src/__tests__/app/(auth)/error.test.tsx` — stubs for SOCIAL-02 (error page: human-readable messages for all error codes, back-to-sign-in link)
+- [x] `apps/web/src/__tests__/app/(auth)/callback.test.tsx` — SOCIAL-01 (4 tests: loading state, refetch call, redirect to dashboard, redirect to error)
+- [x] `apps/web/src/__tests__/app/(auth)/error.test.tsx` — SOCIAL-02 (5 tests: error messages for all codes, back-to-sign-in link)
 
 _Existing Vitest + RTL + setup.ts infrastructure is sufficient — only test files are missing._
 
@@ -68,11 +69,24 @@ _Existing Vitest + RTL + setup.ts infrastructure is sufficient — only test fil
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 15s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references
+- [x] No watch-mode flags
+- [x] Feedback latency < 15s (actual: 1.66s for full web suite)
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** ✅ 2026-03-12 — 9/9 phase tests passing (4 callback + 5 error); 3 OAuth e2e flows correctly manual-only
+
+---
+
+## Validation Audit 2026-03-12
+
+| Metric              | Count |
+| ------------------- | ----- |
+| Gaps found          | 0     |
+| Resolved            | 0     |
+| Escalated           | 0     |
+| Automated tests run | 9     |
+| Tests passing       | 9     |
+| Manual-only         | 3     |
