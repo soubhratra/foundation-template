@@ -1,730 +1,910 @@
-# Architecture Research: v1.3 SaaS Functional Baseline
+# Architecture Research: v1.4 B2B Module
 
-**Domain:** Full-stack SaaS monorepo — five cross-cutting features layered onto an existing Django Ninja Extra + Next.js 15 + Expo template
-**Researched:** 2026-03-11
+**Domain:** B2B layer for existing full-stack SaaS monorepo — organizations, outbound webhooks, API keys, audit logging, admin backoffice
+**Researched:** 2026-03-12
 **Confidence:** HIGH — grounded in direct codebase inspection plus official documentation verification
 
 ---
 
 ## Standard Architecture
 
-### System Overview (Current v1.2 State)
+### System Overview (Post-v1.4 State)
 
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
 │  CLIENT LAYER                                                        │
 │  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐   │
-│  │  apps/web/       │  │  apps/mobile/    │  │  apps/landing/   │   │
-│  │  Next.js 15 AR   │  │  Expo SDK 53     │  │  Static Next.js  │   │
-│  │  Shadcn/ui       │  │  Expo Router     │  │  No API calls    │   │
-│  └────────┬─────────┘  └────────┬─────────┘  └──────────────────┘   │
-│           │                     │                                    │
-│           │  packages/api-client (generated TS types + fetch hooks)  │
-│           │  packages/business-logic, packages/ui, packages/validation│
-└───────────┼─────────────────────┼────────────────────────────────────┘
-            │ REST + Session/JWT  │ REST + JWT (Bearer)
-┌───────────┼─────────────────────┼────────────────────────────────────┐
-│  API LAYER│                     │                                    │
-│  ┌────────┴─────────────────────┴──────────────────────────────┐    │
-│  │  apps/api/  (Django Ninja Extra)                             │    │
-│  │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐        │    │
-│  │  │ accounts │ │ billing  │ │   core   │ │   ai     │        │    │
-│  │  │ (auth)   │ │ (plans)  │ │(infra)   │ │(optional)│        │    │
-│  │  └──────────┘ └──────────┘ └──────────┘ └──────────┘        │    │
-│  │  allauth headless + Celery + structlog + OTel + Redis cache  │    │
-│  └─────────────────────────────────────────────────────────────┘    │
+│  │  apps/web/       │  │  apps/mobile/    │  │  /admin/         │   │
+│  │  Next.js 15 AR   │  │  Expo SDK 53     │  │  django-unfold   │   │
+│  │  org switcher    │  │  org context     │  │  + django-hijack │   │
+│  └────────┬─────────┘  └────────┬─────────┘  └────────┬─────────┘   │
+└───────────┼─────────────────────┼────────────────────-┼─────────────┘
+            │  session/JWT         │  JWT Bearer          │ session
+┌───────────┼─────────────────────┼────────────────────-┼─────────────┐
+│  API LAYER│                     │                      │             │
+│  ┌────────┴─────────────────────┴──────────────────────┴────────┐   │
+│  │  apps/api/  (Django Ninja Extra + Django Admin)               │   │
+│  │                                                               │   │
+│  │  ┌────────────┐ ┌────────────┐ ┌────────────┐ ┌──────────┐   │   │
+│  │  │ accounts   │ │ billing    │ │organizations│ │ apikeys  │   │   │
+│  │  │ (auth/RBAC)│ │ (payments) │ │ (B2B core) │ │ (prog.   │   │   │
+│  │  │            │ │            │ │            │ │  access) │   │   │
+│  │  └────────────┘ └────────────┘ └────────────┘ └──────────┘   │   │
+│  │                                                               │   │
+│  │  ┌────────────┐ ┌────────────┐ ┌────────────┐ ┌──────────┐   │   │
+│  │  │  webhooks  │ │   core     │ │   audit    │ │    ai    │   │   │
+│  │  │ (outbound) │ │ (infra)    │ │ (cross-cut)│ │(optional)│   │   │
+│  │  └────────────┘ └────────────┘ └────────────┘ └──────────┘   │   │
+│  │                                                               │   │
+│  │  allauth headless + Celery + structlog + OTel + Redis         │   │
+│  └───────────────────────────────────────────────────────────────┘   │
 └──────────────────────────────────────────────────────────────────────┘
             │
 ┌───────────┴──────────────────────────────────────────────────────────┐
 │  DATA LAYER                                                          │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────────────────┐   │
 │  │  PostgreSQL  │  │    Redis     │  │  External Services        │   │
-│  │  + PGVector  │  │  DB 0 Celery │  │  Stripe, PostHog, SendGrid│  │
-│  │              │  │  DB 1 Cache  │  │  Google OAuth, GitHub     │   │
-│  │              │  │  DB 2 Sessions│  │  Apple Sign In (mobile)  │   │
+│  │  + PGVector  │  │  Celery/Cache│  │  Stripe, PostHog, Resend  │   │
+│  │  + pghistory │  │  Session     │  │  Customer endpoints       │   │
+│  │    triggers  │  │              │  │  (outbound webhooks)      │   │
 │  └──────────────┘  └──────────────┘  └──────────────────────────┘   │
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
-### Existing Component Responsibilities
+### Existing Component Responsibilities (Unchanged)
 
-| Component                 | Responsibility                                                         | Files                                                           |
-| ------------------------- | ---------------------------------------------------------------------- | --------------------------------------------------------------- |
-| `apps/api/apps/accounts/` | Auth, user model, session + JWT via allauth headless                   | models.py, headless.py, services.py, sessions.py                |
-| `apps/api/apps/billing/`  | Subscriptions, payments via PaymentAdapter ABC                         | adapters.py, decorators.py, models.py, services.py, webhooks.py |
-| `apps/api/apps/core/`     | Infra: middleware, observability, health, rate limiting                | middleware.py, observability.py, tracing.py, ratelimit.py       |
-| `apps/api/apps/ai/`       | Optional LangGraph agents, vector search (removable)                   | models.py, controllers.py, tasks.py                             |
-| `config/settings/base.py` | Central config: adapter class paths, feature flags                     | Single settings file, split dev/prod                            |
-| `config/urls.py`          | URL routing: allauth, Ninja, health probes, plain Django webhook views | urlpatterns with comment-delimited removal blocks               |
-| `apps/web/src/`           | Next.js App Router pages, Shadcn/ui components, React Query hooks      | Components in src/components/, pages in app/                    |
-| `apps/mobile/`            | Expo SDK 53 managed workflow, Expo Router navigation                   | app/, components/, lib/                                         |
-| `packages/api-client/`    | Auto-generated TypeScript types + fetch client                         | Generated from Django Ninja OpenAPI spec                        |
+| Component                      | Responsibility                                             |
+| ------------------------------ | ---------------------------------------------------------- |
+| `apps/api/apps/accounts/`      | Auth, user model, session + JWT via allauth headless, RBAC |
+| `apps/api/apps/billing/`       | Subscriptions, payments via PaymentAdapter ABC             |
+| `apps/api/apps/core/`          | Infra: middleware, observability, health, rate limiting    |
+| `apps/api/apps/notifications/` | Transactional email via EmailAdapter ABC                   |
+| `apps/api/apps/ai/`            | Optional LangGraph agents, vector search                   |
+| `config/settings/base.py`      | Central config: adapter class paths, feature flags         |
+| `config/urls.py`               | URL routing: allauth, Ninja, health probes, webhooks       |
+
+### New Components (v1.4)
+
+| Component                      | Responsibility                                            |
+| ------------------------------ | --------------------------------------------------------- |
+| `apps/api/apps/organizations/` | Organization model, membership, roles, per-org billing    |
+| `apps/api/apps/webhooks/`      | Outbound webhook registry, Celery delivery, delivery log  |
+| `apps/api/apps/apikeys/`       | APIKey model, Ninja auth backend, scopes, rate limiting   |
+| `apps/api/apps/audit/`         | AuditLog cross-cutting concern via pghistory middleware   |
+| `config/urls.py` (modified)    | Add `path("admin/", ...)` pointing to unfold-themed admin |
 
 ---
 
-## v1.3 Features: Integration Mapping
+## v1.4 Features: Integration Mapping
 
-Five features are being added. This section maps each to the existing architecture — which components change, which are new, and what the data flow looks like.
+Five features are being added. Each is mapped to existing architecture — which components change, which are new, and the integration points.
 
 ---
 
-### Feature 1: Transactional Email — EmailAdapter ABC
+### Feature 1: Organization Model — `apps/api/apps/organizations/`
 
-**Pattern:** Mirrors existing `PaymentAdapter` and `ObservabilityAdapter` ABCs exactly.
+**Pattern:** New Django app. Organization is an independent entity that owns memberships and billing. The existing `Customer` model (currently `OneToOneField` to `User`) gains a sibling: `OrgCustomer` is `OneToOneField` to `Organization`. User-level billing is unchanged.
 
 **New components:**
 
 ```
-apps/api/apps/notifications/       ← NEW Django app
+apps/api/apps/organizations/
 ├── __init__.py
-├── apps.py                        # NotificationsConfig
-├── adapters.py                    # EmailAdapter ABC + SendGridAdapter + ConsoleAdapter
-├── tasks.py                       # Celery tasks: send_transactional_email.delay()
-├── templates/email/               # Jinja2 HTML + plain-text templates
-│   ├── base.html
-│   ├── welcome.html
-│   └── password_reset.html
-└── migrations/                    # (empty — no models needed if no DB logging)
+├── apps.py                        # OrganizationsConfig
+├── models.py                      # Organization, Membership, OrgRole
+├── schemas.py                     # OrgOut, OrgCreateIn, MembershipOut, InviteIn
+├── controllers.py                 # OrgController (CRUD + member management)
+├── services.py                    # OrgService (create, invite, remove, transfer)
+├── selectors.py                   # get_user_orgs(), get_org_members() queries
+├── permissions.py                 # IsOrgAdmin, IsOrgMember permission classes
+├── admin.py                       # django-unfold registration
+├── signals.py                     # post_save → seed owner membership
+└── migrations/
+    ├── 0001_initial.py
+    └── 0002_seed_org_roles.py     # seeds "owner", "admin", "member" OrgRoles
 ```
+
+**Core models:**
+
+```python
+# organizations/models.py
+
+class OrgRole(models.TextChoices):
+    OWNER = "owner"       # full control, cannot be removed
+    ADMIN = "admin"       # manage members, billing
+    MEMBER = "member"     # read/operate
+
+class Organization(BaseModel):              # inherits created_at, updated_at, deleted_at
+    name = models.CharField(max_length=255)
+    slug = models.SlugField(unique=True)
+    owner = models.ForeignKey(User, on_delete=models.PROTECT, related_name="owned_orgs")
+    # Billing FKs — see Feature 1a below
+
+class Membership(BaseModel):
+    org = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name="memberships")
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="memberships")
+    role = models.CharField(max_length=20, choices=OrgRole.choices, default=OrgRole.MEMBER)
+
+    class Meta:
+        unique_together = [("org", "user")]
+```
+
+**Feature 1a — Per-org billing:**
+
+The existing `Customer` model is `OneToOneField(User)`. Org billing requires a parallel `OrgCustomer` model.
+
+```python
+# billing/models.py (MODIFICATION — additive)
+
+class OrgCustomer(models.Model):
+    org = models.OneToOneField(Organization, on_delete=models.CASCADE, related_name="billing_customer")
+    stripe_customer_id = models.CharField(max_length=255, blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+```
+
+This parallels `Customer` exactly. `BillingService` gains an `OrgBillingService` (or an `entity` discriminator). `has_feature()` in `billing/entitlements.py` gains an `org=` kwarg to check org plan features instead of user features.
 
 **Modified components:**
 
-| File                       | Change                                                                                                                                                                       |
-| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `config/settings/base.py`  | Add `EMAIL_ADAPTER = "apps.notifications.adapters.SendGridAdapter"` + `SENDGRID_API_KEY` env var. Add `# EMAIL_START` / `# EMAIL_END` comment blocks for scaffolder removal. |
-| `INSTALLED_APPS`           | Add `"apps.notifications"`                                                                                                                                                   |
-| `apps/accounts/signals.py` | Hook `post_save` signal to dispatch `send_transactional_email` Celery task after signup                                                                                      |
-| `.env.example`             | Add `SENDGRID_API_KEY` in `# EMAIL MODULE` block                                                                                                                             |
+| File                           | Change                                                                                                                                     |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `apps/billing/models.py`       | ADD: `OrgCustomer(OneToOneField → Organization)`, `OrgSubscription`, `OrgPlanProviderMapping` (or reuse `PlanProviderMapping` with org FK) |
+| `apps/billing/services.py`     | ADD: `OrgBillingService` mirroring `BillingService` but keyed to `OrgCustomer`                                                             |
+| `apps/billing/entitlements.py` | ADD: `has_org_feature(org, key)` utility — same pattern as `has_feature(user, key)`                                                        |
+| `config/settings/base.py`      | ADD: `# B2B_START` / `# B2B_END` blocks for scaffolder removal                                                                             |
+| `config/urls.py`               | Automatically picked up via `api.auto_discover_controllers()`                                                                              |
+| `INSTALLED_APPS`               | ADD: `"apps.organizations"` inside `# B2B_START` / `# B2B_END`                                                                             |
+| `packages/shared-types/`       | REGENERATE: after org endpoints added                                                                                                      |
 
-**EmailAdapter ABC structure:**
+**Permission model:**
+
+`IsOrgAdmin` and `IsOrgMember` are Ninja Extra `BasePermission` subclasses — same pattern as the existing `RequireRole` in `accounts/permissions.py`. They read org membership from DB and return True/False.
+
+**Scaffolder flag:** `--with b2b` (additive; B2B is off by default, unlike billing which defaults on).
+
+**Confidence:** HIGH — mirrors existing billing domain module structure. `BaseModel` (with soft delete) already in `apps/core/models.py`. `RequireRole` permission pattern already validated.
+
+---
+
+### Feature 2: Outbound Webhooks — `apps/api/apps/webhooks/`
+
+**Pattern:** New Django app. Completely separate from the existing inbound Stripe webhook handler in `apps/billing/webhooks.py`. Outbound webhooks are customer-registered HTTP endpoints that receive event notifications from this app.
+
+**New components:**
+
+```
+apps/api/apps/webhooks/
+├── __init__.py
+├── apps.py                        # WebhooksConfig
+├── models.py                      # WebhookEndpoint, WebhookDelivery
+├── schemas.py                     # EndpointCreateIn, EndpointOut, DeliveryOut
+├── controllers.py                 # EndpointController (CRUD), DeliveryController (list)
+├── services.py                    # WebhookService — register_endpoint(), dispatch_event()
+├── tasks.py                       # deliver_webhook Celery task (retry + backoff)
+├── signing.py                     # HMAC-SHA256 signing utility
+├── admin.py
+└── migrations/
+    └── 0001_initial.py
+```
+
+**Core models:**
 
 ```python
-class EmailAdapter(abc.ABC):
-    @abc.abstractmethod
-    def send(self, to: str, subject: str, html_body: str, text_body: str) -> None: ...
+# webhooks/models.py
 
-class SendGridAdapter(EmailAdapter):
-    # Uses sendgrid-python SDK; reads SENDGRID_API_KEY from settings
+class WebhookEndpoint(BaseModel):
+    org = models.ForeignKey(Organization, on_delete=models.CASCADE,
+                            related_name="webhook_endpoints", null=True, blank=True)
+    user = models.ForeignKey(User, on_delete=models.CASCADE,
+                             related_name="webhook_endpoints", null=True, blank=True)
+    # org OR user — products decide whether webhooks are per-org or per-user
+    url = models.URLField(max_length=500)
+    secret = models.CharField(max_length=64)      # HMAC signing key, generated on creation
+    events = models.JSONField(default=list)        # ["payment.succeeded", "user.created"]
+    is_active = models.BooleanField(default=True)
+
+class WebhookDelivery(models.Model):
+    endpoint = models.ForeignKey(WebhookEndpoint, on_delete=models.CASCADE,
+                                 related_name="deliveries")
+    event_type = models.CharField(max_length=100)
+    payload = models.JSONField()
+    attempt = models.PositiveSmallIntegerField(default=1)
+    status_code = models.PositiveSmallIntegerField(null=True)
+    response_body = models.TextField(blank=True)
+    delivered_at = models.DateTimeField(null=True)
+    failed_at = models.DateTimeField(null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+```
+
+**Delivery flow:**
+
+```
+Application event fires (e.g. payment succeeded, org member added)
+    ↓
+WebhookService.dispatch_event(event_type="payment.succeeded", payload={...})
+    → queries active WebhookEndpoint records subscribed to this event_type
+    → for each matching endpoint:
+        deliver_webhook.delay(endpoint_id, event_type, payload)
+
+Celery task: deliver_webhook(endpoint_id, event_type, payload)
+    ↓
+Load endpoint + compute HMAC-SHA256 signature over JSON payload
+    ↓
+POST to endpoint.url with headers:
+    X-Webhook-Signature: sha256=<hmac>
+    X-Webhook-Event: <event_type>
+    X-Webhook-Delivery: <delivery_id>
+    ↓
+On success (2xx): record WebhookDelivery(status_code=200, delivered_at=now)
+On failure: raise exception → Celery autoretry_for with exponential backoff
+    countdown = min(2 ** attempt * 30, 3600)   # 30s, 60s, 120s … max 1h
+    max_retries = 7                              # ~24h total window
+On exhaustion: WebhookDelivery(failed_at=now) — dead letter, no more retries
+```
+
+**HMAC signing:**
+
+```python
+# webhooks/signing.py
+import hashlib, hmac, json
+
+def sign_payload(secret: str, payload: dict) -> str:
+    """Return 'sha256=<hex>' signature for the payload."""
+    body = json.dumps(payload, separators=(",", ":"), sort_keys=True).encode()
+    digest = hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
+    return f"sha256={digest}"
+```
+
+**Separation from inbound Stripe webhooks:** The existing `apps/billing/webhooks.py` is a plain Django view that receives and verifies _inbound_ Stripe events. This new `apps/webhooks/` module dispatches _outbound_ events to customer endpoints. They share no code.
+
+**Modified components:**
+
+| File                     | Change                                                    |
+| ------------------------ | --------------------------------------------------------- |
+| `INSTALLED_APPS`         | ADD: `"apps.webhooks"` inside `# B2B_START` / `# B2B_END` |
+| `config/urls.py`         | Automatic via `api.auto_discover_controllers()`           |
+| `packages/shared-types/` | REGENERATE after endpoint management API added            |
+
+**Scaffolder flag:** Included in `--with b2b` block.
+
+**Confidence:** HIGH — pattern directly mirrors existing Stripe inbound webhook handler (Celery dispatch, HMAC, plain Django, no Ninja body parsing). Exponential backoff via Celery `autoretry_for` + `countdown` is a well-established pattern.
+
+---
+
+### Feature 3: API Key Authentication — `apps/api/apps/apikeys/`
+
+**Pattern:** New Django app providing a custom Django Ninja `APIKeyHeader` auth backend. API keys are an alternative authentication path — they coexist with the existing session + JWT auth. Controllers opt in by listing `api_key_auth` alongside `SessionAuth()` in their `auth=[]` list.
+
+**New components:**
+
+```
+apps/api/apps/apikeys/
+├── __init__.py
+├── apps.py                        # APIKeysConfig
+├── models.py                      # APIKey model
+├── schemas.py                     # APIKeyCreateIn, APIKeyOut (key only shown once)
+├── controllers.py                 # APIKeyController (CRUD for key management)
+├── services.py                    # APIKeyService (create, revoke, list, rotate)
+├── auth.py                        # APIKeyHeader — custom Ninja auth backend
+├── admin.py
+└── migrations/
+    └── 0001_initial.py
+```
+
+**Core model:**
+
+```python
+# apikeys/models.py
+
+class APIKey(BaseModel):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="api_keys",
+                             null=True, blank=True)
+    org = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name="api_keys",
+                            null=True, blank=True)
+    # user OR org — product decides whether keys are user-scoped or org-scoped
+    name = models.CharField(max_length=100)         # human label for identification
+    prefix = models.CharField(max_length=12, unique=True)  # first 12 chars — for display
+    key_hash = models.CharField(max_length=64)      # SHA-256 hash — raw key never stored
+    scopes = models.JSONField(default=list)         # ["read:billing", "write:webhooks"]
+    last_used_at = models.DateTimeField(null=True)
+    expires_at = models.DateTimeField(null=True)
+    is_active = models.BooleanField(default=True)
+```
+
+**Key generation and storage:**
+
+The raw key is shown to the user exactly once at creation and never stored. Only the SHA-256 hash is stored. The prefix (first 12 chars) is stored plaintext for display in key lists (`sk_live_abc123...`).
+
+```python
+# apikeys/services.py (key creation)
+import hashlib, secrets
+
+def create_key() -> tuple[str, str, str]:
+    """Returns (raw_key, prefix, hash)."""
+    raw = "sk_" + secrets.token_urlsafe(32)
+    prefix = raw[:12]
+    key_hash = hashlib.sha256(raw.encode()).hexdigest()
+    return raw, prefix, key_hash
+```
+
+**Custom Ninja auth backend:**
+
+```python
+# apikeys/auth.py
+from ninja.security import APIKeyHeader
+from .models import APIKey
+
+class APIKeyAuth(APIKeyHeader):
+    param_name = "X-API-Key"
+
+    def authenticate(self, request, key: str):
+        import hashlib
+        key_hash = hashlib.sha256(key.encode()).hexdigest()
+        try:
+            api_key = APIKey.objects.select_related("user", "org").get(
+                key_hash=key_hash,
+                is_active=True,
+                deleted_at__isnull=True,
+            )
+        except APIKey.DoesNotExist:
+            return None
+
+        # Check expiry
+        if api_key.expires_at and api_key.expires_at < now():
+            return None
+
+        # Update last_used_at async (avoid blocking auth on DB write)
+        APIKey.objects.filter(pk=api_key.pk).update(last_used_at=now())
+
+        # Attach org context to request so controllers can scope queries
+        request.api_key = api_key
+        if api_key.org:
+            request.org = api_key.org
+        return api_key.user or api_key.org   # request.auth is User or Org
+```
+
+**Usage in controllers:**
+
+```python
+# Any controller that should accept API key auth:
+from apps.apikeys.auth import APIKeyAuth
+
+api_key_auth = APIKeyAuth()
+
+@api_controller(
+    "/data",
+    auth=[SessionAuth(), jwt_token_auth, api_key_auth],   # all three accepted
+    permissions=[IsAuthenticated],
+)
+class DataController(ControllerBase):
+    ...
+```
+
+**Scopes enforcement:** Scopes are checked in a `RequireScope("write:webhooks")` permission class (same pattern as `RequireRole`). An endpoint requiring `write:webhooks` checks `request.api_key.scopes` contains that scope.
+
+**Rate limiting:** Per-key rate limiting reuses `django-ratelimit` with `key="header:x-api-key"` — same infrastructure as the existing `AuthRateLimitMiddleware`.
+
+**Modified components:**
+
+| File                     | Change                                                   |
+| ------------------------ | -------------------------------------------------------- |
+| `INSTALLED_APPS`         | ADD: `"apps.apikeys"` inside `# B2B_START` / `# B2B_END` |
+| Any controller opting in | ADD: `api_key_auth` to `auth=[]` list                    |
+| `packages/shared-types/` | REGENERATE after key management endpoints added          |
+
+**Scaffolder flag:** Included in `--with b2b` block.
+
+**Confidence:** HIGH — `APIKeyHeader` pattern verified against official Django Ninja docs. SHA-256 hash-only storage is the industry standard (never store raw keys). Rate limiting via `django-ratelimit` is already in the codebase.
+
+---
+
+### Feature 4: Audit Logging — Cross-Cutting via pghistory
+
+**Pattern:** `django-pghistory` (PostgreSQL triggers) + `pghistory.middleware.HistoryMiddleware` for automatic request context (user, URL). Applied selectively via `@pghistory.track()` decorators on models that need audit trails. Not applied to every model.
+
+**Rationale for pghistory over django-simple-history:**
+
+- pghistory uses DB-level PostgreSQL triggers: captures changes from raw SQL, bulk ORM operations, and Celery tasks — not just HTTP-layer ORM calls
+- structlog already provides HTTP request logging; pghistory adds _who changed what data_ at the DB level
+- Minimal app-layer overhead: triggers run in the same transaction, no post-save signals required
+- `pghistory.context()` and `HistoryMiddleware` attach user + URL metadata automatically
+
+**New components:**
+
+```
+apps/api/apps/audit/
+├── __init__.py
+├── apps.py                        # AuditConfig
+└── admin.py                       # Register pghistory event models in django-unfold admin
+```
+
+No `models.py` in the audit app itself — pghistory auto-generates shadow table models via decorators on the tracked models.
+
+**Middleware registration:**
+
+```python
+# config/settings/base.py
+MIDDLEWARE = [
+    ...
+    "apps.core.middleware.RequestContextMiddleware",
+    "apps.core.middleware.ObservabilityMiddleware",
+    "apps.core.middleware.AuthRateLimitMiddleware",
+    "pghistory.middleware.HistoryMiddleware",  # ADD — after auth middleware so user is set
+]
+```
+
+**Model-level tracking:**
+
+```python
+# Applied to models that need audit trails — NOT all models.
+# Targets: Organization, Membership, APIKey, WebhookEndpoint
+
+import pghistory
+
+@pghistory.track(pghistory.UpdateEvent(), pghistory.DeleteEvent())
+class Membership(BaseModel):
     ...
 
-class ConsoleAdapter(EmailAdapter):
-    # Writes to stdout — default in development and tests
+@pghistory.track(pghistory.InsertEvent(), pghistory.UpdateEvent(), pghistory.DeleteEvent())
+class APIKey(BaseModel):
     ...
 ```
 
-**Data flow:**
+**What pghistory.HistoryMiddleware captures automatically:**
 
-```
-User signs up
-    → allauth post_save signal fires
-    → send_transactional_email.delay(to=email, template="welcome") queued in Celery
-    → Celery worker picks up task
-    → get_email_adapter() resolves SendGridAdapter (or ConsoleAdapter in dev)
-    → adapter.send(to, subject, rendered_html, rendered_text)
-    → SendGrid HTTP API (or stdout)
-```
+- `user` — the authenticated Django user ID from `request.user`
+- `url` — the request URL path
 
-**Scaffolder flag:** `--without email` — removes `apps/notifications/`, INSTALLED_APPS entry, env vars, and signal hookup.
+**Custom context extension** (if IP or org context is needed):
 
-**Confidence:** HIGH — pattern directly clones PaymentAdapter/ObservabilityAdapter structure already validated in codebase.
+```python
+# apps/core/middleware.py — extend existing RequestContextMiddleware
+# OR create a subclass of pghistory.middleware.HistoryMiddleware
 
----
-
-### Feature 2: Social Auth — Google + GitHub (web), Apple (mobile)
-
-**Pattern:** Django Allauth already has `allauth.socialaccount` in INSTALLED_APPS (confirmed in `config/settings/base.py`). Social auth activates by adding provider subpackages and SOCIALACCOUNT_PROVIDERS config.
-
-**New components:**
-
-```
-apps/api/apps/accounts/social.py   ← NEW (optional, for custom adapter overrides)
-apps/mobile/lib/auth/apple.ts      ← NEW (expo-apple-authentication flow)
-apps/web/src/components/auth/social-buttons.tsx  ← NEW
-apps/web/src/lib/auth/social.ts    ← NEW (initiates allauth social flow)
+class AuditContextMiddleware(pghistory.middleware.HistoryMiddleware):
+    def get_context(self, request):
+        ctx = super().get_context(request)
+        # Add org context if present (set by org-scoped endpoints)
+        if hasattr(request, "org"):
+            ctx["org_id"] = str(request.org.pk)
+        return ctx
 ```
 
 **Modified components:**
 
-| File                                         | Change                                                                                                                                         |
-| -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| `config/settings/base.py`                    | Add `allauth.socialaccount.providers.google` + `.github` to INSTALLED_APPS. Add `SOCIALACCOUNT_PROVIDERS` dict with client_id/secret from env. |
-| `.env.example`                               | Add `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` in `# SOCIAL_AUTH MODULE` block                     |
-| `apps/web/src/components/auth/auth-form.tsx` | Add social login buttons below email/password form                                                                                             |
-| `apps/mobile/app/(auth)/sign-in.tsx`         | Add Apple Sign In button (iOS-only, via `expo-apple-authentication`)                                                                           |
+| File                           | Change                                                                                     |
+| ------------------------------ | ------------------------------------------------------------------------------------------ |
+| `config/settings/base.py`      | ADD: `"pghistory"` to INSTALLED_APPS; ADD: `HistoryMiddleware` (or subclass) to MIDDLEWARE |
+| `config/settings/base.py`      | ADD: `PGHISTORY_CONTEXT_FIELD = "metadata"` if custom context fields needed                |
+| `apps/organizations/models.py` | ADD: `@pghistory.track(...)` decorators on `Organization`, `Membership`                    |
+| `apps/apikeys/models.py`       | ADD: `@pghistory.track(...)` on `APIKey`                                                   |
+| `apps/webhooks/models.py`      | ADD: `@pghistory.track(...)` on `WebhookEndpoint`                                          |
+| `INSTALLED_APPS`               | ADD: `"pghistory"`, `"pgtrigger"` (pghistory dependency) inside B2B block                  |
 
-**Settings additions:**
+**Important:** pghistory `@pghistory.track()` decorators generate new migration files for the tracked model's app (not in an `audit/` app). The shadow table lives in the same database, named `<app>_<model>event`.
+
+**Scaffolder flag:** Included in `--with b2b` block. Removing `--with b2b` removes the decorators, middleware, and `pghistory`/`pgtrigger` from INSTALLED_APPS.
+
+**Confidence:** MEDIUM-HIGH — pghistory is well-documented, PostgreSQL-native, and actively maintained (v3.6.0, April 2025). The middleware approach is official pghistory pattern. The Django Ninja + allauth headless context: `request.user` is set by allauth middleware before `pghistory.middleware.HistoryMiddleware` runs, so user tracking works correctly with the existing middleware order.
+
+---
+
+### Feature 5: Admin Backoffice — django-unfold + django-hijack
+
+**Pattern:** Drop-in replacement for Django's default admin theme (django-unfold) plus user impersonation for customer support (django-hijack). These layer on top of Django's built-in admin — no code migration required for existing `ModelAdmin` registrations in `accounts/admin.py`, `billing/admin.py`.
+
+**New components:**
+
+```
+# No new Django apps. Modifications to existing admin registrations.
+
+apps/api/apps/organizations/admin.py    ← NEW (register Org/Membership models)
+apps/api/apps/apikeys/admin.py          ← NEW (register APIKey model)
+apps/api/apps/webhooks/admin.py         ← NEW (register WebhookEndpoint/Delivery)
+apps/api/apps/audit/admin.py            ← NEW (register pghistory event models)
+```
+
+**django-unfold installation:**
 
 ```python
-# config/settings/base.py — SOCIAL_AUTH_START
-SOCIALACCOUNT_PROVIDERS = {
-    "google": {
-        "APPS": [{"client_id": env("GOOGLE_CLIENT_ID", default=""), "secret": env("GOOGLE_CLIENT_SECRET", default="")}],
-        "SCOPE": ["profile", "email"],
-        "AUTH_PARAMS": {"access_type": "online"},
-        "VERIFIED_EMAIL": True,
+# config/settings/base.py
+INSTALLED_APPS = [
+    "unfold",                              # ADD BEFORE django.contrib.admin
+    "unfold.contrib.filters",              # optional: enhanced filter UI
+    "unfold.contrib.forms",                # optional: enhanced form widgets
+    "unfold.contrib.inlines",              # optional: tab-based inlines
+    "django.contrib.admin",                # unchanged
+    ...
+]
+```
+
+Unfold extends, not replaces, Django admin. Each `ModelAdmin` that needs Unfold styling must inherit from `unfold.admin.ModelAdmin` instead of `django.contrib.admin.ModelAdmin`. Existing registrations in `accounts/admin.py` and `billing/admin.py` are updated.
+
+**django-hijack installation:**
+
+```python
+# config/settings/base.py
+INSTALLED_APPS = [
+    ...
+    "hijack",                  # ADD
+    "hijack.contrib.admin",    # ADD — adds impersonate button to user list
+]
+
+HIJACK_ALLOWED_USER_EMAILS = []  # empty = all staff can hijack; restrict per-project
+HIJACK_PERMISSION_CHECK = "hijack.permissions.superusers_only"  # default
+```
+
+```python
+# config/urls.py
+urlpatterns = [
+    path("admin/", admin.site.urls),
+    path("hijack/", include("hijack.urls")),  # ADD — provides hijack:acquire endpoint
+    ...
+]
+```
+
+**Unfold + Hijack compatibility:** django-hijack v3 has built-in Django admin support via `hijack.contrib.admin`. The hijack button renders in the admin user list automatically. Unfold's custom `ModelAdmin` base class extends Django's standard admin; the hijack contrib renders standard Django admin HTML which Unfold will style. No special integration code is required — both packages cooperate through standard Django admin extension points.
+
+**Admin navigation (Unfold sidebar):**
+
+```python
+# config/settings/base.py — Unfold NAVIGATION config
+UNFOLD = {
+    "SITE_TITLE": "Foundation Admin",
+    "SIDEBAR": {
+        "navigation": [
+            {"title": "Users", "items": [
+                {"title": "Users", "url": "/admin/accounts/user/"},
+                {"title": "Memberships", "url": "/admin/organizations/membership/"},
+            ]},
+            {"title": "Organizations", "items": [
+                {"title": "Orgs", "url": "/admin/organizations/organization/"},
+                {"title": "API Keys", "url": "/admin/apikeys/apikey/"},
+                {"title": "Webhooks", "url": "/admin/webhooks/webhookendpoint/"},
+            ]},
+            {"title": "Billing", "items": [
+                {"title": "Customers", "url": "/admin/billing/customer/"},
+                {"title": "Subscriptions", "url": "/admin/billing/subscription/"},
+            ]},
+            {"title": "Audit", "items": [
+                {"title": "Audit Events", "url": "/admin/audit/"},
+            ]},
+        ]
     },
-    "github": {
-        "APPS": [{"client_id": env("GITHUB_CLIENT_ID", default=""), "secret": env("GITHUB_CLIENT_SECRET", default="")}],
-        "SCOPE": ["user:email"],
-        "VERIFIED_EMAIL": False,  # GitHub may not verify email
-    },
-}
-# SOCIAL_AUTH_END
-```
-
-**How allauth headless social auth works:** Allauth headless exposes `/_allauth/{client}/v1/auth/provider/redirect` and `/_allauth/{client}/v1/auth/provider/token` endpoints. The web client initiates the OAuth redirect through allauth, which manages the callback and creates a session. The existing `SessionAwareJWTTokenStrategy` in `apps/accounts/headless.py` applies to social logins without modification.
-
-**Mobile Apple Sign In flow:**
-
-```
-iOS app
-    → expo-apple-authentication.signInAsync()
-    → Apple returns identityToken (JWT)
-    → POST /_allauth/app/v1/auth/provider/token { provider: "apple", token: identityToken }
-    → allauth verifies token, creates/finds User, issues session + JWT
-```
-
-This requires `allauth.socialaccount.providers.apple` in INSTALLED_APPS and Apple developer credentials (Team ID, Key ID, private key).
-
-**Boundary: web vs. mobile social auth providers:**
-
-- Web: Google + GitHub (OAuth2 redirect flow via allauth browser client)
-- Mobile: Apple only (expo-apple-authentication native SDK; required by App Store for apps with other social logins)
-- Google on mobile: deferred (expo-auth-session works, but PKCE + Android complexity; Apple is required first)
-
-**Scaffolder flag:** `--without social-auth` — removes provider INSTALLED_APPS entries, SOCIALACCOUNT_PROVIDERS settings, env vars, social buttons from web/mobile auth forms.
-
-**Confidence:** HIGH for web (allauth already configured, provider packages straightforward). MEDIUM for mobile Apple (requires Apple developer account credentials; flow verified via Expo docs but not tested against this codebase).
-
----
-
-### Feature 3: GDPR Baseline
-
-Three distinct components with minimal coupling.
-
-**New backend components:**
-
-```
-apps/api/apps/accounts/gdpr.py    ← NEW (account delete + data export logic)
-```
-
-**New frontend components:**
-
-```
-apps/web/src/components/consent/cookie-banner.tsx   ← NEW (client component)
-apps/web/src/lib/consent/store.ts                   ← NEW (Zustand store for consent state)
-apps/web/app/(dashboard)/account/delete/page.tsx    ← NEW (delete confirmation flow)
-```
-
-**Modified components:**
-
-| File                                    | Change                                                                                          |
-| --------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| `apps/api/apps/accounts/controllers.py` | Add `DELETE /api/v1/accounts/me/` (hard delete) and `GET /api/v1/accounts/me/export/` endpoints |
-| `apps/api/apps/accounts/services.py`    | Add `AccountDeletionService.delete_user(user)` — cascade via Django ORM, no raw SQL             |
-| `apps/web/app/layout.tsx`               | Add `<CookieBanner />` client component                                                         |
-
-**Account deletion cascade:**
-
-Django's ORM handles cascade deletion via `on_delete=models.CASCADE` on all existing OneToOne / FK relations. The delete service calls `user.delete()` — the ORM collector removes Customer, Subscription, EmailAddress, and all other related records in the correct dependency order. No explicit cascade code is needed.
-
-```python
-# apps/accounts/services.py (addition)
-class AccountDeletionService:
-    def delete_user(self, user: User) -> None:
-        """Hard delete user and all cascade-related data.
-
-        Relies on Django ORM cascade (on_delete=CASCADE on all FK relations).
-        Invalidates sessions before deletion to prevent stale auth state.
-        """
-        invalidate_user_sessions(user.id)
-        user.delete()  # ORM collector handles cascade
-```
-
-**Data export endpoint:**
-
-```python
-# Returns JSON blob of all user-owned data
-GET /api/v1/accounts/me/export/
-→ { "user": {...}, "subscription": {...}, "payments": [...] }
-```
-
-The service aggregates data from all owned models. No new models required. Export is synchronous at this baseline level — async Celery task with email delivery is a future enhancement if exports become large.
-
-**Cookie consent banner:**
-
-- Client component (`"use client"`) rendered in `app/layout.tsx`
-- Consent state stored in `localStorage` via Zustand with persist middleware
-- On accept: sets consent flag, PostHog capture unblocked
-- On reject: PostHog stays disabled; session cookie still exists (functional, not tracking)
-- No third-party consent library needed — custom implementation with ~50 lines
-
-**No new models required.** Consent preference stored client-side only (localStorage). GDPR does not require server-side consent storage for the baseline implementation.
-
-**Scaffolder flag:** GDPR features are not behind a `--without` flag. GDPR compliance is expected for any SaaS product and should be present by default. The cookie banner is a standard pattern; deleting it would require product-level awareness.
-
-**Confidence:** HIGH for account deletion (standard Django ORM pattern). HIGH for data export (simple aggregation). MEDIUM for cookie banner (implementation is custom; PostHog integration behavior verified via PostHog docs).
-
----
-
-### Feature 4: RBAC — Django Groups + @require_role Decorator
-
-**Pattern:** Mirrors existing `@require_active_subscription` decorator in `apps/billing/decorators.py` exactly.
-
-**New components:**
-
-```
-apps/api/apps/accounts/rbac.py    ← NEW
-├── require_role("admin") decorator
-├── IsInGroup permission class (for Ninja Extra)
-└── role_assignment utilities
-```
-
-**Modified components:**
-
-| File                                    | Change                                                                                                                    |
-| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `apps/api/apps/accounts/controllers.py` | Add `POST /api/v1/accounts/{user_id}/roles/` and `DELETE /api/v1/accounts/{user_id}/roles/{role}/` (admin-only endpoints) |
-| `apps/api/apps/accounts/schemas.py`     | Add `RoleAssignmentIn`, `RoleOut` schemas                                                                                 |
-
-**RBAC implementation strategy:**
-
-Django Groups (built-in `django.contrib.auth.models.Group`) are the role carrier. No custom role model needed at this baseline level.
-
-```python
-# apps/accounts/rbac.py
-import functools
-from django.core.exceptions import PermissionDenied
-
-
-def require_role(*roles: str):
-    """Decorator that gates a view behind group membership.
-
-    Usage: @require_role("admin") or @require_role("admin", "editor")
-    Raises PermissionDenied (HTTP 403) if user lacks all specified roles.
-    """
-    def decorator(view_func):
-        @functools.wraps(view_func)
-        def wrapper(request, *args, **kwargs):
-            if not request.user.is_authenticated:
-                raise PermissionDenied("Authentication required.")
-            user_groups = set(request.user.groups.values_list("name", flat=True))
-            if not user_groups.intersection(set(roles)):
-                raise PermissionDenied(f"Role required: {', '.join(roles)}")
-            return view_func(request, *args, **kwargs)
-        return wrapper
-    return decorator
-
-
-class IsInGroup:
-    """Django Ninja Extra permission class for group-based access control.
-
-    Usage: @api_controller(permissions=[IsInGroup("admin")])
-    """
-    def __init__(self, group_name: str) -> None:
-        self.group_name = group_name
-
-    def __call__(self, request) -> bool:
-        if not request.user.is_authenticated:
-            return False
-        return request.user.groups.filter(name=self.group_name).exists()
-```
-
-**Role assignment API** (admin-only, guarded by `IsAdminUser` Ninja permission):
-
-```
-POST  /api/v1/accounts/{user_id}/roles/        # Assign role (group) to user
-DELETE /api/v1/accounts/{user_id}/roles/{role}/ # Remove role from user
-GET   /api/v1/accounts/{user_id}/roles/         # List user roles
-```
-
-**Group seeding:** Groups are created via a data migration (`0002_seed_default_groups.py` in `apps/accounts/migrations/`) that creates `admin`, `moderator`, and `viewer` groups at deploy time. Products add their own groups in product-specific migrations.
-
-**No new models.** Django's built-in `Group` and `User.groups` ManyToMany are sufficient. No custom Role model is needed at this level.
-
-**Scaffolder flag:** RBAC is not behind a `--without` flag. Groups are built into Django; the decorator adds minimal overhead and is universally useful.
-
-**Confidence:** HIGH — Django Groups are battle-tested. Django Ninja Extra permission class pattern is verified via official docs. Decorator mirrors existing `@require_active_subscription` which is already in the codebase.
-
----
-
-### Feature 5: Feature Entitlements — has_feature() + BILLING_PLANS Config
-
-**Pattern:** Stateless utility function that reads the existing `BILLING_PLANS` dict in `config/settings/base.py` against the user's active subscription.
-
-**New components:**
-
-```
-apps/api/apps/billing/entitlements.py   ← NEW (has_feature utility)
-```
-
-**No new models.** Feature flags are configuration, not database state. The `BILLING_PLANS` dict already exists in `config/settings/base.py` with a `"features"` list per plan. Entitlements reads this dict.
-
-**Implementation:**
-
-```python
-# apps/billing/entitlements.py
-from django.conf import settings
-
-
-def has_feature(user, feature_key: str) -> bool:
-    """Check if user's active subscription plan includes a feature.
-
-    Reads BILLING_PLANS from settings. Returns False if:
-    - User has no active subscription
-    - User is on free plan
-    - Feature key not in plan's feature list
-
-    Usage: if has_feature(request.user, "api_access"): ...
-    """
-    try:
-        subscription = user.billing_customer.subscription
-    except Exception:
-        return _free_plan_has_feature(feature_key)
-
-    if subscription.status not in {"active", "trialing"}:
-        return _free_plan_has_feature(feature_key)
-
-    # Resolve plan from subscription's price_id via PlanProviderMapping
-    from apps.billing.models import PlanProviderMapping
-    mapping = PlanProviderMapping.objects.filter(
-        price_id=subscription.stripe_subscription_id,  # mapped via provider
-        is_active=True,
-    ).first()
-
-    if not mapping:
-        return _free_plan_has_feature(feature_key)
-
-    plan_config = settings.BILLING_PLANS.get(mapping.plan_id, {})
-    return feature_key in plan_config.get("features", [])
-
-
-def _free_plan_has_feature(feature_key: str) -> bool:
-    free_plan = settings.BILLING_PLANS.get("free", {})
-    return feature_key in free_plan.get("features", [])
-```
-
-**Note on plan resolution:** The existing `PlanProviderMapping` model (already in `apps/billing/models.py`) maps internal plan IDs to provider price IDs. The entitlements utility uses this table to resolve the user's current plan from their subscription's price ID. This avoids hardcoding Stripe price IDs in the entitlements code — consistent with the existing billing module's provider-agnostic design.
-
-**BILLING_PLANS config** (already exists in `config/settings/base.py`, add feature keys):
-
-```python
-BILLING_PLANS = {
-    "free":       {"name": "Free",       "features": ["basic_dashboard"]},
-    "pro":        {"name": "Pro",        "features": ["basic_dashboard", "api_access", "priority_support"]},
-    "enterprise": {"name": "Enterprise", "features": ["basic_dashboard", "api_access", "priority_support", "custom_contracts", "sla"]},
 }
 ```
 
-**No scaffolder flag.** Feature entitlements depend on the billing module. The `--without billing` flag in the scaffolder already removes billing; entitlements goes with it. No separate flag needed.
+**Modified components:**
 
-**Confidence:** HIGH for the utility function. MEDIUM for plan resolution via PlanProviderMapping — the mapping model is present but the price_id lookup path requires verification against actual subscription data shape during implementation.
+| File                      | Change                                                                                     |
+| ------------------------- | ------------------------------------------------------------------------------------------ |
+| `INSTALLED_APPS`          | ADD: `"unfold"`, `"hijack"`, `"hijack.contrib.admin"` — inside `# B2B_START` / `# B2B_END` |
+| `config/settings/base.py` | ADD: `UNFOLD = {...}` config dict, `HIJACK_PERMISSION_CHECK`                               |
+| `config/urls.py`          | ADD: `path("hijack/", include("hijack.urls"))` inside `# B2B_START` / `# B2B_END`          |
+| `apps/accounts/admin.py`  | MODIFY: change `admin.ModelAdmin` → `unfold.admin.ModelAdmin` on existing registrations    |
+| `apps/billing/admin.py`   | MODIFY: same inheritance change                                                            |
+
+**Scaffolder flag:** Included in `--with b2b` block. Removing B2B reverts `admin.ModelAdmin` base classes to standard Django and removes hijack URL + INSTALLED_APPS entries.
+
+**Confidence:** MEDIUM — Unfold + Hijack compatibility via standard Django admin extension points is expected but not directly confirmed by a single official integration guide. Both packages target standard Django admin; their interaction is additive. Hijack v3 CSRF-based POST to `hijack:acquire` is not affected by Unfold's theme layer. Flagged for early validation during implementation.
 
 ---
 
-## Recommended Project Structure (v1.3 additions)
+## Recommended Project Structure (v1.4 additions)
 
 ```
 apps/api/apps/
-├── accounts/
-│   ├── [existing files unchanged]
-│   ├── gdpr.py          ← NEW: delete_user, export_user_data
-│   └── rbac.py          ← NEW: require_role, IsInGroup
+├── accounts/            # unchanged — user, auth, RBAC
 ├── billing/
 │   ├── [existing files unchanged]
-│   └── entitlements.py  ← NEW: has_feature()
-├── notifications/       ← NEW DJANGO APP
-│   ├── __init__.py
-│   ├── apps.py
-│   ├── adapters.py      # EmailAdapter ABC, SendGridAdapter, ConsoleAdapter
-│   ├── tasks.py         # send_transactional_email Celery task
-│   └── templates/email/ # Jinja2 templates
-└── core/
-    └── [existing files unchanged]
-
-apps/web/src/
-├── components/
-│   ├── auth/
-│   │   ├── [existing files]
-│   │   └── social-buttons.tsx     ← NEW
-│   └── consent/
-│       └── cookie-banner.tsx      ← NEW
-├── lib/
-│   ├── auth/
-│   │   ├── [existing]
-│   │   └── social.ts              ← NEW
-│   └── consent/
-│       └── store.ts               ← NEW (Zustand)
-└── app/(dashboard)/account/
-    └── delete/
-        └── page.tsx               ← NEW
-
-apps/mobile/lib/auth/
-├── [existing files]
-└── apple.ts                       ← NEW (expo-apple-authentication)
+│   ├── models.py        # MODIFIED: add OrgCustomer, OrgSubscription
+│   └── services.py      # MODIFIED: add OrgBillingService
+├── core/                # unchanged — infra, middleware, health
+├── notifications/       # unchanged — email adapter
+├── ai/                  # unchanged — optional agents
+├── organizations/       # NEW Django app
+│   ├── models.py        # Organization, Membership, OrgRole
+│   ├── schemas.py
+│   ├── controllers.py
+│   ├── services.py
+│   ├── selectors.py
+│   ├── permissions.py   # IsOrgAdmin, IsOrgMember
+│   ├── admin.py
+│   ├── signals.py
+│   └── migrations/
+├── webhooks/            # NEW Django app
+│   ├── models.py        # WebhookEndpoint, WebhookDelivery
+│   ├── schemas.py
+│   ├── controllers.py
+│   ├── services.py
+│   ├── tasks.py         # deliver_webhook Celery task
+│   ├── signing.py       # HMAC-SHA256 utility
+│   ├── admin.py
+│   └── migrations/
+├── apikeys/             # NEW Django app
+│   ├── models.py        # APIKey
+│   ├── schemas.py
+│   ├── controllers.py
+│   ├── services.py
+│   ├── auth.py          # APIKeyAuth (APIKeyHeader subclass)
+│   ├── admin.py
+│   └── migrations/
+└── audit/               # NEW Django app (thin — no models.py)
+    ├── apps.py
+    └── admin.py         # register pghistory shadow tables
 ```
 
 ---
 
 ## Architectural Patterns
 
-### Pattern 1: Adapter ABC (existing, repeated for email)
+### Pattern 1: Per-Org Billing via Parallel Customer Model
 
-**What:** Abstract base class defines interface; concrete classes implement per-provider; settings contain the dotted-path class name; a `get_X_adapter()` factory resolves and instantiates on demand.
+**What:** A new `OrgCustomer` model mirrors the existing `Customer(OneToOneField → User)` pattern with `OrgCustomer(OneToOneField → Organization)`. The existing `BillingService` is not modified — a new `OrgBillingService` handles org billing. This avoids changing tested code and keeps billing contracts stable.
 
-**When to use:** Any external service integration where the provider may change or need stubbing in tests.
+**When to use:** Any time a new entity (org, project, team) needs its own subscription.
 
-**Trade-offs:** One extra indirection; trivially worth it for testability and provider independence.
+**Trade-offs:** Two billing service classes with overlapping logic. A more DRY approach would generalize `BillingService` to accept `entity=user|org`. That optimization is premature here — the duplication is minimal and preserves testability with the existing billing test suite.
 
-```python
-# Resolution factory (same pattern as get_payment_adapter, get_observability_adapter)
-def get_email_adapter() -> EmailAdapter:
-    adapter_class = import_string(settings.EMAIL_ADAPTER)
-    return adapter_class()
-```
+### Pattern 2: Opt-in API Key Auth
 
-### Pattern 2: Comment-Delimited Scaffolder Blocks (existing, extended for email + social)
+**What:** The `api_key_auth = APIKeyAuth()` authenticator is added to individual controllers' `auth=[]` list. Session + JWT auth always remains. No controller is forced to accept API keys.
 
-**What:** Feature-specific code blocks in `config/settings/base.py`, `config/urls.py`, and `.env.example` are wrapped in `# FEATURE_START` / `# FEATURE_END` comment markers. The CLI scaffolder uses regex to strip these blocks when `--without feature` is requested.
+**When to use:** Controllers that need to be callable by external scripts, integrations, or CI pipelines.
 
-**When to use:** Any optional module that needs to be removed by the scaffolder without breaking other modules.
+**Trade-offs:** Controllers must be explicitly opted in. This is intentional — not every endpoint should be accessible via long-lived API keys.
 
-**Trade-offs:** Requires discipline in code placement; implementation is straightforward and already proven in billing module.
+### Pattern 3: pghistory Selective Decoration
 
-### Pattern 3: Service-Layer Isolation (existing standard)
+**What:** `@pghistory.track()` is applied only to models that require audit trails (Organization, Membership, APIKey, WebhookEndpoint). Core infra models (middleware state, health records) and billing models are not tracked.
 
-**What:** Controllers are thin (auth check, schema validation, response serialization). Services own business logic. Models own data persistence. No cross-layer leakage.
+**When to use:** Models where "who changed this and when" is a compliance or operational requirement.
 
-**When to use:** Always. Every new endpoint follows this pattern.
+**Trade-offs:** Selective decoration avoids audit table bloat. Products can add `@pghistory.track()` to additional models without code changes — just add the decorator and run `makemigrations`.
 
-**Trade-offs:** More files, cleaner separation.
+### Pattern 4: Outbound Webhooks as Application-Level Events
 
-### Pattern 4: Signal-Driven Side Effects (existing, extended for email)
+**What:** `WebhookService.dispatch_event(event_type, payload)` is called from service layer (not from controllers or signals directly). The service queries registered endpoints for that event type and fans out Celery tasks.
 
-**What:** Django signals (`post_save`, `post_delete`) trigger side effects like auto-creating related records or dispatching Celery tasks. Signal handlers are registered in `AppConfig.ready()`.
+**When to use:** Any domain event that external systems might want to observe.
 
-**When to use:** When a side effect should always happen in response to a model event, regardless of which code path triggered the event.
-
-**Trade-offs:** Implicit coupling; document signal connections clearly in `signals.py`.
+**Trade-offs:** Products must explicitly call `dispatch_event()` at the relevant service layer call site. There is no automatic "every model save triggers a webhook" behavior — that would produce excessive noise and tight coupling.
 
 ---
 
 ## Data Flow
 
-### New Data Flows in v1.3
-
-**1. Social Login (web: Google):**
+### 1. Org-Scoped API Request
 
 ```
-User clicks "Sign in with Google" (apps/web/src/components/auth/social-buttons.tsx)
+Client sends: GET /api/v1/orgs/{org_slug}/data/
+    with X-API-Key: sk_live_abc123...
     ↓
-Browser redirects to /_allauth/browser/v1/auth/provider/redirect?provider=google
+Ninja auth chain: SessionAuth → jwt_token_auth → APIKeyAuth
+    APIKeyAuth.authenticate():
+        → SHA-256 hash the key
+        → APIKey.objects.get(key_hash=hash, is_active=True)
+        → set request.api_key, request.org = api_key.org
+        → return api_key.user (request.auth = User)
     ↓
-Allauth initiates OAuth2 redirect to Google
+IsOrgMember permission:
+    → Membership.objects.filter(org=request.org, user=request.user).exists()
+    → True → proceed
     ↓
-Google → callback → /_allauth/browser/v1/auth/provider/callback
+Controller → OrgService.get_data(org=request.org)
     ↓
-Allauth: find/create User, create SocialAccount record, create session
-    ↓
-Email notification: send_transactional_email.delay(template="welcome") (if new user)
-    ↓
-Browser: redirected to /dashboard with session cookie set
+Response + pghistory context records user + URL in audit shadow table
 ```
 
-**2. Transactional Email (Celery):**
+### 2. Outbound Webhook Dispatch
 
 ```
-Trigger event (signup, password reset, etc.)
+OrgBillingService processes subscription update
     ↓
-Celery task: send_transactional_email(to, template, context)
+WebhookService.dispatch_event(
+    event_type="billing.subscription.updated",
+    payload={"org_id": ..., "plan": ...},
+    org=org
+)
     ↓
-Load Jinja2 template → render HTML + plaintext
+WebhookEndpoint.objects.filter(
+    org=org,
+    is_active=True,
+    events__contains="billing.subscription.updated"
+)
     ↓
-get_email_adapter() → SendGridAdapter (production) or ConsoleAdapter (dev)
+For each endpoint:
+    deliver_webhook.delay(endpoint.pk, event_type, payload)
     ↓
-adapter.send(to, subject, html, text) → SendGrid API or stdout
+Celery task:
+    HMAC-SHA256 sign payload with endpoint.secret
+    POST to endpoint.url
+    On 2xx: record WebhookDelivery(status_code=200)
+    On failure: autoretry with exponential backoff (max 7 attempts)
+    On exhaustion: WebhookDelivery(failed_at=now)
 ```
 
-**3. Account Deletion (GDPR):**
+### 3. Admin Impersonation Flow
 
 ```
-User: DELETE /api/v1/accounts/me/ (authenticated)
+Staff member opens /admin/accounts/user/
+    → django-unfold renders Unfold-themed user list
+    → django-hijack contrib adds "Impersonate" button per row
     ↓
-Controller: verify identity (re-auth or password confirmation)
+Staff clicks "Impersonate user X"
+    → POST /hijack/acquire/ (CSRF-protected)
+    → hijack checks HIJACK_PERMISSION_CHECK → staff is superuser → allowed
+    → hijack swaps session: staff session → user X session
+    → structlog context: user_id now = X (not staff user)
     ↓
-AccountDeletionService.delete_user(user)
+pghistory.HistoryMiddleware: records user = X for any model changes
+    ← this is correct; impersonation means acting as X
     ↓
-invalidate_user_sessions(user.id) — clears Redis session store
-    ↓
-user.delete() — Django ORM cascade removes: EmailAddress, Customer, Subscription,
-                  Payment, ProcessedWebhookEvent, SocialAccount (if any)
-    ↓
-Return 204 No Content (session already invalid)
+Staff finishes → POST /hijack/release/ → session restored to staff user
 ```
 
-**4. Feature Entitlement Check:**
-
-```
-Request arrives at protected endpoint
-    ↓
-@require_role("admin") OR endpoint logic calls has_feature(user, "api_access")
-    ↓
-has_feature():
-    → user.billing_customer.subscription (DB read, cached if Redis is warm)
-    → PlanProviderMapping.objects.get(price_id=...) (DB read)
-    → settings.BILLING_PLANS[plan_id]["features"] (in-memory dict lookup)
-    ↓
-Returns True/False → endpoint proceeds or raises PermissionDenied
-```
+**Note:** Impersonation + audit logging: changes made during impersonation are recorded as belonging to the impersonated user. This is the expected B2B support pattern. If the product needs "this change was made by staff impersonating X", extend `AuditContextMiddleware.get_context()` to include `hijack_original_user` from the hijack session key.
 
 ---
 
 ## Build Order
 
-Dependencies drive the sequence. Each feature group can be built semi-independently, but the ordering below minimizes rework.
+Dependencies drive the sequence. Organization is the foundation for webhook endpoints, API keys, and per-org billing.
 
 ```
-Phase A: Transactional Email (no deps on other v1.3 features)
-  A1. Create apps/notifications/ app (adapters.py, tasks.py, apps.py)
-  A2. Add ConsoleAdapter (dev/test default), SendGridAdapter (production)
-  A3. Add EMAIL_ADAPTER setting + SENDGRID_API_KEY to base.py + .env.example
-  A4. Add "apps.notifications" to INSTALLED_APPS
-  A5. Hook signup signal → send_transactional_email.delay()
-  A6. CLI scaffolder: --without email flag
-  WHY FIRST: No dependencies on other v1.3 features. Provides foundation
-             for welcome emails that social auth (Phase B) will trigger.
+Phase A: Organization core (prerequisite for everything B2B)
+  A1. Create apps/organizations/ (models: Organization, Membership)
+  A2. Add permissions.py (IsOrgAdmin, IsOrgMember)
+  A3. Add controllers, services, selectors (CRUD + member management)
+  A4. Add data migration: seed "owner", "admin", "member" OrgRoles
+  A5. Add signals.py: post_save → seed owner Membership
+  A6. Add INSTALLED_APPS, scaffolder comment blocks
+  WHY FIRST: Org FK is required by WebhookEndpoint, APIKey, OrgCustomer.
+             Must exist before any other B2B model can be created.
 
-Phase B: Social Auth (depends on allauth already configured + email for welcome)
-  B1. Add allauth.socialaccount.providers.google + .github to INSTALLED_APPS
-  B2. Add SOCIALACCOUNT_PROVIDERS to settings (env-backed client_id/secret)
-  B3. Add social auth env vars to .env.example
-  B4. Add social login buttons to apps/web auth form (social-buttons.tsx)
-  B5. Add Apple Sign In to apps/mobile sign-in screen (expo-apple-authentication)
-  B6. Add allauth.socialaccount.providers.apple + Apple credentials to settings
-  B7. CLI scaffolder: --without social-auth flag
-  WHY SECOND: Allauth is already present. Social providers are additive.
-              Must come before RBAC and GDPR so social users are also
-              subject to same deletion/role policies.
+Phase B: Per-org billing (depends on Organization)
+  B1. Add OrgCustomer, OrgSubscription to apps/billing/models.py
+  B2. Add OrgBillingService mirroring BillingService
+  B3. Add has_org_feature(org, key) to billing/entitlements.py
+  B4. Wire org billing to orgs controller (create org → auto-create OrgCustomer)
+  WHY SECOND: Billing requires Organization FK. Must exist before webhooks
+              can dispatch billing events.
 
-Phase C: RBAC (depends on User model + groups existing — no new v1.3 deps)
-  C1. Create apps/accounts/rbac.py (require_role decorator + IsInGroup class)
-  C2. Add data migration 0002_seed_default_groups.py
-  C3. Add role assignment endpoints to accounts/controllers.py
-  C4. Add RoleAssignmentIn/RoleOut schemas to accounts/schemas.py
-  WHY THIRD: RBAC can be built independently of email and social auth.
-             Placed here because GDPR (Phase D) benefits from admin role
-             check on the data export endpoint.
+Phase C: Outbound webhooks (depends on Organization for FK)
+  C1. Create apps/webhooks/ (models: WebhookEndpoint, WebhookDelivery)
+  C2. Add signing.py (HMAC-SHA256)
+  C3. Add deliver_webhook Celery task (retry + backoff)
+  C4. Add WebhookService.dispatch_event()
+  C5. Add controllers for endpoint registration/listing
+  WHY THIRD: No dependency on API keys. Can be used by session/JWT-auth
+             users to register endpoints before API keys exist.
 
-Phase D: GDPR Baseline (depends on RBAC for admin guard on export)
-  D1. Create apps/accounts/gdpr.py (AccountDeletionService, data_export)
-  D2. Add DELETE /api/v1/accounts/me/ endpoint (authenticated users)
-  D3. Add GET /api/v1/accounts/me/export/ endpoint (admin or self)
-  D4. Create apps/web/src/components/consent/cookie-banner.tsx
-  D5. Create apps/web/src/lib/consent/store.ts (Zustand)
-  D6. Wire <CookieBanner /> into apps/web/app/layout.tsx
-  D7. Add account deletion confirmation page to web app
-  WHY FOURTH: Deletion service benefits from session invalidation utilities
-              already in accounts/services.py. RBAC IsAdminUser is available.
+Phase D: API key auth (depends on Organization; independent of webhooks)
+  D1. Create apps/apikeys/ (models: APIKey)
+  D2. Add APIKeyAuth backend (APIKeyHeader subclass)
+  D3. Add APIKeyService (create, revoke, rotate)
+  D4. Add RequireScope permission class
+  D5. Opt in org-scoped controllers to api_key_auth
+  WHY FOURTH: No dependency on webhooks. Can be built in parallel with C
+              but placed here to avoid merge conflicts on shared controller
+              files.
 
-Phase E: Feature Entitlements (depends on billing module — last because it's
-         a read-only layer on top of existing billing state)
-  E1. Create apps/billing/entitlements.py (has_feature utility)
-  E2. Update BILLING_PLANS in settings with explicit feature key lists
-  E3. Add has_feature() call to any protected endpoints (example usage)
-  E4. No migration needed — reads existing PlanProviderMapping table
-  WHY LAST: Pure read-only logic on top of existing billing data.
-            No schema changes. Safe to add after all other features.
+Phase E: Audit logging (depends on Organization, APIKey, Webhooks models existing)
+  E1. Add pghistory + pgtrigger to INSTALLED_APPS
+  E2. Add HistoryMiddleware (or subclass) to MIDDLEWARE
+  E3. Add @pghistory.track() decorators to Organization, Membership, APIKey,
+      WebhookEndpoint models
+  E4. Run makemigrations to generate shadow table migrations
+  E5. Create apps/audit/admin.py to expose event tables in admin
+  WHY FIFTH: pghistory decorators are additive — safe to apply after
+             models are stable. Applying during model creation would force
+             shadow table migrations alongside initial model migrations,
+             creating unnecessary noise.
+
+Phase F: Admin backoffice (depends on all B2B models existing)
+  F1. Add "unfold", "hijack", "hijack.contrib.admin" to INSTALLED_APPS
+  F2. Update existing accounts/admin.py, billing/admin.py to inherit
+      from unfold.admin.ModelAdmin
+  F3. Register Organization, Membership, APIKey, WebhookEndpoint,
+      WebhookDelivery in their respective admin.py files
+  F4. Configure UNFOLD sidebar navigation in settings
+  F5. Add hijack URL to config/urls.py
+  F6. Validate Unfold + Hijack compatibility (button renders correctly)
+  WHY LAST: Admin is a view layer over already-built models. Safe to add
+            last. No model or service code depends on admin configuration.
 ```
 
 ---
 
 ## Integration Points Summary
 
-| Existing Component                           | Feature       | Change Type                                          | Notes                              |
-| -------------------------------------------- | ------------- | ---------------------------------------------------- | ---------------------------------- |
-| `config/settings/base.py`                    | Email         | ADD: EMAIL_ADAPTER setting, SENDGRID_API_KEY env     | Wrapped in # EMAIL_START/END       |
-| `config/settings/base.py`                    | Social Auth   | ADD: SOCIALACCOUNT_PROVIDERS dict, provider env vars | Wrapped in # SOCIAL_AUTH_START/END |
-| `config/settings/base.py`                    | BILLING_PLANS | MODIFY: add feature key lists to each plan           | Enhances existing dict             |
-| `INSTALLED_APPS`                             | Email         | ADD: "apps.notifications"                            | Wrapped for scaffolder removal     |
-| `INSTALLED_APPS`                             | Social Auth   | ADD: 3 provider packages                             | Wrapped for scaffolder removal     |
-| `apps/accounts/signals.py`                   | Email         | ADD: post_save → send_transactional_email.delay()    | Existing signals.py                |
-| `apps/accounts/controllers.py`               | GDPR + RBAC   | ADD: delete, export, role assignment endpoints       | Additive to existing controller    |
-| `apps/accounts/services.py`                  | GDPR          | ADD: AccountDeletionService class                    | Additive                           |
-| `apps/billing/models.py`                     | Entitlements  | NO CHANGE                                            | Read-only via PlanProviderMapping  |
-| `apps/billing/utils.py`                      | Entitlements  | NONE — new file                                      | entitlements.py is a new file      |
-| `apps/web/app/layout.tsx`                    | GDPR          | ADD: <CookieBanner /> import + render                | Single line addition               |
-| `apps/web/src/components/auth/auth-form.tsx` | Social Auth   | ADD: social-buttons.tsx below form                   | Additive component                 |
-| `apps/mobile/app/(auth)/sign-in.tsx`         | Social Auth   | ADD: Apple Sign In button (iOS only)                 | Platform conditional               |
-| `packages/api-client/`                       | All           | REGENERATE: after each backend endpoint addition     | Standard pipeline                  |
+| Existing Component                       | Feature          | Change Type                                                                   |
+| ---------------------------------------- | ---------------- | ----------------------------------------------------------------------------- |
+| `apps/billing/models.py`                 | Per-org billing  | ADD: `OrgCustomer`, `OrgSubscription` models                                  |
+| `apps/billing/services.py`               | Per-org billing  | ADD: `OrgBillingService` (parallel class, no changes to `BillingService`)     |
+| `apps/billing/entitlements.py`           | Per-org billing  | ADD: `has_org_feature(org, key)` utility                                      |
+| `config/settings/base.py`                | All B2B          | ADD: B2B_START/END blocks, UNFOLD config, HIJACK settings, pghistory settings |
+| `INSTALLED_APPS`                         | All B2B          | ADD: 8 new entries inside B2B scaffolder block                                |
+| `config/urls.py`                         | Admin backoffice | ADD: `path("hijack/", include("hijack.urls"))` inside B2B block               |
+| `apps/accounts/admin.py`                 | Admin backoffice | MODIFY: change base class to `unfold.admin.ModelAdmin`                        |
+| `apps/billing/admin.py`                  | Admin backoffice | MODIFY: change base class to `unfold.admin.ModelAdmin`                        |
+| MIDDLEWARE list                          | Audit logging    | ADD: `pghistory.middleware.HistoryMiddleware` after auth middleware           |
+| `apps/organizations/models.py`           | Audit logging    | ADD: `@pghistory.track()` decorators                                          |
+| `apps/apikeys/models.py`                 | Audit logging    | ADD: `@pghistory.track()` decorators                                          |
+| `apps/webhooks/models.py`                | Audit logging    | ADD: `@pghistory.track()` decorators                                          |
+| `packages/shared-types/`                 | All B2B          | REGENERATE: after each set of new endpoints is stable                         |
+| CLI scaffolder (`create-foundation-app`) | All B2B          | ADD: `--with b2b` flag that includes all 6 phases                             |
 
 ---
 
 ## Anti-Patterns to Avoid
 
-### Anti-Pattern 1: Social Auth State Management in the URL
+### Anti-Pattern 1: Modifying BillingService for Org Billing
 
-**What people do:** Pass OAuth tokens or social account state through URL query parameters in the redirect flow.
+**What people do:** Add `entity_type` and `entity_id` parameters to the existing `BillingService` methods to handle both user and org billing through one service.
 
-**Why it's wrong:** Tokens in URLs appear in server logs, browser history, and referrer headers. PKCE mitigates some risks but URL exposure is still a vulnerability.
+**Why it's wrong:** `BillingService` has 40+ test cases and validated behavior. Introducing an entity discriminator parameter adds branching to every method, increases test surface, and risks regressions. The existing v1.1 billing tests would need updates.
 
-**Do this instead:** Let allauth manage the OAuth state entirely. The callback is handled server-side by allauth's views. The web client only needs to initiate the redirect (`/_allauth/browser/v1/auth/provider/redirect`) and handle the resulting session.
+**Do this instead:** Create `OrgBillingService` as a parallel class. The overlap is 4 methods (create_customer, create_checkout_session, get_status, get_subscription_detail). Small duplication is preferable to modified tested code.
 
-### Anti-Pattern 2: Implementing RBAC with a Custom Role Model
+### Anti-Pattern 2: Storing Raw API Keys
 
-**What people do:** Create a `Role` model with a ManyToMany to `User`, bypassing Django's built-in `Group` system.
+**What people do:** Store the full API key string in the database to allow "re-displaying" it or for simpler lookup.
 
-**Why it's wrong:** Django Groups are battle-tested, integrated with the admin, and already present. A custom Role model duplicates this with none of the built-in benefits.
+**Why it's wrong:** A database breach exposes all API keys. Industry standard (GitHub, Stripe, Vercel) is to show the key exactly once and store only the hash.
 
-**Do this instead:** Use Django Groups as roles. The `require_role("admin")` decorator checks group membership. Group names are strings — no enum or constant model needed.
+**Do this instead:** `key_hash = SHA-256(raw_key)`. Store only `key_hash` and the `prefix` (first 12 chars for display). On lookup, hash the incoming key and compare. The raw key is gone after creation.
 
-### Anti-Pattern 3: Synchronous Email Sending in Request Cycle
+### Anti-Pattern 3: Tracking Every Model with pghistory
 
-**What people do:** Call `adapter.send()` directly in a controller or signal handler, blocking the HTTP response until the email API responds.
+**What people do:** Add `@pghistory.track()` to all models uniformly to avoid thinking about which ones need audit trails.
 
-**Why it's wrong:** Email APIs introduce 100-500ms latency per call. Errors in the email provider cause HTTP 500s. Request timeout kills in-flight emails.
+**Why it's wrong:** pghistory creates shadow tables for every tracked model. With many models, this doubles table count, doubles migration complexity, and produces massive audit data for high-write tables (e.g. `WebhookDelivery` has a row per delivery attempt — tracking it would double writes on an already write-heavy table).
 
-**Do this instead:** Always dispatch `send_transactional_email.delay()` as a Celery task. The HTTP response returns immediately. Failed emails are retried by Celery. Email delivery is decoupled from request success.
+**Do this instead:** Track only models where audit trail is a requirement: Organization, Membership, APIKey, WebhookEndpoint. Do not track WebhookDelivery (it is already an event log), Customer, Subscription (Stripe is the source of truth), or structlog-covered request events.
 
-### Anti-Pattern 4: Storing Feature Flags in the Database
+### Anti-Pattern 4: Inbound vs. Outbound Webhook Confusion
 
-**What people do:** Create a `Feature` model with a ManyToMany to subscription plans, managed via admin.
+**What people do:** Place outbound webhook dispatch logic in `apps/billing/webhooks.py` alongside the existing Stripe inbound handler.
 
-**Why it's wrong:** Feature configuration becomes fragmented across database state and code. Deployments require database migrations to change features. Testability requires database fixtures for feature data.
+**Why it's wrong:** The inbound handler (`stripe_webhook`) is a plain Django view receiving Stripe events. Outbound dispatch is application code sending events to customers. Mixing them creates confusion about data direction, coupling Stripe-specific code to a general-purpose system, and making `--with b2b` scaffolder removal harder.
 
-**Do this instead:** `BILLING_PLANS` in settings is the single source of truth. Feature keys are strings in a list. `has_feature()` is a pure function of user subscription + settings — no extra DB models, no extra migrations.
+**Do this instead:** `apps/billing/webhooks.py` = inbound Stripe only (unchanged). `apps/webhooks/` = all outbound delivery logic.
 
-### Anti-Pattern 5: Soft-Delete for GDPR Account Deletion
+### Anti-Pattern 5: Webhook Delivery Without Idempotency Key
 
-**What people do:** Add `deleted_at` field to User model and filter it in queries (soft delete).
+**What people do:** Deliver webhooks without a `X-Webhook-Delivery` header or delivery ID, relying on the customer to handle deduplication.
 
-**Why it's wrong:** GDPR Article 17 (Right to Erasure) requires actual deletion of personal data, not just hiding it. Soft-deleted records still contain PII and are subject to regulatory compliance.
+**Why it's wrong:** Celery retries mean the same event can be delivered multiple times. Without a stable delivery ID, customers cannot deduplicate and may process the same event twice (double charge, duplicate resource creation).
 
-**Do this instead:** Hard delete via `user.delete()`. Django ORM cascade handles all related records. If audit logging is needed, log the deletion event (timestamp, hashed user ID) before the delete — not the user data itself.
+**Do this instead:** Generate a UUID delivery ID when `WebhookDelivery` is created. Include it as `X-Webhook-Delivery: <uuid>` on every delivery attempt. Celery retries use the same delivery ID. Customers can deduplicate on this ID.
 
 ---
 
 ## Scaling Considerations
 
-| Scale         | Architecture Adjustments                                                                                                                                                                                     |
-| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 0-1k users    | All five features work as described. Synchronous data export is fine.                                                                                                                                        |
-| 1k-100k users | Data export should become async Celery task + email delivery (avoid timeout on large accounts). Feature entitlement results should be cached in Redis (1-minute TTL) to avoid repeated DB reads per request. |
-| 100k+ users   | RBAC permission checks may need caching. Social auth token exchange should use PKCE. Email volume may require SendGrid dedicated IP. Consider read replica for data export queries.                          |
+| Scale         | Architecture Adjustments                                                                                                                                                                                                                                                                                                        |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0-1k users    | All B2B features work as described. Outbound webhook fanout at this scale is negligible.                                                                                                                                                                                                                                        |
+| 1k-100k users | Webhook fanout per event can become a bottleneck if an org has many endpoints. Use a dedicated Celery queue (`webhooks`) to isolate from billing and email queues. Org permission checks (`IsOrgMember`) should cache membership results in Redis (per-request TTL).                                                            |
+| 100k+ users   | Outbound webhook delivery should move to a dedicated worker pool. pghistory audit tables will grow large — add Postgres table partitioning by `created_at` on high-write event models. API key lookups on `key_hash` should have a DB index (already enforced by `unique=True` on `prefix` — add explicit index on `key_hash`). |
 
 ---
 
 ## Sources
 
-- Django Allauth social account provider configuration: [docs.allauth.org/en/dev/socialaccount/provider_configuration.html](https://docs.allauth.org/en/dev/socialaccount/provider_configuration.html) — HIGH confidence (official docs)
-- Django Allauth Google provider: [docs.allauth.org/en/dev/socialaccount/providers/google.html](https://docs.allauth.org/en/dev/socialaccount/providers/google.html) — HIGH confidence (official docs)
-- Expo Apple Authentication: [docs.expo.dev/versions/latest/sdk/apple-authentication/](https://docs.expo.dev/versions/latest/sdk/apple-authentication/) — HIGH confidence (official Expo docs)
-- Django Ninja Extra permission system: [eadwincode.github.io/django-ninja-extra/api_controller/api_controller_permission/](https://eadwincode.github.io/django-ninja-extra/api_controller/api_controller_permission/) — HIGH confidence (official library docs)
-- Existing codebase inspection: `apps/billing/adapters.py`, `apps/billing/decorators.py`, `apps/core/observability.py`, `apps/accounts/services.py`, `apps/accounts/headless.py`, `config/settings/base.py`, `config/urls.py` — HIGH confidence (direct inspection)
-- PaymentAdapter ABC pattern (already validated v1.1): existing `apps/billing/adapters.py` — HIGH confidence
-- GDPR cascade deletion via Django ORM: Django model deletion documentation, confirmed by codebase FK relationship inspection — HIGH confidence
-- Cookie consent in Next.js 15 App Router: [posthog.com/tutorials/nextjs-cookie-banner](https://posthog.com/tutorials/nextjs-cookie-banner) — MEDIUM confidence (PostHog-authored tutorial, current)
+- Django Ninja authentication API — `APIKeyHeader` class and `authenticate()` override: [django-ninja.dev/guides/authentication/](https://django-ninja.dev/guides/authentication/) — HIGH confidence (official docs, verified via WebFetch)
+- django-pghistory middleware and context tracking: [django-pghistory.readthedocs.io/en/2.9.0/context/](https://django-pghistory.readthedocs.io/en/2.9.0/context/) — HIGH confidence (official docs)
+- django-pghistory v3.6.0, April 2025 — actively maintained, PostgreSQL trigger approach: [pypi.org/project/django-pghistory/](https://pypi.org/project/django-pghistory/) — HIGH confidence
+- Caktus Group pghistory best practices (2025): [caktusgroup.com/blog/2025/04/07/tips-tracking-django-model-changes-django-pghistory/](https://www.caktusgroup.com/blog/2025/04/07/tips-tracking-django-model-changes-django-pghistory/) — MEDIUM confidence (community, verified against official docs)
+- django-unfold admin theme: [unfoldadmin.com/docs/](https://unfoldadmin.com/docs/) — HIGH confidence (official docs, verified via WebFetch)
+- django-hijack v3 admin integration: [django-hijack.readthedocs.io/](https://django-hijack.readthedocs.io/) — HIGH confidence (official docs, verified via WebFetch)
+- Webhook HMAC signing and retry patterns: [hookdeck.com/outpost/guides/outbound-webhook-retry-best-practices](https://hookdeck.com/outpost/guides/outbound-webhook-retry-best-practices) — MEDIUM confidence (industry guide, consistent with Stripe/GitHub patterns)
+- Per-org Stripe customer association best practice: [saaspegasus.com/guides/django-stripe-integrate/](https://www.saaspegasus.com/guides/django-stripe-integrate/) — MEDIUM confidence (community, consistent with Stripe official guidance)
+- Existing codebase inspection: `apps/billing/adapters.py`, `apps/billing/models.py`, `apps/accounts/permissions.py`, `apps/billing/entitlements.py`, `apps/billing/webhooks.py`, `config/urls.py`, `config/settings/base.py`, `apps/core/middleware.py`, `apps/core/models.py` — HIGH confidence (direct inspection)
 
 ---
 
-_v1.3 SaaS Functional Baseline — Foundation Template_
-_Researched: 2026-03-11_
+_v1.4 B2B Module — Foundation Template_
+_Researched: 2026-03-12_

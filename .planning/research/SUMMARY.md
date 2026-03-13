@@ -1,214 +1,221 @@
 # Project Research Summary
 
-**Project:** Foundation Template — v1.3 SaaS Functional Baseline
-**Domain:** SaaS template — transactional email, social auth, GDPR baseline, RBAC, feature entitlements
-**Researched:** 2026-03-11
+**Project:** Foundation Template — v1.4 B2B Module
+**Domain:** B2B SaaS infrastructure — organizations, outbound webhooks, API keys, audit logging, admin backoffice
+**Researched:** 2026-03-12
 **Confidence:** HIGH
 
 ## Executive Summary
 
-The v1.3 milestone adds five cross-cutting features to an already-shipping Django Ninja Extra + Next.js 15 + Expo SDK 53 monorepo. These features are universally required in production SaaS products: transactional email, social login, GDPR compliance, role-based access control, and plan-gated feature entitlements. The research conclusion is clear — all five belong in v1.3, all are achievable without new architectural risk, and the majority require zero new library dependencies because the existing stack already provides the building blocks.
+The v1.4 milestone adds a complete B2B layer to an existing full-stack SaaS template that already ships auth, billing, observability, RBAC, rate limiting, Celery, and Redis. Research confirms all five feature areas (organization model, outbound webhooks, API keys, audit logging, admin backoffice) follow well-established patterns in the Django ecosystem and can be delivered with only three net-new Python packages: `django-pghistory` (trigger-based audit), `django-unfold` (admin theme), and `django-hijack` (impersonation). Organization model, API key model, and webhook delivery infrastructure are custom code using the existing stack — no additional library dependencies are warranted. The module is designed as an opt-in `--with b2b` scaffolder block with clean removal boundaries, so products not requiring B2B can exclude the entire feature set.
 
-The recommended approach follows the Adapter ABC pattern already established by `PaymentAdapter` and `ObservabilityAdapter` in the codebase. Transactional email gets `EmailAdapter` + `django-anymail` v14 with Resend as the default ESP (SendGrid was officially dropped by anymail in June 2025 and must not be used as default). Social auth extends the already-installed Django Allauth 65.x by activating provider subpackages in `INSTALLED_APPS` — no new Python package is required. GDPR hard delete uses `user.delete()` via a `UserDeletionService` orchestrator that handles Stripe and PostHog cleanup before the ORM cascade fires. RBAC uses Django Groups (already present via `django.contrib.auth`) with a 30-line `require_role` decorator. Feature entitlements are a pure function that reads the existing `BILLING_PLANS` settings dict against the user's active `Subscription` — no new model, no new migration.
+The recommended implementation order is strict: Organization model must come first because every other B2B feature depends on it as a foreign key target. Within the organization phase, the billing entitlement resolution path (`_resolve_plan_id`) must be updated to prefer org plans over personal plans — failing to do this in the same phase creates a subtle integration gap where org members resolve entitlements against their personal subscription. Outbound webhooks and API keys are independent of each other and can be delivered in either order, but both must reference the Organization model established in phase 1. Audit logging is a cross-cutting concern applied via `@pghistory.track()` decorators on models created in preceding phases. Admin backoffice (unfold + hijack) is last because it depends on `AuditLog.impersonator` being present before django-hijack is enabled.
 
-The critical risks are concentrated in two features. Apple Sign In on mobile requires a dedicated server-side native token verification endpoint because Expo's `expo-apple-authentication` produces a JWT with a different audience claim than Allauth's standard social token flow expects — using the standard flow will fail silently with an audience mismatch error. GDPR deletion will leave orphaned data in Stripe, PostHog, and Allauth tables if `user.delete()` is called directly without the `UserDeletionService` orchestrator. Both risks are well-understood and preventable with the implementation patterns documented in the research. The dependency-driven build order is: email first, then social auth, then RBAC, then GDPR, then entitlements.
+The two most dangerous pitfalls are billing attachment (org billing silently reading from the wrong Customer if `_resolve_plan_id` is not updated atomically with the org model) and API key security (plaintext storage or timing-unsafe comparison — no migration path exists from insecure to secure once keys are issued). Tenant isolation is the third critical invariant: every service method operating on org-scoped resources must validate membership before any ORM query. Getting isolation wrong requires a full endpoint audit and risks GDPR Article 33 notification obligations if personal data crossed org boundaries.
 
 ## Key Findings
 
 ### Recommended Stack
 
-The v1.3 stack additions are minimal by design. Only two new Python packages and two new mobile packages are required. GDPR, RBAC, and feature entitlements use zero new dependencies.
+The full prior stack is non-negotiable per CLAUDE.md. This research covers only net-new additions for v1.4. Three new Python packages are required; zero new JS/TS or mobile packages are needed.
 
-**Core technologies (net-new for v1.3):**
+**Core technologies (net-new for v1.4):**
 
-- `django-anymail >= 14.0,<15`: Django email backend abstraction for 14+ ESP providers — keeps application code provider-agnostic; install with `uv add "django-anymail>=14.0,<15"`
-- `premailer >= 3.10,<4`: CSS inlining for HTML email templates — email clients strip `<style>` blocks; `premailer.transform(html, allow_network=False)` converts them to inline attributes before dispatch
-- `@react-native-google-signin/google-signin @ ^16.1.2`: Native Google Sign In for Expo managed workflow — requires a development build; does not work in Expo Go
-- `expo-apple-authentication @ ~55.0.8`: Native Apple Sign In — SDK 53 bundled; iOS only; mandatory if any other social login is present (App Store policy)
-- Django Allauth social providers (no new install): Google, GitHub, and Apple provider apps are activated in `INSTALLED_APPS` only — allauth 65.15.0 is already installed
-- Django Groups + `BasePermission` (no new install): RBAC carrier; `django.contrib.auth.models.Group` is present in every Django project by default
-- Settings-driven `has_feature()` (no new install): reads existing `BILLING_PLANS` config against `PlanProviderMapping` table
+- `django-pghistory >=3.9,<4`: trigger-based audit logging — preferred over signal-based `django-auditlog` because PostgreSQL triggers capture bulk ORM operations and raw SQL that Django signals miss entirely; this gap is unacceptable in a compliance audit trail
+- `django-unfold >=0.83,<1`: Tailwind-based Django admin theme — officially recommended by the Django project (Django blog, April 2025); wraps standard `django.contrib.admin` with no model migrations required; requires Python 3.11+
+- `django-hijack >=3.7,<4`: customer support impersonation — CSRF-protected POST-only, shows a persistent banner, 64K weekly downloads; preferred over `django-impersonate` (lower adoption, less active maintenance cadence)
 
-**ESP default correction:** ARCHITECTURE.md was written with an earlier assumption of SendGrid as the default. FEATURES.md and STACK.md both correctly identify Resend as the default ESP. Implementation must use `RESEND_API_KEY`, not `SENDGRID_API_KEY`, in `.env.example` and settings.
+**Rejected libraries with rationale:**
 
-See `.planning/research/STACK.md` for full rationale, version compatibility matrix, and complete environment variable inventory.
+- `django-organizations`: fixed binary `is_admin` role model incompatible with owner/admin/member requirements; ships unused view layer; complicates CLI scaffolder removal
+- `djangorestframework-api-key`: DRF-specific `BasePermission` — incompatible with Django Ninja Extra's auth model; no scope support
+- `django-webhook`: wrong delivery model (ORM-change trigger, not registry-based); pre-release `0.0.x`; stale since August 2024
+- `django-pgaudit`: does not exist on PyPI (404 confirmed); the real `pgaudit` is a Postgres server extension with no Django request context and requires log-parsing infrastructure
 
 ### Expected Features
 
-All eight sub-features are P1 for v1.3. None can be deferred without compromising the "functional baseline" milestone goal.
+**Must have (table stakes — all P1 for v1.4):**
 
-**Must have (table stakes — expected in every production SaaS):**
+- Organization model + membership + owner/admin/member roles — the core B2B primitive; first member becomes owner; exactly one owner per org at all times
+- Member invitation via email with token expiry — invite tokens expire at 72h; accepted by new signup or existing user login
+- Per-org Stripe billing — `OrgCustomer` model parallel to existing `Customer`; `_resolve_plan_id` updated to check org plan before personal plan; entitlement cache invalidated for all org members on subscription update
+- Outbound webhook registry with HMAC-SHA256 signing — developer table stakes; Stripe-compatible signature format; `X-Webhook-Timestamp` replay prevention
+- Webhook delivery log with exponential backoff retry — `WebhookDelivery` model with status, attempt count, response code; dead-endpoint circuit breaker after N failures
+- API key create/revoke with scopes — prefix + SHA-256 hash stored; raw key shown once at creation only; scope strings validated per-request
+- Per-key rate limiting via Redis — existing `django-ratelimit` callable `key=` reused; `X-RateLimit-*` response headers
+- Audit logging write side — `@pghistory.track()` on Organization, Membership, APIKey, WebhookEndpoint; pghistory middleware attaches user + request URL automatically
+- Audit log org-scoped read API — paginated, filterable by actor/date/action; accessible to org owner and admin roles only; does not expose impersonation entries to org admins
+- Admin backoffice via django-unfold — drop-in theme; `UnfoldModelAdmin` subclassing; `unfold` must appear before `django.contrib.admin` in INSTALLED_APPS
+- Customer support impersonation via django-hijack — restricted to `is_staff`; CSRF-protected; impersonation events wired to AuditLog; banner always enabled
 
-- Transactional email with Celery queue — password reset, email verification, billing receipts; ad-hoc Django email sends create unmaintainable tech debt
-- Social login (Google + GitHub on web) — reduces signup friction; expected as standard UX in 2025
-- GDPR account hard delete (Article 17) — EU legal requirement; not optional for any EU-facing product
-- GDPR data export (Article 20) — EU legal requirement; right to portability
-- Cookie consent banner — ePrivacy Directive requirement when PostHog analytics cookies are set
-- RBAC with admin and member roles — minimum access control for any multi-user product
-- Plan-gated feature entitlements — closes the billing loop opened in v1.1
+**Should have (differentiators vs. competing templates):**
 
-**Should have (competitive differentiators for a template):**
+- `--with b2b` CLI scaffolder flag — clean opt-in matching existing scaffolder patterns; all B2B code wrapped in `# B2B_START` / `# B2B_END` markers
+- Per-key API rate limiting with `X-RateLimit-*` headers — most templates rate-limit by IP only; per-key enables tiered API plans
+- API key usage tracking (`last_used_at`, `usage_count`) — feeds metered billing if enabled
+- Webhook manual retry button — `POST /api/v1/webhooks/deliveries/{id}/retry`; eliminates "resend from scratch" workflow
+- Impersonation events wired to AuditLog — closes compliance gap; `AuditLog.impersonator` FK required before hijack is enabled
+- Org ownership transfer endpoint — owner-only operation; necessary when founding member leaves
 
-- EmailAdapter ABC with swappable ESPs (mirrors PaymentAdapter pattern) — developers can switch from Resend to Mailgun with one settings change
-- Apple Sign In on mobile — most competing templates skip this, creating App Store rejection risk for downstream products that also ship Google Sign In
-- Async Celery-based GDPR deletion — large account deletion would time out a synchronous HTTP request
-- `--without email` and `--without social-auth` scaffolder flags — extends the existing modular scaffolder pattern
+**Defer (future milestones / v2+):**
 
-**Defer (future milestones):**
+- Custom org roles beyond owner/admin/member — extend `Membership.role` choices per product when enterprise customers require it
+- SSO/SAML per org — django-allauth has SAML support; out of scope for template
+- Hierarchical orgs (sub-orgs/departments) — only for large-enterprise products; trivially added as `parent_org` FK later
+- Audit log external shipping (Splunk, Datadog Logs) — true tamper-evidence; template provides the foundation only
+- Webhook event catalog UI — browsable event types with example payloads
 
-- MFA via Allauth MFA module — Allauth headless MFA is ready when the product needs it
-- Additional social providers (Facebook, LinkedIn) — per-product decision; not worth template complexity
-- Object-level permissions via Django Guardian — requires product-specific model knowledge
-- ABAC / policy engines (Casbin, OPA) — enterprise multi-tenant use cases only
+**Anti-features to actively avoid:**
 
-See `.planning/research/FEATURES.md` for full dependency graph, competitor analysis (vs. SaaSPegasus, Bedrock), anti-feature rationale, and MVP definition.
+- Row-level multi-tenancy (automatic query rewriting) — breaks Django admin, hard to audit; ship Organization FK and let each product add scoping
+- Webhook secret auto-rotation that updates existing integrations — impossible without breaking integrations silently
+- Per-org SSO enforcement — requires SSO infrastructure as a prerequisite
 
 ### Architecture Approach
 
-All five v1.3 features are additive to the existing layered architecture. One new Django app (`apps/notifications/`), three new files in existing apps (`gdpr.py`, `rbac.py`, `entitlements.py`), and corresponding web and mobile components are added. No existing module is rearchitected. The Adapter ABC pattern, comment-delimited scaffolder blocks, service-layer isolation, and signal-driven side effects are each extended — not replaced.
+The v1.4 module follows the existing domain-app structure exactly: each feature area becomes a new `apps/api/apps/<domain>/` Django app with `models.py`, `schemas.py`, `controllers.py`, `services.py`, and `admin.py`. The billing app gains an additive `OrgCustomer` model and `OrgBillingService`. Audit logging uses `django-pghistory` decorators applied to targeted models rather than a standalone audit app with its own models — shadow tables are auto-generated by pghistory in the tracked model's migration files. Admin backoffice requires no new Django app: it modifies existing `admin.py` files to subclass `UnfoldModelAdmin` and adds `django-hijack` URL/INSTALLED_APPS configuration. All new code is wrapped in `# B2B_START` / `# B2B_END` comments for clean scaffolder removal.
 
-**Major components added:**
+**Major components:**
 
-1. `apps/api/apps/notifications/` (NEW) — EmailAdapter ABC; `django-anymail` Resend backend; Celery task with `transaction.on_commit()`; HTML + plain-text email templates
-2. `apps/api/apps/accounts/gdpr.py` (NEW) — `UserDeletionService` (orchestrates Stripe + PostHog cleanup before ORM cascade); `UserDataExportService` (aggregates User, EmailAddress, SocialAccount, BillingProfile, Subscription, Invoice)
-3. `apps/api/apps/accounts/rbac.py` (NEW) — `require_role()` decorator; `IsInGroup` Ninja Extra permission class; data migration seeding `admin`, `moderator`, `viewer` groups
-4. `apps/api/apps/billing/entitlements.py` (NEW) — `has_feature(user, key)` utility; reads `BILLING_PLANS` settings dict against `PlanProviderMapping` table
-5. Social auth provider configuration (MODIFIED) — `SOCIALACCOUNT_PROVIDERS` dict and provider apps added to `INSTALLED_APPS` in `config/settings/base.py`
-6. `apps/web/src/components/consent/cookie-banner.tsx` (NEW) — `"use client"` component returning `null` on server render; `localStorage`-backed consent gates PostHog `opt_in_capturing()`
-7. `apps/mobile/lib/auth/apple.ts` (NEW) — `expo-apple-authentication` native token flow; POSTs to a dedicated Django verification endpoint (not Allauth's standard social token endpoint)
+1. `apps/organizations/` — Organization, Membership models; `IsOrgAdmin`/`IsOrgMember` permission classes; invite flow via existing EmailAdapter; org ownership transfer; `OrgQuerySet` manager enforcing `.for_org(org)` at development time
+2. `apps/billing/` (modified additive) — `OrgCustomer`, `OrgBillingService`, `has_org_feature()`; `_resolve_plan_id` updated to check org plan before personal plan
+3. `apps/webhooks/` — WebhookEndpoint, WebhookDelivery models; Celery delivery task with exponential backoff (max 7 retries, up to 1h gap); HMAC-SHA256 signing; delivery log API; manual retry endpoint; auto-disable after N failures
+4. `apps/apikeys/` — APIKey model (prefix + SHA-256 hash); custom `APIKeyHeader` Ninja auth backend; `RequireScope` permission class; per-key rate limiting via `django-ratelimit`
+5. `apps/audit/` — thin app (no models); `AuditContextMiddleware` extends `pghistory.middleware.HistoryMiddleware` to attach org context; admin registrations for pghistory shadow tables
 
-**Build order (dependency-driven, confirmed by architecture research):**
-Phase A (Email) → Phase B (Social Auth) → Phase C (RBAC) → Phase D (GDPR) → Phase E (Entitlements)
+**Key patterns:**
 
-See `.planning/research/ARCHITECTURE.md` for full component diagrams, data flows, integration mapping table, anti-patterns, and per-phase build steps.
+- `APIKeyAuth.authenticate()` returns `None` (not raises) when header is absent, enabling fallback to session auth in Ninja's multi-auth resolution order
+- Every service method accepting org-scoped resources validates `Membership.objects.filter(user=user, org=org).exists()` before any ORM filter; raw `org_id` from request input is never passed directly to a filter
+- Webhook payloads include `webhook_version: "v1"` field from day one; payload schema is a versioned public API contract
 
 ### Critical Pitfalls
 
-1. **Apple Sign In native token audience mismatch** — Expo's `expo-apple-authentication` returns a JWT with `aud` = Bundle ID (App ID). Allauth's standard `/_allauth/app/v1/auth/provider/token` endpoint expects a web OAuth token with `aud` = Services ID. Passing the native token to the standard endpoint fails with `jwt.InvalidAudienceError`. Fix: build a dedicated Django endpoint that verifies the native JWT against Apple's public JWKS (`https://appleid.apple.com/auth/keys`), then uses allauth's internal socialaccount APIs to connect the account. Design this endpoint before writing any Expo-side Apple auth code. Recovery cost: HIGH.
+1. **Billing attachment to User not Org** — Update `_resolve_plan_id` in the Organization phase, not later. For org members, resolve entitlements from the org's plan first; fall back to personal plan. Invalidate `entitlements:{user.pk}` for all org members when the org subscription changes. No intermediate state where org members use the wrong tier should ever exist.
 
-2. **Social auth email collision creates duplicate accounts** — Allauth's default (`SOCIALACCOUNT_EMAIL_AUTHENTICATION=False`) blocks social login for an email that already has a password account, or creates a second user. Fix: set `SOCIALACCOUNT_EMAIL_AUTHENTICATION=True` and `SOCIALACCOUNT_EMAIL_AUTHENTICATION_AUTO_CONNECT=True` for Google and GitHub; write a custom `SocialAccountAdapter.pre_social_login()` that handles the merge. Do NOT enable auto-connect for Apple (relay addresses). This must be in place before any social provider is activated in production. Recovery cost: HIGH.
+2. **API key plaintext storage or timing-unsafe comparison** — Store only SHA-256 hash and a non-secret prefix. Use `hmac.compare_digest` not `==`. Return raw key to the user exactly once at creation. No migration path from plaintext to hashed keys without invalidating all existing keys — must be correct from the first commit.
 
-3. **Celery email task dispatched before DB transaction commits** — With `ATOMIC_REQUESTS=True` (the template default), `send_welcome_email.delay(user.id)` called immediately after `User.objects.create_user()` runs before the row is committed. The Celery worker gets `User.DoesNotExist`. Fix: always wrap every email task dispatch in `transaction.on_commit(lambda: send_welcome_email.delay(...))`. This is a mandatory code pattern, not an option. Recovery cost: LOW to fix, but silent failures cause user trust damage.
+3. **Outbound webhook fire-and-forget (no delivery log)** — `WebhookDelivery` model must be in the initial migration for the webhooks phase; historical delivery status cannot be reconstructed. Implement circuit-breaker: auto-disable endpoint after N consecutive failures and notify the org admin.
 
-4. **GDPR deletion leaves orphaned data in third-party systems** — `user.delete()` cascades Django ORM relations but does not call `stripe.Customer.delete()`, `posthog.delete()`, or clean up Celery task results. Stripe customer records containing PII persist after the Django user row is gone — a GDPR Article 17 violation. Fix: implement `UserDeletionService` that calls external service deletion APIs before the ORM cascade. Add a post-deletion assertion test. Recovery cost: HIGH.
+4. **Tenant isolation gaps** — Every service method operating on org-scoped resources must validate membership before any ORM query. Queryset-level org filtering cannot be delegated to the HTTP permission layer alone. Write integration tests: two orgs, verify cross-org resource access returns 403.
 
-5. **Stale feature entitlement cache after plan change** — If `has_feature()` results are cached without explicit webhook-driven invalidation, a user who downgrades continues accessing premium features until the TTL expires. Fix: call `cache.delete()` for the user's entitlement key in the Stripe webhook handler when `customer.subscription.updated` fires. Keep TTL at 5-15 minutes as a backstop. Recovery cost: LOW technically, HIGH for user trust and potential refund disputes.
+5. **Impersonation session leaking into audit log** — `AuditLog` must have an `impersonator` nullable FK before django-hijack is enabled. Add middleware that reads `session["hijack_history"]` and injects impersonation context for the audit middleware to consume. Retrofitting the schema after the fact cannot backfill historical impersonation sessions.
 
-See `.planning/research/PITFALLS.md` for 15 pitfalls across critical, moderate, and minor severity levels, including a security mistakes table, UX pitfalls table, performance traps table, and a "Looks Done But Isn't" verification checklist.
+6. **Django Ninja auth resolution order** — `APIKeyAuth.authenticate()` must return `None` when the header is absent (not raise an exception). Raising prevents fallback to session auth. API-key-only endpoints must list only `APIKeyAuth` in `auth=[]` to prevent session-authenticated browser tabs from bypassing scope enforcement.
 
 ## Implications for Roadmap
 
-The dependency graph drives a 5-phase structure. Each phase delivers independently testable functionality before the next phase begins.
+The dependency graph from FEATURES.md drives a strict 5-phase structure. Organization model is a hard prerequisite for all other phases. Audit logging must precede admin backoffice (impersonator column required). Webhooks and API keys are independent of each other and could be parallelized with separate subagents.
 
-### Phase 1: Transactional Email
+### Phase 1: Organization Model + Per-Org Billing
 
-**Rationale:** Zero dependencies on other v1.3 features. Establishes the email infrastructure that social auth (Phase 2) needs for welcome emails and GDPR (Phase 4) needs for deletion confirmation emails. The lowest-risk starting point.
-**Delivers:** `apps/notifications/` Django app; `EmailAdapter` ABC; `django-anymail` + ResendAdapter (default) + ConsoleAdapter (dev/test); Celery task using `transaction.on_commit()`; HTML + plain-text email templates (welcome, email-verify, password-reset, password-changed, subscription-created, subscription-cancelled); `--without email` scaffolder flag.
-**Addresses:** Transactional email table-stakes feature; EmailAdapter ABC differentiator.
-**Avoids:** Celery task before DB commit (Pitfall 3); HTML-only email without plain-text fallback (Pitfall 12); synchronous email in request cycle (Anti-Pattern 3).
-**Research flag:** Standard pattern — mirrors existing PaymentAdapter/ObservabilityAdapter. Skip `/gsd:research-phase`.
+**Rationale:** Organization is a foreign key target for every other B2B feature. Must be first. Per-org billing ships in the same phase because `_resolve_plan_id` must be updated atomically — an intermediate state where org model exists but entitlement resolution is still user-only creates a correctness bug that is costly to fix post-hoc.
+**Delivers:** `Organization`, `Membership`, `OrgRole` models; owner/admin/member roles; member invitation flow with 72h token expiry; `IsOrgAdmin`/`IsOrgMember` permission classes; `OrgQuerySet` manager; `OrgCustomer` billing model; `OrgBillingService`; updated `_resolve_plan_id`; `has_org_feature()` utility; org ownership transfer endpoint; `packages/shared-types/` regenerated.
+**Features addressed:** Organization model, org roles, member invitation, per-org billing (all P1 table stakes)
+**Pitfalls to avoid:** Billing attachment (update `_resolve_plan_id` in this phase); tenant isolation foundation (`OrgQuerySet` manager established as the pattern for all subsequent phases)
+**Research flag:** No additional research needed — mirrors existing `billing` domain module structure; `BaseModel`, `RequireRole`, and `PaymentAdapter` patterns already validated in codebase.
 
-### Phase 2: Social Auth (Google + GitHub web; Apple mobile)
+### Phase 2: Outbound Webhooks
 
-**Rationale:** Allauth is already installed; provider activation is additive. Must precede RBAC and GDPR so that social users are covered by the same deletion and role policies from day one. The Apple Sign In architecture decision (dedicated native token endpoint) must be locked before any Expo-side code is written.
-**Delivers:** `SOCIALACCOUNT_PROVIDERS` settings for Google + GitHub; custom `FoundationSocialAccountAdapter` with email merge logic for trusted providers; `social-buttons.tsx` in web auth form; dedicated Django native Apple token verification endpoint (verifies against Apple JWKS, then connects via allauth socialaccount APIs); `expo-apple-authentication` integration on mobile; `--without social-auth` scaffolder flag.
-**Addresses:** Social login table-stakes feature; Apple Sign In differentiator; App Store policy compliance.
-**Avoids:** Apple native token audience mismatch (Pitfall 1); email collision creating duplicate accounts (Pitfall 2); OAuth redirect URI misconfiguration (Pitfall 8).
-**Research flag:** The dedicated Apple native token endpoint is non-standard and the exact allauth 65.x internal API surface for `connect`-ing a pre-verified social account needs verification before plan committal. Recommend a 30-minute implementation spike on the allauth source code before planning this phase.
+**Rationale:** Independent of API keys; depends only on Organization model (phase 1). `WebhookDelivery` model must be in the initial migration — cannot be added retroactively. Webhook payload schema must be versioned from day one.
+**Delivers:** `WebhookEndpoint`, `WebhookDelivery` models; Celery delivery task with exponential backoff (7 retries, max 1h gap); HMAC-SHA256 signing; delivery log API (`GET /api/v1/webhooks/endpoints/{id}/deliveries`); manual retry endpoint (`POST /api/v1/webhooks/deliveries/{id}/retry`); dead-endpoint circuit breaker (auto-disable after N failures + org admin email notification); payload versioning (`webhook_version: "v1"` field on all payloads).
+**Features addressed:** Outbound webhook registry, HMAC signing, delivery log + retry (P1 table stakes); manual retry button (differentiator)
+**Pitfalls to avoid:** Fire-and-forget delivery (`WebhookDelivery` in first migration); unversioned payload schema; confusion with existing inbound Stripe webhook handler in `billing/webhooks.py` — these share no code
+**Research flag:** No additional research needed — Celery `autoretry_for` + `countdown` pattern is well-documented; HMAC signing is stdlib `hmac`.
 
-### Phase 3: RBAC (Django Groups + @require_role + Assignment API)
+### Phase 3: API Key Authentication
 
-**Rationale:** Can be built independently of email and social auth. Placing RBAC before GDPR means the `IsAdminUser` guard is available for the data export endpoint, and the service-layer permission pattern is established before GDPR deletion code is written.
-**Delivers:** `apps/accounts/rbac.py` with `require_role()` decorator and `IsInGroup` permission class; data migration seeding `admin`, `moderator`, `viewer` groups; role assignment API endpoints with role hierarchy enforcement (assigning user must hold a strictly higher role than the role being assigned); `RoleAssignmentIn` and `RoleOut` schemas.
-**Addresses:** RBAC table-stakes feature.
-**Avoids:** Permissions checked only at endpoint layer, not service layer (Pitfall 5); privilege escalation via unconstrained role assignment (Pitfall 11); Django Admin / application RBAC confusion (Pitfall 14).
-**Research flag:** Standard pattern — mirrors `@require_active_subscription` decorator already in codebase. Skip `/gsd:research-phase`.
+**Rationale:** Independent of webhooks; depends only on Organization model (phase 1). Security invariants (hashing, timing-safe comparison, Ninja auth resolution order) must be correct from the first commit — no migration path exists if done wrong initially.
+**Delivers:** `APIKey` model (prefix + SHA-256 hash); custom `APIKeyHeader` Ninja auth backend; `RequireScope` permission class; per-key rate limiting via `django-ratelimit` callable `key=`; API key usage tracking (`last_used_at`, `usage_count`); key management CRUD endpoints; `packages/shared-types/` regenerated.
+**Features addressed:** API key create/revoke/scopes, per-key rate limiting (P1); API key usage tracking (P2)
+**Pitfalls to avoid:** Plaintext storage (hash from first commit); timing-unsafe comparison (`hmac.compare_digest`); Ninja auth resolution order (`authenticate()` returns `None` not raises when header absent); API-key-only endpoints must not include `SessionAuth` in `auth=[]`
+**Research flag:** No additional research needed — `APIKeyHeader` pattern verified against Django Ninja official docs; SHA-256 hash-only storage is industry standard.
 
-### Phase 4: GDPR Baseline (Hard Delete + Data Export + Cookie Consent)
+### Phase 4: Audit Logging
 
-**Rationale:** Session invalidation utilities are already in `accounts/services.py`; RBAC guards are available for the export endpoint (from Phase 3). Three sub-features have minimal coupling and can be developed in parallel within this phase. Cookie consent must gate PostHog before the template is considered production-ready.
-**Delivers:** `UserDeletionService` orchestrating Stripe `stripe.Customer.delete()` + PostHog `posthog.delete()` + ORM `user.delete()` cascade; `DELETE /api/v1/accounts/me/` endpoint dispatching async Celery task; `UserDataExportService` with explicit sections for user profile, auth (EmailAddress, SocialAccount), billing (BillingProfile, Subscription, Invoice), and content; `GET /api/v1/accounts/me/export/` endpoint; `cookie-banner.tsx` client component with Zustand `localStorage` store; PostHog initialized with `opt_out_capturing_by_default=True`; account deletion confirmation page in web app.
-**Addresses:** All three GDPR table-stakes features; async deletion differentiator.
-**Avoids:** GDPR erasure missing third-party data (Pitfall 4); incomplete data export missing allauth/billing tables (Pitfall 9); Next.js App Router hydration mismatch on consent banner (Pitfall 10); soft-delete GDPR compliance trap (Anti-Pattern 5).
-**Research flag:** Before planning, confirm that the existing `ObservabilityAdapter` exposes a `delete_identity(user_id)` method (or equivalent) for PostHog person deletion, and that the `BillingAdapter` exposes a `delete_customer(stripe_customer_id)` method. If not, these must be added as part of this phase scope.
+**Rationale:** Cross-cutting concern — applies `@pghistory.track()` decorators to models created in phases 1-3. Must come after those models exist. `pghistory.middleware.HistoryMiddleware` must be registered after the allauth auth middleware so `request.user` is populated before pghistory captures it.
+**Delivers:** `django-pghistory` + `django-pgtrigger` integration; `@pghistory.track()` on `Organization`, `Membership`, `APIKey`, `WebhookEndpoint`; `AuditContextMiddleware` (extends `pghistory.middleware.HistoryMiddleware` to attach org context); org-scoped audit log read API (`GET /api/v1/org/{slug}/audit-log`); `apps/audit/admin.py` registrations for pghistory shadow tables; `created_at` index on shadow tables; partitioning strategy documented. <!-- pragma: allowlist secret -->
+**Features addressed:** Audit log write side, org-scoped read API (both P1 table stakes)
+**Pitfalls to avoid:** Async Celery task actor attribution (pass `actor_id` explicitly; no `request.user` inside tasks); `pgaudit` Postgres extension is distinct from `django-pghistory` — do not conflate; AuditLog table bloat (`created_at` index mandatory; document partitioning path for high-volume deployments)
+**Research flag:** No additional research needed — pghistory middleware approach is the official documented pattern; middleware ordering is confirmed by the existing allauth middleware analysis in ARCHITECTURE.md.
 
-### Phase 5: Feature Entitlements (has_feature + Plan Config + Cache Invalidation)
+### Phase 5: Admin Backoffice (django-unfold + django-hijack)
 
-**Rationale:** Pure read-only logic layered on top of existing billing state. No schema changes. Safe to add last; requires the Billing module (`PlanProviderMapping` table) and confirmed subscription data shape.
-**Delivers:** `apps/billing/entitlements.py` with `has_feature(user, key)` utility; `BILLING_PLANS` config updated in `config/settings/base.py` with explicit feature key lists per plan tier; `GET /api/v1/entitlements/` endpoint returning `{feature_key: bool}` map for the authenticated user; explicit cache invalidation wired into the Stripe webhook handler for `customer.subscription.updated`.
-**Addresses:** Feature entitlements table-stakes feature; PostHog-vs-entitlements distinction.
-**Avoids:** Stale entitlement cache after plan change (Pitfall 6); N+1 queries from `has_feature` in list views without `select_related` (Pitfall 15); feature flags stored in the database (Anti-Pattern 4).
-**Research flag:** MEDIUM confidence on `PlanProviderMapping` price_id field name and subscription data shape. Verify that `user.billing_customer.subscription` and `PlanProviderMapping.price_id` match the actual model definitions in `apps/billing/models.py` before writing `has_feature()`. A 15-minute read of the billing models file at plan time resolves this.
+**Rationale:** Must be last — depends on `AuditLog.impersonator` column (from phase 4 schema) being in place before django-hijack is enabled. `unfold` before `django.contrib.admin` in INSTALLED_APPS is a hard requirement; wrong order causes `AttributeError` on `AdminSite`.
+**Delivers:** `django-unfold` theme applied across all domain `admin.py` files; `UnfoldModelAdmin` subclassing in `accounts/admin.py`, `billing/admin.py`, and all v1.4 domain admin files; `UNFOLD` navigation sidebar config; `django-hijack` with CSRF-protected impersonation restricted to `is_staff` users; impersonation banner always enabled (`HIJACK_INSERT_BEFORE` must not be `None`); hijack of `is_staff`/`is_superuser` accounts blocked; impersonation events wired to AuditLog via hijack signals (`AuditLog.impersonator` FK populated).
+**Features addressed:** Admin backoffice, customer support impersonation (P1); impersonation-to-AuditLog integration (differentiator)
+**Pitfalls to avoid:** `unfold` must precede `django.contrib.admin` in INSTALLED_APPS (verify with `manage.py check` in CI); impersonation banner must never be disabled; hijack of staff/superuser accounts must be blocked; `AuditLog.impersonator` FK must exist before enabling hijack
+**Research flag:** MEDIUM confidence on unfold + hijack admin compatibility — no single official joint integration guide exists. Both target standard Django admin extension points; interaction is additive. Flag for early smoke-test validation: create a staff user, impersonate a regular user, verify banner renders inside unfold-themed admin and `AuditLog.impersonator` is populated before building out full admin registrations.
 
 ### Phase Ordering Rationale
 
-- Email before social auth: social auth's welcome email trigger requires the email adapter to be present; building email first means social auth immediately inherits working email dispatch
-- Social auth before RBAC/GDPR: social users must fall under the same deletion and role policies; designing `UserDeletionService` before social auth exists risks missing `SocialAccount` table cleanup
-- RBAC before GDPR: the data export endpoint benefits from the `IsAdminUser` guard; the service-layer permission pattern established in Phase 3 is the template for GDPR service functions in Phase 4
-- Entitlements last: reads existing billing state as a read-only consumer; adding it after all other features are stable reduces the number of moving parts during implementation
+- **Hard dependency order:** Organization model must precede webhooks, API keys, and audit logging — all three FK into `Organization`. Audit logging must precede admin backoffice (impersonator column). Webhooks vs. API keys have no mutual dependency and could run as parallel subagent tasks if desired.
+- **Billing integration atomicity:** Org model and billing entitlement update ship in the same phase to prevent an intermediate state where org members resolve entitlements against their personal subscription. This is a business correctness requirement.
+- **Security invariants are non-negotiable on day one:** API key hashing and webhook HMAC signing must be correct in the initial migration for their respective phases. No retrofit path exists.
+- **Scaffolder boundary hygiene:** All five phases use `# B2B_START` / `# B2B_END` comment markers. Phase plans must maintain these boundaries — no B2B code leaks into existing app files without a corresponding removal marker pair.
 
 ### Research Flags
 
-**Needs attention during `/gsd:plan-phase` (do not skip):**
+Phases needing additional validation during planning:
 
-- Phase 2 (Apple Sign In): The dedicated native token verification endpoint is non-standard. Verify the exact allauth 65.x internal API for connecting a pre-verified social account before committing the plan. Specifically: `allauth.socialaccount.models.SocialAccount` and the `sociallogin.connect()` method in allauth 65.x source.
-- Phase 4 (GDPR): Confirm `ObservabilityAdapter` exposes a PostHog person deletion method and `BillingAdapter` exposes a Stripe customer deletion method before scoping this phase.
-- Phase 5 (Entitlements): Read `apps/billing/models.py` at plan time to verify `PlanProviderMapping` field names match the `has_feature()` implementation assumptions.
+- **Phase 5 (Admin Backoffice):** Unfold + Hijack compatibility is MEDIUM confidence. Run a minimal smoke test (impersonate a user, check banner renders in unfold admin, check AuditLog entry) early in the phase before building out full admin registrations. If incompatibility is found, fall back to the standalone hijack banner which renders outside the admin theme.
 
-**Standard patterns (safe to plan without additional research):**
+Phases with well-documented standard patterns (no additional research needed):
 
-- Phase 1 (Email): Adapter ABC + anymail + Celery is well-documented and the pattern is proven in the codebase.
-- Phase 3 (RBAC): Django Groups + decorator mirrors `@require_active_subscription` exactly; no novel integration.
-- Phase 4 cookie banner: Next.js 15 `"use client"` + `useEffect` + Zustand is a well-documented pattern per PostHog's official tutorial.
+- **Phase 1 (Organization + Billing):** Mirrors existing `billing` domain module structure; `BaseModel`, `RequireRole`, `PaymentAdapter` patterns already validated.
+- **Phase 2 (Outbound Webhooks):** Celery `autoretry_for` + `countdown` is well-documented; signing is stdlib `hmac`; Stripe HMAC format is a known reference.
+- **Phase 3 (API Keys):** `APIKeyHeader` pattern is in Django Ninja official docs; SHA-256 hash-only storage has no alternatives.
+- **Phase 4 (Audit Logging):** `django-pghistory` middleware is the official documented approach; middleware ordering confirmed by existing codebase analysis.
 
 ## Confidence Assessment
 
-| Area         | Confidence  | Notes                                                                                                                                                                                                                                             |
-| ------------ | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Stack        | HIGH        | Library versions verified via PyPI and npm at research time (2026-03-11); anymail 14.0, allauth 65.15.0, expo-apple-authentication 55.0.8, @react-native-google-signin 16.1.2 all confirmed current                                               |
-| Features     | HIGH        | All features have clear implementation paths; scope is well-bounded; all P1 items are confirmed non-deferrable for the milestone                                                                                                                  |
-| Architecture | HIGH        | Grounded in direct codebase inspection of `apps/billing/adapters.py`, `apps/billing/decorators.py`, `config/settings/base.py`; patterns are extensions of proven existing code                                                                    |
-| Pitfalls     | MEDIUM-HIGH | Apple token, email account merge, Celery on_commit, and GDPR orphaned data pitfalls are HIGH confidence from official docs; PostHog and Celery task result cascade gaps are MEDIUM (API docs verified, not tested against this specific codebase) |
+| Area         | Confidence                                         | Notes                                                                                                                                                                                                                                                                                                                                           |
+| ------------ | -------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Stack        | HIGH                                               | All three new packages verified via PyPI metadata, official docs, and GitHub repos at research time (2026-03-12). All rejected alternatives confirmed against actual package APIs (DRF-specificity of `djangorestframework-api-key`, `django-pgaudit` 404, `django-webhook` staleness).                                                         |
+| Features     | HIGH                                               | Grounded in competitor analysis (SaaSPegasus, Bullet Train), B2B SaaS practitioner guides (WorkOS, PropelAuth, Clerk), and direct codebase inspection. Feature dependency graph explicitly mapped. Neither SaaSPegasus nor Bullet Train ships outbound webhooks or API keys — confirmed differentiator.                                         |
+| Architecture | HIGH (4 of 5 features) / MEDIUM (admin backoffice) | Organization, webhooks, API keys, and audit logging architectures are direct extensions of existing validated patterns. Admin backoffice (unfold + hijack) compatibility is MEDIUM — no official joint integration guide; interaction is through standard Django admin extension points.                                                        |
+| Pitfalls     | MEDIUM-HIGH                                        | Billing entitlement pitfall grounded in direct codebase analysis of `_resolve_plan_id`. Webhook anti-patterns from webhookantipatterns.com and Hookdeck guides. API key timing attack corroborated by CVE-2025-13473 and multiple security references. Impersonation audit trail gap derived from django-hijack session behavior documentation. |
 
 **Overall confidence:** HIGH
 
 ### Gaps to Address
 
-- **Resend vs SendGrid ESP consistency**: ARCHITECTURE.md reflects an earlier SendGrid assumption; STACK.md and FEATURES.md correctly specify Resend. Implementation must use Resend. Ensure `.env.example` and all settings snippets reference `RESEND_API_KEY`.
-- **Apple native token server-side verification**: The exact allauth 65.x internal API for connecting a pre-verified socialaccount needs source code verification before Phase 2 planning.
-- **PostHog deletion API on ObservabilityAdapter**: `posthog.delete(distinct_id=...)` is documented as the correct call; verify this method is exposed (or needs to be added) to the existing `ObservabilityAdapter` before scoping Phase 4.
-- **PlanProviderMapping price_id lookup**: `has_feature()` assumes `PlanProviderMapping.price_id` maps to the subscription's provider price ID. Verify this field name in `apps/billing/models.py` at Phase 5 plan time — MEDIUM confidence from architecture research.
-- **Apple p8 key expiry**: Apple developer private keys used for Sign In with Apple expire every 6 months. This is a non-obvious operational requirement. Document it prominently in the Phase 2 implementation notes and in `apps/mobile/README.md`.
+- **Unfold + Hijack admin compatibility:** Not confirmed by a single authoritative source. Address in Phase 5 with an early smoke test before building out full admin registrations. Fallback: use standalone hijack banner outside admin theme if incompatibility is found.
+- **`_resolve_plan_id` refactor scope:** Review the actual implementation in `apps/billing/entitlements.py` during Phase 1 planning to determine whether adding an `org=` kwarg is additive or requires restructuring. Research assumes additive — confirm before finalizing Phase 1 plan.
+- **Django version (5.0 vs 5.2) for django-hijack:** `django-hijack` 3.7.6 lists Django 5.2 as supported but not 5.0 or 5.1. Verify the current Django version in `apps/api/pyproject.toml` before Phase 5. If on 5.0 or 5.1, plan a Django 5.2 upgrade as a Phase 5 prerequisite.
+- **`WebhookEndpoint.secret` storage:** Research recommends not storing the raw secret (write-only API response). The exact storage approach (HMAC-hashed secret vs. plaintext write-only) should be decided in Phase 2 planning. Plaintext with write-only serializer is acceptable for MVP; hashed secret is more secure but prevents future UI display.
 
 ## Sources
 
 ### Primary (HIGH confidence)
 
-- [django-anymail PyPI](https://pypi.org/project/django-anymail/) — v14.0, December 2025; SendGrid support dropped June 2025
-- [django-anymail GitHub](https://github.com/anymail/django-anymail) — Resend adapter, provider list, SendGrid drop issue #432
-- [django-allauth PyPI](https://pypi.org/pypi/django-allauth/json) — v65.15.0, March 9, 2026
-- [django-allauth Google provider docs](https://docs.allauth.org/en/dev/socialaccount/providers/google.html) — PKCE, OAuth2 setup, scope
-- [django-allauth Apple provider docs](https://docs.allauth.org/en/dev/socialaccount/providers/apple.html) — two client IDs (Bundle ID vs. Services ID), POST flow, SameSite warning
-- [django-allauth headless integrations](https://docs.allauth.org/en/latest/headless/integrations.html) — x_session_token_auth, provider token flow
-- [Expo Apple Authentication docs](https://docs.expo.dev/versions/latest/sdk/apple-authentication/) — managed workflow, App Store mandatory requirement
-- [Expo Google Authentication guide](https://docs.expo.dev/guides/google-authentication/) — `@react-native-google-signin/google-signin` as official recommendation
-- [django-ninja-extra permissions docs](https://eadwincode.github.io/django-ninja-extra/api_controller/api_controller_permission/) — BasePermission, combining operators
-- Existing codebase (direct inspection): `apps/billing/adapters.py`, `apps/billing/decorators.py`, `apps/core/observability.py`, `apps/accounts/services.py`, `config/settings/base.py`, `config/urls.py`
+- [django-pghistory PyPI](https://pypi.org/project/django-pghistory/) — v3.9.2, February 17, 2026
+- [django-pghistory docs](https://django-pghistory.readthedocs.io/en/3.9.1/) — trigger-based tracking, `append_only`, context middleware
+- [django-pghistory GitHub](https://github.com/AmbitionEng/django-pghistory) — maintained by AmbitionEng
+- [django-unfold PyPI](https://pypi.org/project/django-unfold/) — v0.83.1, March 5, 2026
+- [django-unfold GitHub](https://github.com/unfoldadmin/django-unfold) — ModelAdmin integration
+- [Django Admin Theme Roundup 2025](https://www.djangoproject.com/weblog/2025/apr/18/admin-theme-roundup/) — django-unfold officially recommended
+- [django-hijack PyPI](https://pypi.org/project/django-hijack/) — v3.7.6, January 6, 2026; 63,992 weekly downloads
+- [django-hijack docs](https://django-hijack.readthedocs.io/en/latest/) — CSRF protection, banner, `HIJACK_PERMISSION_CHECK`
+- [Django Ninja authentication docs](https://django-ninja.dev/guides/authentication/) — multi-auth resolution order confirmed
+- [django-pgaudit PyPI JSON API](https://pypi.org/pypi/django-pgaudit/json) — 404 confirmed; package does not exist on PyPI
+- [djangorestframework-api-key PyPI](https://pypi.org/project/djangorestframework-api-key/) — v3.1.0; DRF-specific BasePermission confirmed
+- [django-organizations GitHub](https://github.com/bennylope/django-organizations) — binary `is_admin` role model confirmed; unused view layer confirmed
+- [django-webhook PyPI](https://pypi.org/project/django-webhook/) — v0.0.15; stale since August 2024 confirmed
 
 ### Secondary (MEDIUM confidence)
 
-- [PostHog Next.js cookie banner tutorial](https://posthog.com/tutorials/nextjs-cookie-banner) — consent banner + PostHog opt-in/opt-out flow for Next.js 15
-- [Mailtrap deliverability study March 2025](https://mailtrap.io/blog/sendgrid-vs-mailgun/) — ESP inbox placement comparison (Mailgun 71.4% vs SendGrid 61.0%)
-- [Django RBAC guide — Permit.io](https://www.permit.io/blog/how-to-implement-role-based-access-control-rbac-into-a-django-application) — group-based RBAC pattern
-- GDPR Articles 15, 17, 20 — data access, erasure, and portability requirements
-
-### Tertiary (for awareness)
-
-- [SaaS entitlements patterns — Orb](https://www.withorb.com/blog/what-are-entitlements-in-saas) — entitlement vs. feature flag conceptual distinction
-- [LaunchDarkly: entitlements vs feature flags](https://launchdarkly.com/blog/how-to-manage-entitlements-with-feature-flags/) — when to use plan gates vs. rollout flags
-- [GDPR for SaaS — CookieYes 2025 guide](https://www.cookieyes.com/blog/gdpr-for-saas/) — GDPR compliance checklist for SaaS products
+- [WorkOS — Model your B2B SaaS with organizations](https://workos.com/blog/model-your-b2b-saas-with-organizations) — org model patterns
+- [PropelAuth — Guide to RBAC for B2B SaaS](https://www.propelauth.com/post/guide-to-rbac-for-b2b-saas) — role design
+- [webhookantipatterns.com](https://webhookantipatterns.com/) — fire-and-forget and unversioned schema anti-patterns
+- [Hookdeck — outbound webhook retry best practices](https://hookdeck.com/outpost/guides/outbound-webhook-retry-best-practices) — exponential backoff patterns
+- [Frontegg — Audit logs for SaaS enterprise customers](https://frontegg.com/blog/audit-logs-for-saas-enterprise-customers) — enterprise audit log expectations
+- [Standard Webhooks spec](https://github.com/standard-webhooks/standard-webhooks/blob/main/spec/standard-webhooks.md) — HMAC signing format
+- [CVE-2025-13473](https://github.com/django/django/commit/6dc23508f3395e1254c315084c7334ef81c4c09a) — timing attack context for `hmac.compare_digest` requirement
+- [Stripe billing for multi-entity business](https://docs.stripe.com/billing/multi-entity-business) — org-level Stripe Customer patterns
+- [Django multi-tenancy isolation failure modes — TestDriven.io](https://testdriven.io/blog/django-multi-tenant/) — tenant isolation pitfall patterns
 
 ---
 
-_Research completed: 2026-03-11_
+_Research completed: 2026-03-12_
 _Ready for roadmap: yes_

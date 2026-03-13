@@ -1,19 +1,22 @@
 # Feature Research
 
-**Domain:** Full-stack SaaS template — v1.3 functional baseline features
-**Researched:** 2026-03-11
-**Confidence:** HIGH (stack decisions fixed; research focused on implementation patterns and pitfalls)
+**Domain:** B2B SaaS template module — Organizations, Webhooks, API Keys, Audit Logging, Admin Backoffice
+**Researched:** 2026-03-12
+**Confidence:** HIGH (stack decisions fixed; research focused on B2B feature patterns, table stakes vs differentiators, and implementation tradeoffs)
 
 ---
 
 ## Context
 
-This research covers the five v1.3 features being added to an existing template that already ships:
-email/password auth (Django Allauth headless), billing (Stripe adapter), observability
-(PostHog + OTel + structlog), health probes, rate limiting, security headers, Celery, Redis.
+This research covers the five v1.4 B2B features being added to an existing template that already ships:
+Turborepo monorepo, Django Ninja Extra API, Next.js 15 App Router, Expo mobile, Django Allauth headless
+(email + Google + GitHub + Apple), Stripe billing (subscriptions, one-time, metered, webhooks, PDF invoices),
+structlog + OpenTelemetry + PostHog observability, health probes, rate limiting, security headers,
+Redis cache, Celery + Beat, Resend transactional email, GDPR baseline (delete + export + consent),
+RBAC (admin/member groups + `@require_role`), feature entitlements (has_feature Redis-cached), CLI scaffolder.
 
 Stack is non-negotiable: Django Ninja Extra, Django Allauth, Next.js 15 App Router, Expo managed,
-Celery + Redis, pnpm/uv, Turborepo.
+Celery + Redis, pnpm/uv, Turborepo, Postgres 16+.
 
 ---
 
@@ -21,273 +24,338 @@ Celery + Redis, pnpm/uv, Turborepo.
 
 ### Table Stakes (Users Expect These)
 
-Features that developers and end-users expect in any production SaaS. Missing these = product
-feels half-built or legally risky.
+For a B2B SaaS template, table stakes are what enterprise buyers and developer-users assume will be
+present. Missing these = product feels half-built or unsuitable for team/enterprise use.
 
-| Feature                                 | Why Expected                                                                      | Complexity | Notes                                                                                       |
-| --------------------------------------- | --------------------------------------------------------------------------------- | ---------- | ------------------------------------------------------------------------------------------- |
-| Transactional email (account lifecycle) | Password reset, email verification, billing receipts — users expect email         | MEDIUM     | Django already sends some via Allauth; this formalizes the pattern with a queue and adapter |
-| Social login (Google at minimum)        | Reduces signup friction; users expect "Sign in with Google" in 2025               | MEDIUM     | Django Allauth has providers built in; wiring headless + Expo adds surface area             |
-| Account hard delete (GDPR Art. 17)      | EU legal requirement; users expect to be able to leave                            | MEDIUM     | Django ORM cascade handles most; need explicit audit of all FK relations                    |
-| Data export (GDPR Art. 20)              | EU legal requirement; right to portability                                        | LOW-MEDIUM | Django serialization + a Celery task; must gather all user-owned tables                     |
-| Cookie consent banner                   | EU legal requirement (ePrivacy Directive + GDPR) for analytics/tracking cookies   | LOW        | Only required when the product sets non-essential cookies (PostHog, GA)                     |
-| Role-based access (admin vs member)     | Any multi-user product needs at minimum an admin role                             | LOW-MEDIUM | Django Groups are built-in; decorator wrapping is the main implementation task              |
-| Plan-gated features                     | Users expect premium tiers to unlock features; billing module is already in place | MEDIUM     | Must integrate with existing Billing module; config-driven approach keeps it maintainable   |
+| Feature                                            | Why Expected                                                                                          | Complexity | Notes                                                                                                        |
+| -------------------------------------------------- | ----------------------------------------------------------------------------------------------------- | ---------- | ------------------------------------------------------------------------------------------------------------ |
+| Organization model with membership                 | B2B users assume a "workspace" they can invite teammates into; this is the core unit of B2B           | MEDIUM     | `Organization` + `Membership` (user, org, role) + invite flow; first member becomes owner                    |
+| Org-level roles (owner / admin / member)           | Every B2B product needs at least owner + member; admins expect to control who has access              | LOW-MEDIUM | 3 roles minimum; owner is immutable (cannot demote self without transfer); roles separate from platform RBAC |
+| Member invitation via email                        | Admins invite new members by email; fundamental onboarding flow                                       | MEDIUM     | Invite token with expiry; invite accepted via link; new user signup or existing user login both work         |
+| Per-org billing (Stripe Customer per org)          | B2B buyers pay as an organization, not as individuals; invoice must show company name                 | MEDIUM     | Stripe Customer attached to `Organization` not `User`; billing admin designates which member manages billing |
+| Outbound webhook registry (register URL + events)  | Developers integrating with the product expect to receive events via webhooks                         | MEDIUM     | Create/list/delete webhook endpoints; subscribe to event types; display signing secret once                  |
+| HMAC-signed webhook payloads                       | Security-conscious developers will check this before trusting the platform                            | LOW        | `X-Webhook-Signature` header; SHA-256 HMAC over `timestamp + "." + body`; timestamp prevents replay attacks  |
+| Webhook delivery log (view attempts, status codes) | Developers need to debug why their endpoint didn't receive an event                                   | MEDIUM     | Per-delivery record with request body, response code, response body, timestamp, attempt number               |
+| Webhook retry with exponential backoff             | Transient failures (server restart, deploy) should not cause missed events permanently                | MEDIUM     | Celery task with countdown; 3–5 retries; exponential backoff + jitter; dead-letter after exhaustion          |
+| API key creation and revocation                    | Developer products require programmatic access; users expect to generate keys in account/org settings | LOW-MEDIUM | Prefix + random bytes; hash stored (never plaintext after creation); show full key once at creation only     |
+| API key scopes                                     | Keys should not carry full user permissions by default; developers expect scope control               | MEDIUM     | Scopes as string list on `APIKey`; validated per-request by middleware                                       |
+| Audit log (who did what, when)                     | Enterprise buyers require this for SOC 2, ISO 27001, compliance reviews; it's a procurement checkbox  | MEDIUM     | Immutable log; actor (user or API key), action, resource type, resource ID, timestamp, IP, user agent        |
+| Audit log accessible to org admins                 | Admins need to see their organization's activity; not just a backend/superadmin feature               | MEDIUM     | API endpoint returning paginated log entries scoped to the org; filter by actor, date range, action          |
+| Admin backoffice (Django admin replacement)        | Customer support team needs to look up accounts, see subscription status, reset things                | MEDIUM     | `django-unfold` for modern admin UI; replaces default Django admin skin; no new features, just better UX     |
+| Customer support impersonation                     | Support agents need to reproduce issues in a customer's account without knowing their password        | MEDIUM     | `django-hijack`; full audit trail of who impersonated whom and when; opt-in, not default                     |
 
 ### Differentiators (Competitive Advantage)
 
-For a SaaS _template_, differentiators mean what makes this template more valuable to the
-developer using it compared to building it themselves or using a competing starter kit.
+For a SaaS _template_, differentiators mean what makes this template more valuable to the developer
+building a B2B product compared to building it themselves or using a competing starter kit.
 
-| Feature                                                 | Value Proposition                                                                               | Complexity | Notes                                                                                            |
-| ------------------------------------------------------- | ----------------------------------------------------------------------------------------------- | ---------- | ------------------------------------------------------------------------------------------------ |
-| Email adapter ABC (EmailAdapter)                        | Swappable providers via one Django setting — same pattern as PaymentAdapter; avoids SDK lock-in | LOW        | Custom ABC with ResendAdapter as default; Celery queue baked in from day one                     |
-| Apple Sign In on mobile                                 | Required by App Store if any social auth is present; most templates skip this                   | HIGH       | Unique Apple OAuth: POST not GET, bundle ID vs Services ID, p8 key expires every 6 months        |
-| GDPR deletion as async Celery task                      | Deletion can trigger large cascade + downstream cleanup; blocking HTTP would time out           | LOW-MEDIUM | Hard delete is simpler than soft delete; async pattern mirrors PDF invoice approach from v1.1    |
-| `has_feature(user, key)` vs PostHog flags               | Entitlements are billing-linked and server-side enforced; PostHog flags are deployment-centric  | MEDIUM     | Clear separation: PostHog = feature rollout/A-B testing; entitlements = plan gates; both coexist |
-| `--without social-auth` and `--without email` CLI flags | Matches existing `--without billing` / `--without observability` pattern; keeps template lean   | LOW        | Scaffolder work; both features designed to be optional from day one                              |
+| Feature                                               | Value Proposition                                                                                   | Complexity | Notes                                                                                                                               |
+| ----------------------------------------------------- | --------------------------------------------------------------------------------------------------- | ---------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `--with b2b` CLI flag (optional module)               | B2B features are not needed for all products; clean scaffolder integration matches existing pattern | LOW        | Same pattern as `--without billing`, `--without observability`; B2B module excluded from consumer apps                              |
+| Per-key rate limiting for API keys                    | Most templates rate-limit by IP or user; per-key limiting enables tiered API plans                  | MEDIUM     | Redis counter per key; configurable limit per key or plan tier; 429 with `X-RateLimit-*` headers                                    |
+| API key usage tracking                                | Developers want to see how their keys are being used; enables metered billing per key               | MEDIUM     | Increment counter per request; surface in account UI; feeds into usage-based billing if enabled                                     |
+| Webhook delivery UI with manual retry button          | Most templates only log; a manual retry button eliminates the "resend from scratch" workflow        | LOW-MEDIUM | `POST /api/webhooks/deliveries/{id}/retry`; useful for debugging and support                                                        |
+| Impersonation audit trail via `AuditLog`              | Linking impersonation events to the audit log closes a compliance gap most templates miss           | LOW        | `django-hijack` signals → write `AuditLog` entry on hijack start/end; org admins cannot see impersonation entries (superadmin only) |
+| Org transfer / owner reassignment                     | Necessary when the founding member leaves the company; most templates never implement this          | MEDIUM     | Transfer ownership endpoint; only current owner can initiate; new owner must be an existing org member                              |
+| `django-auditlog` for model changes vs custom signals | Automated field-level change capture without writing per-model signal handlers                      | LOW        | `django-auditlog` (jazzband, actively maintained) attaches to post_save/post_delete; captures `old_value → new_value` per field     |
 
 ### Anti-Features (Commonly Requested, Often Problematic)
 
-| Feature                                                        | Why Requested                              | Why Problematic                                                                                                           | Alternative                                                                                        |
-| -------------------------------------------------------------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| SendGrid as default email provider                             | Most tutorials use SendGrid; familiar name | django-anymail dropped official SendGrid support June 2025 (Twilio blocked their test account); future bugs unverifiable  | Resend via django-anymail — fully supported in v14, modern API, generous free tier                 |
-| Soft delete for GDPR                                           | Seems safer than hard delete; recoverable  | Creates orphaned data, breaks GDPR Article 17 (data must actually be gone), anonymization acceptable but must be rigorous | Hard delete with cascade; keep only what is legally required (billing records for tax), anonymized |
-| Fine-grained object-level permissions in template              | Feels thorough                             | Requires product-specific data model knowledge; Django Guardian adds complexity without template value                    | Group-based RBAC (admin/member/viewer); each product adds object permissions per their model       |
-| Social auth for every provider (Facebook, Twitter/X, LinkedIn) | "More options" seems better                | Each provider has its own quirks, consent screens, App Review processes; maintenance burden                               | Ship Google + GitHub (web) + Apple (mobile); template users add more providers per-product         |
-| Storing email open/click tracking in the template              | Useful for product analytics               | Adds GDPR complexity, requires consent, varies by ESP                                                                     | Use ESP's built-in tracking dashboards; template does not store tracking events                    |
-| Multi-factor auth (TOTP/SMS) in v1.3                           | Natural auth extension                     | Allauth has MFA module but it adds significant UX surface area; belongs in a dedicated milestone                          | Future milestone; Allauth headless MFA is available when the time comes                            |
-| Attribute-based access control (ABAC)                          | More flexible than RBAC                    | Needs product-specific attribute model; over-engineering for a template                                                   | Group-based RBAC covers 95% of SaaS needs; each product layers ABAC on top                         |
+| Feature                                                              | Why Requested                                                                   | Why Problematic                                                                                                                                                                                                                                  | Alternative                                                                                                                                                                   |
+| -------------------------------------------------------------------- | ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Row-level multi-tenancy (all queries scoped by org_id automatically) | Feels like the "right" architecture for B2B                                     | Requires middleware that rewrites every query; breaks Django admin; difficult to audit; product-specific data model assumptions                                                                                                                  | Template provides `Organization` model and membership; each product adds `org = ForeignKey(Organization)` to its models; scoping logic lives in product, not template         |
+| Hierarchical orgs (sub-orgs, departments)                            | Enterprise customers often have business units                                  | Enormous complexity in billing, permissions, and data isolation; not needed for most early B2B products                                                                                                                                          | Flat org model; when a product needs it, `parent_org` FK is trivial to add later                                                                                              |
+| Custom roles / RBAC builder UI                                       | Enterprise orgs want admin to define their own role names                       | Permissions model becomes product-specific; a UI to configure permissions is a product in itself                                                                                                                                                 | Ship owner / admin / member; document that adding custom roles requires extending `Membership.role` choices; keep it in code, not database                                    |
+| Webhook secret rotation UI that auto-updates existing integrations   | Seems like good security UX                                                     | Impossible to do automatically — customer's server must be updated first; auto-rotation breaks integrations silently                                                                                                                             | Show signing secret once at creation; provide manual "regenerate secret" button that explicitly warns integrations will break; require re-copy                                |
+| SSO / SAML for org login                                             | Enterprise procurement often asks for this                                      | SAML is complex (XML, IdP configuration, metadata exchange); belongs in a dedicated feature, not a template module                                                                                                                               | Document the path to add django-allauth SAML provider; out of scope for template                                                                                              |
+| Event streaming (Kafka / Webhooks as event bus)                      | Developer platforms want real-time event feeds                                  | Webhook system in template is point-to-point (one org endpoint, Celery delivery); streaming event bus is infrastructure, not a template concern                                                                                                  | Celery-based webhook delivery covers 95% of B2B integration needs; streaming is a product-specific infrastructure decision                                                    |
+| Per-org SSO enforcement (force all members to use SAML)              | Enterprise security teams require it                                            | Requires SSO infrastructure first; enforcement logic couples auth to org settings in complex ways                                                                                                                                                | Defer to per-product implementation; template provides the org membership model that SSO enforcement would build on                                                           |
+| Audit log tampering prevention (cryptographic chaining)              | SOC 2 "immutable log" requirement sounds like it needs blockchain-style hashing | `django-pgaudit` or `django-auditlog` records are append-only in practice; Postgres-level row security can prevent application-layer deletion; true tamper-evidence requires external log shipping (Splunk, Datadog Logs), which is out of scope | Write to `AuditLog` table with `DEFAULT NOW()` timestamps; add Postgres RLS or a superuser-only delete policy; document that external log shipping provides true immutability |
 
 ---
 
 ## Feature Dependencies
 
 ```
+[Auth (v1.0) — User model]
+    └──required by──> [Organization membership]
+                          (Membership: user + org + role)
+    └──required by──> [API Key authentication]
+                          (APIKey.created_by = User FK)
+    └──required by──> [Audit Log]
+                          (actor_user = User FK, nullable for system events)
+
+[Organization model]
+    └──required by──> [Per-org billing]
+                          (Stripe Customer attached to Organization not User)
+    └──required by──> [Outbound webhooks]
+                          (webhooks are registered per-org)
+    └──required by──> [API keys (org-scoped)]
+                          (API keys owned by org; created by member)
+    └──required by──> [Audit log (org-scoped)]
+                          (audit log entries scoped to org for org-admin view)
+    └──required by──> [Member invitation flow]
+                          (invites tied to org)
+
 [Billing module (v1.1)]
-    └──required by──> [Feature Entitlements]
-                          (has_feature reads plan from Subscription model)
+    └──enhances──> [Per-org billing]
+                       (PaymentAdapter ABC already exists; change customer FK from User to Organization)
+    └──enhances──> [API key usage tracking]
+                       (usage counts feed metered billing if enabled)
 
 [Celery + Redis (v1.2)]
-    └──required by──> [Transactional Email]
-                          (email tasks enqueued via Celery)
-    └──required by──> [GDPR Account Delete]
-                          (deletion dispatched as async Celery task)
-    └──required by──> [GDPR Data Export]
-                          (export assembled async, then stored/emailed)
+    └──required by──> [Outbound webhook delivery]
+                          (Celery tasks handle delivery + retry + backoff)
+    └──required by──> [Member invitation email]
+                          (invite email sent via existing EmailAdapter + Celery pattern)
+    └──required by──> [API key rate limiting]
+                          (Redis counters per key; TTL-based sliding window)
 
-[Django Allauth headless (v1.0)]
-    └──required by──> [Social Auth — Google, GitHub, Apple]
-                          (Allauth manages social account tokens and user linking)
-    └──enhances──> [Transactional Email]
-                          (Allauth sends verification/reset; adapter replaces Django email backend)
+[RBAC (v1.3) — platform admin/member groups]
+    └──distinct from──> [Org roles (owner/admin/member)]
+                             (platform RBAC = who can use Django admin;
+                              org roles = who can manage the org's settings and members;
+                              these are separate permission axes)
 
-[Auth (v1.0)]
-    └──required by──> [RBAC]
-                          (User.groups is Django built-in; requires auth app)
+[Observability (v1.2) — structlog + OTel]
+    └──enhances──> [Audit Log]
+                       (request_id from structlog context can be stored on AuditLog entry
+                        for cross-referencing traces to audit events)
 
-[RBAC]
-    └──enhances──> [Feature Entitlements]
-                          (admin role can manage plan assignments and overrides)
-
-[Social Auth — any iOS social login]
-    └──requires──> [Apple Sign In on mobile]
-                          (App Store policy: any social login on iOS = Apple Sign In mandatory)
-
-[Observability/PostHog (v1.2)]
-    └──requires consent from──> [GDPR Cookie Consent Banner]
-                          (PostHog analytics cookies require user consent under ePrivacy Directive)
+[django-hijack]
+    └──requires──> [django-unfold admin]
+                       (hijack ships a button in Django admin; unfold provides the admin skin)
+    └──enhances──> [Audit Log]
+                       (hijack signals write AuditLog entries for impersonation start/end)
 ```
 
 ### Dependency Notes
 
-- **Feature Entitlements requires Billing:** `has_feature(user, key)` reads the user's active `Subscription` and maps it to plan config in settings. Without the Billing module, there is no subscription to read. If a project uses `--without billing`, entitlements fall back to returning `True` for all features (developer mode). Document this clearly.
+- **Org roles vs platform RBAC are separate axes.** Platform RBAC (`admin`/`member` Django Groups from v1.3) controls who accesses platform-level features and Django admin. Org roles (`owner`/`admin`/`member` on `Membership`) control who manages an organization. A platform `member` user can be an org `owner`. These must not be conflated.
 
-- **Transactional Email requires Celery:** Email must never block an HTTP response. The EmailAdapter sends all emails via Celery tasks. Celery is already present from v1.2.
+- **Per-org billing requires Organization to exist before billing features work.** The existing `PaymentAdapter` + Stripe Customer is currently attached to `User`. For B2B, Stripe Customer must move to `Organization`. This is a data model migration concern — existing solo-user billing and org billing need to coexist (products use one or the other).
 
-- **Social Auth on iOS requires Apple:** Apple App Store Review policy — if a native iOS app offers any third-party social login (Google, GitHub, etc.), it MUST also offer "Sign in with Apple." Shipping Google without Apple on mobile is an App Store rejection risk. This is not optional.
+- **Webhook delivery requires Celery.** Every webhook dispatch is a Celery task. This is already present from v1.2. No new infrastructure.
 
-- **Cookie Consent requires Observability context:** The consent banner is only necessary when non-essential cookies are set. PostHog sets analytics cookies in the browser. The banner must gate PostHog initialization in `apps/web/`. This means the banner is directly dependent on the v1.2 observability module being present.
+- **API key rate limiting requires Redis.** Counter-per-key in Redis with sliding window or token bucket. Redis is already present from v1.2 (`django-redis`). `django-ratelimit` from v1.2 may be reusable or a custom Redis counter may be cleaner for per-key semantics.
 
-- **RBAC enhances Feature Entitlements:** Admins need a way to manually override plan features for individual users (e.g. grant trial access). RBAC provides the `admin` role check needed to protect those override endpoints.
+- **Audit log scoping: two views, different data.** Org admins see their org's events (member actions, settings changes, webhook deliveries, API key usage). Platform superadmins (Django admin) see everything including impersonation. These are separate query scopes.
+
+- **Impersonation requires both django-hijack and django-unfold.** `django-hijack` v3.x ships native Django admin integration; the "Hijack" button appears in the user change view. `django-unfold` replaces the admin skin, so the hijack button must be compatible with unfold's templates. Verify compatibility before finalizing.
 
 ---
 
-## MVP Definition (v1.3 Scope)
+## MVP Definition (v1.4 Scope)
 
-### Launch With (all five features are the v1.3 scope)
+### Launch With (all five feature areas are the v1.4 scope)
 
-- [ ] **Transactional Email (EmailAdapter ABC + ResendAdapter + Celery queue + HTML templates)** — Replaces ad-hoc Django email sends with a consistent, testable, provider-swappable pattern. Required for every SaaS.
-- [ ] **Social Auth (Google + GitHub via Allauth headless on web; Apple via Expo on mobile)** — Reduces signup friction on web; Apple is legally required for iOS App Store if any social login exists.
-- [ ] **GDPR Baseline (hard delete + data export + cookie consent banner)** — Minimum viable legal compliance for EU users. Can ship without to non-EU markets but adds legal risk.
-- [ ] **RBAC (Django Groups + `@require_role` decorator + assignment API)** — Minimum multi-user access control. Even solo-user products need an admin role for internal tooling.
-- [ ] **Feature Entitlements (`has_feature(user, key)` + plan config in settings)** — Closes the billing loop: plan gates determine what features each subscriber sees.
+- [ ] **Organization model + membership + org roles + invite flow** — Core B2B primitive; everything else in this milestone builds on it. Without this, the other four features have no tenant context.
+- [ ] **Per-org billing (Stripe Customer per org)** — B2B buyers expect an org-level invoice and a single subscription for the whole team. Depends on Organization model being in place.
+- [ ] **Outbound webhooks (registry, HMAC signing, Celery delivery, exponential backoff, delivery log)** — Table stakes for any developer-facing B2B product. Celery already present.
+- [ ] **API key authentication (scopes, per-key rate limiting, usage tracking, hash-stored)** — Required for programmatic/API-first access patterns. Redis already present.
+- [ ] **Audit logging (actor, action, resource, timestamp, IP; org-scoped API)** — Compliance checkbox for enterprise buyers; frequently asked in SOC 2 / ISO 27001 audits.
+- [ ] **Admin backoffice (django-unfold skin + django-hijack impersonation)** — Customer support quality-of-life; reduces support time for every product built on this template.
 
 ### Add After Validation (future milestones)
 
-- [ ] **MFA (TOTP via Django Allauth MFA module)** — When product has users requesting it; Allauth has headless MFA support ready.
-- [ ] **Additional social providers (Facebook, LinkedIn)** — When a product's target audience uses them; not worth template complexity for all products.
-- [ ] **Object-level permissions (Django Guardian)** — When a product needs row-level access control; requires product-specific models.
-- [ ] **GDPR consent management platform integration (CookieYes, Cookiebot)** — When cookie categories grow beyond a simple analytics/necessary split.
+- [ ] **Custom org roles (beyond owner/admin/member)** — When a product's enterprise customers demand it; requires extending `Membership.role` beyond the three seeded choices.
+- [ ] **SSO / SAML per org** — When a product lands enterprise contracts requiring IdP integration; django-allauth has SAML provider support.
+- [ ] **Webhook event catalog UI** — Browsable list of all event types with example payloads; improves developer onboarding but is not blocking.
+- [ ] **API key per-plan rate limit tiers** — Tie API key limits to billing plan entitlements; requires per-plan limit config in `BILLING_PLANS` settings.
 
 ### Future Consideration (v2+)
 
-- [ ] **ABAC / policy engines (Casbin, OPA)** — For enterprise multi-tenant products with complex authorization rules.
-- [ ] **Right to data rectification UI** — Users self-service correct their personal data; requires per-product field mapping.
-- [ ] **Automated DPA workflow** — GDPR data processing agreements for B2B SaaS; niche requirement.
+- [ ] **Hierarchical orgs (sub-orgs / departments)** — Only for products targeting large enterprises; defer until a product actually needs it.
+- [ ] **Audit log external shipping (Splunk, Datadog Logs)** — True tamper-evident audit logs require external log storage; out of scope for template.
+- [ ] **Real-time webhook event stream (SSE / WebSocket)** — Advanced developer tooling; product-specific infrastructure decision.
 
 ---
 
 ## Feature Prioritization Matrix
 
-| Feature                           | Developer Value                                          | Implementation Cost | Priority                 |
-| --------------------------------- | -------------------------------------------------------- | ------------------- | ------------------------ |
-| Transactional Email               | HIGH — every SaaS needs it; ad-hoc sends cause tech debt | MEDIUM              | P1                       |
-| Social Auth (Google + GitHub web) | HIGH — reduces signup friction; expected by users        | MEDIUM              | P1                       |
-| Apple Sign In (mobile)            | HIGH — App Store rejection risk without it               | HIGH                | P1 (blocking for mobile) |
-| GDPR Account Delete               | HIGH — legal requirement for EU; user trust              | MEDIUM              | P1                       |
-| GDPR Data Export                  | MEDIUM — legal requirement, less frequently used         | LOW-MEDIUM          | P1                       |
-| Cookie Consent Banner             | HIGH — legal; PostHog already in v1.2                    | LOW                 | P1                       |
-| RBAC (groups + decorator)         | HIGH — needed for any multi-user product                 | LOW-MEDIUM          | P1                       |
-| Feature Entitlements              | HIGH — closes billing loop; expected in tiered products  | MEDIUM              | P1                       |
+| Feature                                 | Developer Value                                                           | Implementation Cost | Priority |
+| --------------------------------------- | ------------------------------------------------------------------------- | ------------------- | -------- |
+| Organization model + membership         | HIGH — foundational; all other B2B features depend on it                  | MEDIUM              | P1       |
+| Org roles + invite flow                 | HIGH — unusable org without it; email invite required                     | MEDIUM              | P1       |
+| Per-org billing                         | HIGH — B2B billing is broken without it; enterprise procurement requires  | MEDIUM              | P1       |
+| Outbound webhooks (registry + delivery) | HIGH — required for developer integrations                                | MEDIUM              | P1       |
+| HMAC signing                            | HIGH — security table stakes; developers will not trust unsigned webhooks | LOW                 | P1       |
+| Delivery log + retry                    | MEDIUM — strong DX; not blocking but expected                             | MEDIUM              | P1       |
+| API keys (create/revoke/scopes)         | HIGH — programmatic access table stakes                                   | LOW-MEDIUM          | P1       |
+| Per-key rate limiting                   | MEDIUM — important for abuse prevention; Redis already present            | MEDIUM              | P1       |
+| API key usage tracking                  | MEDIUM — feeds metered billing; useful for analytics                      | MEDIUM              | P2       |
+| Audit log (write side)                  | HIGH — compliance requirement; SOC 2 checkbox                             | MEDIUM              | P1       |
+| Audit log (org-admin read API)          | HIGH — org admins must be able to see their own logs                      | MEDIUM              | P1       |
+| django-unfold admin skin                | MEDIUM — UX improvement; not blocking support tasks                       | LOW                 | P1       |
+| django-hijack impersonation             | HIGH — reduces support ticket resolution time dramatically                | MEDIUM              | P1       |
+| Impersonation → AuditLog integration    | MEDIUM — compliance; closes the "who impersonated whom" gap               | LOW                 | P1       |
 
-All eight sub-features are P1 for v1.3. None can be deferred without compromising the
-"functional baseline" goal of the milestone.
+**Priority key:**
+
+- P1: Must have for v1.4 launch
+- P2: Should have, add when capacity allows within v1.4
+- P3: Nice to have, future consideration
 
 ---
 
-## Feature Implementation Notes
+## Implementation Notes by Feature Area
 
-### 1. Transactional Email
+### 1. Organization Model
 
-**EmailAdapter ABC pattern (mirrors PaymentAdapter from v1.1):**
+**Data model:**
 
-- `EmailAdapter` ABC defines `send(to, subject, html_body, text_body, template_name, context)`.
-- `ResendAdapter` is the default — django-anymail v14, Resend fully supported. SendGrid was dropped from django-anymail in June 2025 (Twilio blocked their test account; future bugs cannot be verified). Do not use SendGrid as default.
-- `SMTPAdapter` wraps Django's built-in backend for local dev / fallback.
-- All sends go through a Celery task: `send_email_task.delay(...)` — never synchronous in production.
-- HTML templates: Django template engine (`render_to_string`), stored in `apps/api/emails/templates/`.
-- Allauth's own email sends (verification, password reset) route through the new adapter by setting `EMAIL_BACKEND` in Django settings to the adapter's backend.
+- `Organization`: `id`, `name`, `slug`, `created_at`, `stripe_customer_id` (nullable; assigned when billing set up)
+- `Membership`: `user (FK)`, `organization (FK)`, `role (owner | admin | member)`, `invited_by`, `joined_at`
+- `OrganizationInvite`: `email`, `organization (FK)`, `role`, `token (UUID)`, `expires_at`, `accepted_at`
 
-**Minimum templates to ship:** welcome, email-verify, password-reset, password-changed, subscription-created, subscription-cancelled.
+**Key rules:**
 
-**`--without email` scaffolder flag:** removes adapter, Celery email tasks, templates; Allauth falls back to `django.core.mail.backends.console.EmailBackend` in dev.
+- First member to create the org becomes `owner`. Exactly one `owner` per org at all times.
+- Owner cannot be demoted to `admin`/`member` without first transferring ownership to another member.
+- Users can belong to multiple organizations (consultant pattern); each membership is independent.
+- `--with b2b` scaffolder flag creates the entire `organizations` Django app and Next.js settings section.
 
-### 2. Social Auth
+**Billing integration:**
 
-**Web (Google + GitHub):**
+- `Organization.stripe_customer_id` replaces `User.stripe_customer_id` for B2B products.
+- Products using solo billing (v1.1) and products using org billing are mutually exclusive configurations; the template should not force a migration — it should be a scaffolder choice at project creation or a clear extension point.
 
-- Config via `SOCIALACCOUNT_PROVIDERS` in settings (not Django admin — secrets backed by environment variables, not the database, which is the correct production pattern).
-- `AUTH_PARAMS: {'access_type': 'offline'}` for Google to receive refresh tokens on first login and reauthentication.
-- Headless mode: Allauth headless already wired from v1.0; social providers extend the same flow.
-- OAuth credentials per environment: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` in `.env`.
+### 2. Outbound Webhooks
 
-**Mobile (Apple):**
+**Data model:**
 
-- `expo-apple-authentication` (Expo managed workflow, iOS-only native module).
-- Apple issues two distinct client IDs: Bundle ID (native iOS app) and Services ID (web OAuth flow). Both are required; configure as separate entries in Allauth `APPS` list. Mark the mobile Bundle ID entry with `"hidden": True` to prevent it appearing in web flows.
-- **Critical gotcha — POST not GET:** Apple Sign In uses POST for the OAuth redirect, unlike all other providers. The session cookie is not sent on a cross-origin POST (SameSite=Lax). Any middleware that creates new sessions on this POST disrupts the original session after auth completes. Must handle session continuity explicitly.
-- **Critical gotcha — Expo Go:** Apple Sign In does not work in Expo Go. Development builds (EAS Build or `expo run:ios`) are required for local testing. Account for this in developer setup docs.
-- **Critical gotcha — JWT audience:** In development (Expo Go / dev build), the `aud` claim in Apple's identityToken is `host.exp.Exponent`. In production builds, it is the app bundle ID. Backend token validation must handle both.
-- **Critical maintenance item — p8 key expiry:** The Apple private key used to sign tokens must be rotated every 6 months. This is a non-obvious operational requirement. Add a reminder / documentation note; failure causes silent auth breakage.
-- **App Store policy:** Any native iOS app offering social login of any kind must also offer Apple Sign In. Non-negotiable.
+- `WebhookEndpoint`: `organization (FK)`, `url`, `secret (hashed)`, `events (ArrayField or JSONField)`, `is_active`, `created_at`
+- `WebhookDelivery`: `endpoint (FK)`, `event_type`, `payload (JSON)`, `status_code`, `response_body`, `attempt_number`, `delivered_at`, `next_retry_at`, `status (pending | delivered | failed | dead)`
 
-**`--without social-auth` flag:** removes provider configs, OAuth env vars, `expo-apple-authentication` module; email/password auth via Allauth remains fully functional.
+**Security:**
 
-### 3. GDPR Baseline
+- Signing secret generated at endpoint creation, shown exactly once, stored as HMAC-SHA-256 hash.
+- Signature: `X-Webhook-Signature: sha256=HMAC_SHA256(secret, f"{timestamp}.{body}")` — mirrors Stripe's format (familiar to developers).
+- `X-Webhook-Timestamp` header sent alongside; recipient should reject events older than 5 minutes to prevent replay.
 
-**Account Hard Delete:**
+**Delivery:**
 
-- Django's `User.delete()` cascades via `ON DELETE CASCADE` or `SET_NULL` on all FK relations automatically.
-- Audit required: every model in every app (billing, observability events, content) must be checked for FK to User; non-obvious relations (e.g. Celery task results, PostHog identities) need explicit cleanup.
-- Async: `delete_account_task.delay(user_id)` — deletion can be slow for users with large data footprints; must never block HTTP.
-- Keep (anonymized): billing records required for tax/accounting (strip name/email, retain amounts and dates).
-- Flow: user requests deletion → `HTTP 202 Accepted` → confirmation email sent → Celery task executes after short grace period (e.g. 24h) → account gone.
+- `deliver_webhook_task(delivery_id)` Celery task; HTTP POST to endpoint URL with 10s timeout.
+- On 2xx: mark delivery `delivered`.
+- On non-2xx or timeout: schedule retry via Celery `countdown`; exponential backoff: 30s, 5m, 30m, 2h, 8h (5 attempts).
+- After 5 failures: mark `dead`; do not disable the endpoint automatically (operator decision).
+- Idempotency: include `X-Delivery-ID` header (UUID) so recipient can deduplicate.
 
-**Data Export:**
+**Developer UX:**
 
-- `POST /api/v1/account/export` → returns `202 Accepted`, kicks off Celery task.
-- Task serializes all user-owned data to JSON (Django serializer or manual dict assembly covering: profile, subscription history, billing events).
-- Result delivered via email as attachment or a signed S3/storage URL valid for 24h.
-- Must complete within the GDPR 30-day response window; async delivery is acceptable.
+- Delivery log endpoint: `GET /api/v1/webhooks/endpoints/{id}/deliveries` — paginated, filterable by status and date.
+- Manual retry: `POST /api/v1/webhooks/deliveries/{id}/retry` — re-enqueues the Celery task; creates a new `WebhookDelivery` record (not mutates the old one).
 
-**Cookie Consent Banner:**
+### 3. API Key Authentication
 
-- Client component (`"use client"`) in Next.js App Router — must not run on server (localStorage unavailable server-side; hydration errors if read in RSC).
-- Stores consent in `localStorage` key `cookie_consent` with categories: `{necessary: true, analytics: boolean}`.
-- Gates PostHog initialization: only call `posthog.init()` after `analytics: true` consent is confirmed.
-- Pattern: check consent in `useEffect`, re-initialize or shut down PostHog on consent changes.
-- No third-party consent library needed — simple enough to build inline for a template; avoids adding a SaaS dependency.
-- Show on first visit; remember choice; provide link to revoke from account settings.
+**Data model:**
 
-### 4. RBAC
+- `APIKey`: `id`, `organization (FK, nullable for user-scoped keys)`, `user (FK)`, `name`, `prefix (8 chars, readable)`, `key_hash (SHA-256 of full key)`, `scopes (ArrayField)`, `rate_limit_per_minute`, `last_used_at`, `usage_count`, `is_active`, `created_at`, `expires_at`
 
-**Django Groups as roles:**
+**Key format:** `{prefix}_{random_32_bytes_base58}` — prefix makes keys identifiable in logs without exposing the secret. E.g. `sk_live_xxxxxx`.
 
-- Three default roles seeded via data migration: `admin`, `member`, `viewer`.
-- `@require_role("admin")` decorator for Django Ninja Extra controllers — checks `user.groups.filter(name=role).exists()`.
-- Decorator raises `HttpError(403)` if role check fails; must handle unauthenticated users (401 before 403 check).
-- Role assignment API: `POST /api/v1/admin/users/{id}/roles` — admin-only endpoint.
-- Django's built-in `user.has_perm()` system sits alongside groups and is not replaced; object permissions left to individual products.
-- Groups seeded in migration (not Django admin UI) — ensures groups exist in automated deployments and CI.
+**Authentication flow:**
 
-### 5. Feature Entitlements
+- `Authorization: Bearer {key}` header.
+- Middleware: extract key → compute SHA-256 → look up `APIKey` where `key_hash = ?` and `is_active = True`.
+- Async-friendly: middleware checks are synchronous DB lookups; consider caching positive results in Redis for N seconds (trade-off: revocation latency vs lookup overhead).
+- Attach `request.api_key` and `request.user` (from `api_key.user`) to request for downstream handlers.
 
-**`has_feature(user, key)` pattern:**
+**Rate limiting:**
 
-- Pure function in `apps/api/entitlements/services.py`.
-- Reads `PLAN_FEATURES` dict from Django settings: `{'pro': ['ai', 'exports', 'api_access'], 'free': ['exports']}`.
-- Fetches user's active plan from `Subscription` model (Billing module).
-- Returns `bool`; raises no exceptions — defaults to `False` if plan unknown or subscription inactive.
-- Server-side only — never expose the raw `PLAN_FEATURES` config to clients; expose only the evaluated result.
+- Redis sliding window counter: key `ratelimit:apikey:{key_id}` with 60s TTL.
+- Increment on each request; reject with `429` if over limit.
+- Response headers: `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset`.
+- `django-ratelimit` (already present from v1.2) can be extended for per-key semantics, or a custom Redis decorator is simpler and more explicit.
 
-**Entitlement check endpoint:** `GET /api/v1/entitlements` returns `{feature_key: bool}` for the current user — lets the frontend gate UI elements without leaking plan config or billing internals.
+**Scopes:**
 
-**Distinction from PostHog flags (v1.2):** PostHog flags control _when_ a feature rolls out (gradual release, A/B testing). Entitlements control _who_ can access a feature based on their billing plan. Both can coexist — a feature might require both Pro plan AND being in the 50% rollout group.
+- Scopes are strings: e.g. `read:data`, `write:data`, `admin:org`. Define a `VALID_API_SCOPES` constant.
+- Scope check in permission class: `APIKeyPermission(required_scope="write:data")`.
+- Scopes are additive (a key with `write:data` implicitly includes `read:data`); define hierarchy in code.
 
-**`--without billing` interaction:** If the billing module is excluded, `has_feature()` returns `True` for all features by default (no subscription to check, assume development mode). This must be explicitly documented so developers know template scaffolds without billing have open entitlements.
+### 4. Audit Logging
+
+**Library choice: `django-auditlog` (jazzband/django-auditlog)**
+
+- Preferred over custom signal handlers: field-level delta capture, active maintenance, 3x query performance.
+- Preferred over `django-pgaudit`: `django-pgaudit` operates at the Postgres trigger level (good for tamper-evidence, harder to query from application layer); `django-auditlog` is application-layer (queryable, exportable, org-scopable).
+- `django-auditlog` does NOT capture request context (user, IP) automatically unless `AuditlogMiddleware` is used. Wire the middleware.
+
+**Supplementary `AuditLog` model for explicit business events:**
+Not every important event is a model change. Login, logout, API key creation/revocation, webhook test fire, impersonation start/end — these are not captured by `django-auditlog` (which tracks ORM changes). Write a lightweight `AuditLog` model for explicit business events:
+
+- `actor_user (FK, nullable)`, `actor_api_key (FK, nullable)`, `organization (FK, nullable)`, `action (str)`, `resource_type (str)`, `resource_id (str)`, `metadata (JSON)`, `ip_address`, `user_agent`, `request_id (from structlog)`, `created_at`
+
+**Org-scoped API:**
+
+- `GET /api/v1/org/{slug}/audit-log` — paginated, filterable by actor, action, date range.
+- Only accessible to org `owner` and `admin` roles.
+- Does not expose impersonation entries (those are superadmin-only).
+
+**Immutability:**
+
+- No `UPDATE` or `DELETE` endpoints for audit log.
+- Consider Postgres row security policy: `DENY DELETE ON audit_log TO app_user`.
+- Document that true tamper-evidence requires external log shipping; template provides the foundation.
+
+### 5. Admin Backoffice
+
+**django-unfold:**
+
+- Drop-in replacement for Django admin skin; `INSTALLED_APPS` order: `unfold` before `django.contrib.admin`.
+- Customizes navigation, branding, sidebar, list filters.
+- Compatible with standard Django admin registrations; no model re-registration needed.
+- `django-hijack` v3.x provides a "Hijack" button in user admin — verify this button renders correctly in unfold's template context (known compatibility point; check django-hijack docs for unfold-specific configuration).
+
+**django-hijack:**
+
+- Adds `POST /hijack/{user_id}/` and `POST /hijack/release/` endpoints.
+- Shows a persistent banner while in impersonation session ("You are impersonating X — click to release").
+- Signals: `hijack_started(hijacker, hijacked, request)` and `hijack_ended(hijacker, hijacked, request)` — wire these to write `AuditLog` entries.
+- Restrict to Django `is_staff=True` users; regular org admins cannot impersonate (platform-level operation only).
 
 ---
 
 ## Competitor Feature Analysis
 
-Template competitors: SaaSPegasus, Bedrock, Bullet Train, various Next.js/Django starter kits.
+Template competitors for B2B features: SaaSPegasus, Bullet Train (HatchBox), Supergood, Wagtail-based starters.
 
-| Feature              | SaaSPegasus (Django)           | Bedrock (Next.js)        | Our v1.3 Approach                                               |
-| -------------------- | ------------------------------ | ------------------------ | --------------------------------------------------------------- |
-| Transactional email  | django-anymail + Mailgun       | Resend or Postmark       | EmailAdapter ABC + ResendAdapter default; swappable via setting |
-| Social auth          | Google + GitHub via Allauth    | Next-Auth providers      | Google + GitHub (web) + Apple (mobile) via Allauth headless     |
-| GDPR                 | Manual / not standard          | Varies                   | Hard delete + export + consent banner; async Celery pattern     |
-| RBAC                 | Built-in (teams + roles model) | Role middleware          | Django Groups + `@require_role` decorator; 3 seeded roles       |
-| Feature entitlements | Plan-based flags               | Feature flag integration | `has_feature()` + plan config in settings; billing-linked       |
+| Feature            | SaaSPegasus (Django)           | Bullet Train          | Our v1.4 Approach                                          |
+| ------------------ | ------------------------------ | --------------------- | ---------------------------------------------------------- |
+| Organization model | Yes — Teams model with invites | Yes — core feature    | Organization + Membership + OrganizationInvite             |
+| Per-org billing    | Yes — Stripe Customer per team | Yes                   | PaymentAdapter extended; `Organization.stripe_customer_id` |
+| Outbound webhooks  | No                             | No                    | Celery delivery + HMAC + delivery log                      |
+| API keys           | No                             | No                    | Prefix + hash stored + scopes + per-key rate limit         |
+| Audit log          | No                             | Basic activity log    | `django-auditlog` + supplementary `AuditLog` model         |
+| Admin backoffice   | Standard Django admin          | Standard Django admin | `django-unfold` + `django-hijack`                          |
 
-**Key gap vs competitors:** Most Django starters do not include Apple Sign In on mobile (web-only focus) and do not ship an explicit async GDPR deletion workflow. These are genuine differentiators for this template.
+**Key gaps vs competitors:** Neither SaaSPegasus nor Bullet Train ships outbound webhooks or API key
+authentication as part of the template. These are genuine differentiators. Audit logging and
+modern admin UI are also absent from both. The v1.4 module makes this template the most complete
+B2B infrastructure kit in the Django starter ecosystem.
 
 ---
 
 ## Sources
 
-- [django-anymail — SendGrid status (dropped June 2025)](https://anymail.dev/en/v14.0/esps/sendgrid/)
-- [django-anymail — GitHub (Resend + all supported providers)](https://github.com/anymail/django-anymail)
-- [django-anymail — SendGrid drop issue #432](https://github.com/anymail/django-anymail/issues/432)
-- [django-allauth — Apple provider docs](https://docs.allauth.org/en/dev/socialaccount/providers/apple.html)
-- [django-allauth — Google provider docs](https://docs.allauth.org/en/dev/socialaccount/providers/google.html)
-- [django-allauth — Provider configuration patterns](https://docs.allauth.org/en/dev/socialaccount/provider_configuration.html)
-- [Expo — AppleAuthentication module](https://docs.expo.dev/versions/latest/sdk/apple-authentication/)
-- [Expo — Authentication overview](https://docs.expo.dev/develop/authentication/)
-- [Apple Sign In with Expo 2025 (Medium)](https://medium.com/@meszmate/apple-sign-in-with-expo-golang-complete-2025-guide-to-server-side-oauth-jwt-validation-and-01677dc27e08)
-- [GDPR for SaaS — Feroot 2026 action plan](https://www.feroot.com/blog/gdpr-saas-compliance-2025/)
-- [GDPR for SaaS — CookieYes 8-step guide](https://www.cookieyes.com/blog/gdpr-for-saas/)
-- [GDPR right to erasure — Comply Dog](https://complydog.com/blog/right-to-be-forgotten-gdpr-erasure-rights-guide)
-- [Next.js cookie consent banner — PostHog tutorial](https://posthog.com/tutorials/nextjs-cookie-banner)
-- [Next.js cookie consent — Build with Matija 2025](https://www.buildwithmatija.com/blog/build-cookie-consent-banner-nextjs-15-server-client)
-- [SaaS entitlements — Orb](https://www.withorb.com/blog/what-are-entitlements-in-saas)
-- [Feature gating patterns — Orb](https://www.withorb.com/blog/feature-gating)
-- [Entitlements vs feature flags — LaunchDarkly](https://launchdarkly.com/blog/how-to-manage-entitlements-with-feature-flags/)
-- [Django RBAC full guide — Permit.io](https://www.permit.io/blog/how-to-implement-role-based-access-control-rbac-into-a-django-application)
-- [Django GDPR compliance — CloudDevs](https://clouddevs.com/django/gdpr-compliance-for-privacy/)
+- [WorkOS — Model your B2B SaaS with organizations](https://workos.com/blog/model-your-b2b-saas-with-organizations)
+- [Clerk — Organizations overview for multi-tenant B2B](https://clerk.com/docs/guides/organizations/overview)
+- [PropelAuth — Guide to RBAC for B2B SaaS](https://www.propelauth.com/post/guide-to-rbac-for-b2b-saas)
+- [Hookdeck — Outpost open source outbound webhooks](https://hookdeck.com/blog/outpost-open-source-webhooks-event-destinations-infrastructure)
+- [Integrate.io — Webhook best practices](https://www.integrate.io/blog/apply-webhook-best-practices/)
+- [Zuplo — 10 best practices for API rate limiting 2025](https://zuplo.com/learning-center/10-best-practices-for-api-rate-limiting-in-2025)
+- [Speakeasy — Rate limiting best practices in REST API design](https://www.speakeasy.com/api-design/rate-limiting)
+- [Frontegg — Audit logs for SaaS enterprise customers](https://frontegg.com/blog/audit-logs-for-saas-enterprise-customers)
+- [4Spot Consulting — SaaS audit logs shared responsibility](https://4spotconsulting.com/saas-audit-logs-a-shared-responsibility-for-data-integrity/)
+- [Middleware.io — Audit logs comprehensive guide](https://middleware.io/blog/audit-logs/)
+- [jazzband/django-auditlog — GitHub](https://github.com/jazzband/django-auditlog)
+- [Medium — Django audit logging best libraries with PostgreSQL](https://medium.com/@mariliabontempo/django-audit-logging-the-best-libraries-for-tracking-model-changes-with-postgresql-2c7396564e97)
+- [django-hijack — GitHub](https://github.com/django-hijack/django-hijack)
+- [Matt Layman — Hijack to help customers](https://www.mattlayman.com/blog/2020/hijack-to-help-customers/)
+- [Square — Webhook event logs developer docs](https://developer.squareup.com/docs/devtools/webhook-logs)
 
 ---
 
-_Feature research for: Foundation Template v1.3 — SaaS Functional Baseline_
-_Researched: 2026-03-11_
+_Feature research for: Foundation Template v1.4 — B2B Module_
+_Researched: 2026-03-12_
