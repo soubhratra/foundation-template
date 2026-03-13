@@ -4,7 +4,7 @@ milestone: v1.4
 milestone_name: B2B Module
 status: planning
 stopped_at: Completed 27-04-PLAN.md (webhook schemas and controllers, all 8 HTTP endpoints)
-last_updated: "2026-03-13T11:55:42.098Z"
+last_updated: "2026-03-13T12:00:02.611Z"
 last_activity: 2026-03-13 — v1.4 roadmap created; all 19 requirements mapped across Phases 26–31
 progress:
   total_phases: 12
