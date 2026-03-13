@@ -71,35 +71,35 @@ Requirements for the B2B Module milestone. Each maps to a roadmap phase.
 
 Which phases cover which requirements. Updated during roadmap creation.
 
-| Requirement | Phase | Status  |
-| ----------- | ----- | ------- |
-| ORG-01      | —     | Pending |
-| ORG-02      | —     | Pending |
-| ORG-03      | —     | Pending |
-| ORG-04      | —     | Pending |
-| ORG-05      | —     | Pending |
-| BILL-01     | —     | Pending |
-| BILL-02     | —     | Pending |
-| HOOK-01     | —     | Pending |
-| HOOK-02     | —     | Pending |
-| HOOK-03     | —     | Pending |
-| HOOK-04     | —     | Pending |
-| AKEY-01     | —     | Pending |
-| AKEY-02     | —     | Pending |
-| AKEY-03     | —     | Pending |
-| AUDIT-01    | —     | Pending |
-| AUDIT-02    | —     | Pending |
-| ADMIN-01    | —     | Pending |
-| ADMIN-02    | —     | Pending |
-| SCAFF-01    | —     | Pending |
+| Requirement | Phase    | Status  |
+| ----------- | -------- | ------- |
+| ORG-01      | Phase 26 | Pending |
+| ORG-02      | Phase 26 | Pending |
+| ORG-03      | Phase 26 | Pending |
+| ORG-04      | Phase 26 | Pending |
+| ORG-05      | Phase 26 | Pending |
+| BILL-01     | Phase 26 | Pending |
+| BILL-02     | Phase 26 | Pending |
+| HOOK-01     | Phase 27 | Pending |
+| HOOK-02     | Phase 27 | Pending |
+| HOOK-03     | Phase 27 | Pending |
+| HOOK-04     | Phase 27 | Pending |
+| AKEY-01     | Phase 28 | Pending |
+| AKEY-02     | Phase 28 | Pending |
+| AKEY-03     | Phase 28 | Pending |
+| AUDIT-01    | Phase 29 | Pending |
+| AUDIT-02    | Phase 29 | Pending |
+| ADMIN-01    | Phase 30 | Pending |
+| ADMIN-02    | Phase 30 | Pending |
+| SCAFF-01    | Phase 31 | Pending |
 
 **Coverage:**
 
 - v1.4 requirements: 19 total
-- Mapped to phases: 0 (pending roadmap)
-- Unmapped: 19 ⚠️
+- Mapped to phases: 19 (100% coverage)
+- Unmapped: 0
 
 ---
 
 _Requirements defined: 2026-03-13_
-_Last updated: 2026-03-13 after initial definition_
+_Last updated: 2026-03-13 after roadmap creation_
