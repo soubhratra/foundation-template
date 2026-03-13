@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: B2B Module
 status: planning
-stopped_at: Completed 29-audit-logging 29-02-PLAN.md
-last_updated: "2026-03-13T14:52:00.833Z"
+stopped_at: Completed 29-audit-logging 29-03-PLAN.md
+last_updated: "2026-03-13T15:08:33.717Z"
 last_activity: 2026-03-13 — v1.4 roadmap created; all 19 requirements mapped across Phases 26–31
 progress:
   total_phases: 12
-  completed_phases: 9
+  completed_phases: 10
   total_plans: 36
-  completed_plans: 35
+  completed_plans: 36
   percent: 0
 ---
 
@@ -63,6 +63,7 @@ _Updated after each plan completion_
 | Phase 28-api-key-authentication P04 | 7 | 1 tasks | 3 files |
 | Phase 29-audit-logging P01 | 3 | 2 tasks | 8 files |
 | Phase 29-audit-logging P02 | 844 | 2 tasks | 14 files |
+| Phase 29-audit-logging P03 | 848 | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -116,6 +117,9 @@ _Updated after each plan completion_
 - [Phase 29-audit-logging]: django-pghistory 3.9.2 installs django-pgtrigger 4.17.0 as transitive dep — no separate pgtrigger install needed
 - [Phase 29-audit-logging]: pgtrigger hash= fields in migrations are SHA-1 checksums of trigger SQL — use pragma allowlist secret inline (not secrets.baseline) since migrations are excluded from ruff
 - [Phase 29-audit-logging]: OrganizationEvent/MembershipEvent live in orgs app_label; APIKeyEvent in api_keys; WebhookEndpointEvent in webhooks — across() strings verified: orgs.OrganizationEvent, orgs.MembershipEvent, api_keys.APIKeyEvent, webhooks.WebhookEndpointEvent
+- [Phase 29-audit-logging]: ninja_extra.QueryParams does not exist — AuditLogQueryParams uses ninja.Schema as base class, bound via Query(...) with # noqa: B008 in controller
+- [Phase 29-audit-logging]: OrgAuditEvents proxy uses across() with positional string args for cross-model union across 4 event tables; encode_cursor operates on raw pgh_created_at/pgh_id (not schema fields)
+- [Phase 29-audit-logging]: DB index on pghistory_context (metadata->>'org_id', created_at DESC, id DESC) deferred — recommend adding as RunSQL migration post-Wave 3
 
 ### Pending Todos
 
@@ -129,6 +133,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-13T14:52:00.828Z
-Stopped at: Completed 29-audit-logging 29-02-PLAN.md
+Last session: 2026-03-13T15:08:33.712Z
+Stopped at: Completed 29-audit-logging 29-03-PLAN.md
 Resume file: None
