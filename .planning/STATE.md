@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: B2B Module
 status: planning
-stopped_at: Completed 29-audit-logging 29-01-PLAN.md
-last_updated: "2026-03-13T14:35:18.071Z"
+stopped_at: Completed 29-audit-logging 29-02-PLAN.md
+last_updated: "2026-03-13T14:52:00.833Z"
 last_activity: 2026-03-13 — v1.4 roadmap created; all 19 requirements mapped across Phases 26–31
 progress:
   total_phases: 12
   completed_phases: 9
   total_plans: 36
-  completed_plans: 34
+  completed_plans: 35
   percent: 0
 ---
 
@@ -62,6 +62,7 @@ _Updated after each plan completion_
 | Phase 28-api-key-authentication P03 | 18 | 2 tasks | 4 files |
 | Phase 28-api-key-authentication P04 | 7 | 1 tasks | 3 files |
 | Phase 29-audit-logging P01 | 3 | 2 tasks | 8 files |
+| Phase 29-audit-logging P02 | 844 | 2 tasks | 14 files |
 
 ## Accumulated Context
 
@@ -112,6 +113,9 @@ _Updated after each plan completion_
 - [Phase 29-audit-logging]: raise AssertionError() used for all RED stubs — ruff B011 flags assert False as removed by Python -O flag
 - [Phase 29-audit-logging]: apps/audit/**init**.py intentionally empty — directory must exist for tests/**init**.py to produce ModuleNotFoundError (not FileNotFoundError)
 - [Phase 29-audit-logging]: Lazy imports inside conftest.py fixture bodies follow same pattern as tests/webhooks/conftest.py — prevents double-import conflicts while **init**.py remains the RED trigger
+- [Phase 29-audit-logging]: django-pghistory 3.9.2 installs django-pgtrigger 4.17.0 as transitive dep — no separate pgtrigger install needed
+- [Phase 29-audit-logging]: pgtrigger hash= fields in migrations are SHA-1 checksums of trigger SQL — use pragma allowlist secret inline (not secrets.baseline) since migrations are excluded from ruff
+- [Phase 29-audit-logging]: OrganizationEvent/MembershipEvent live in orgs app_label; APIKeyEvent in api_keys; WebhookEndpointEvent in webhooks — across() strings verified: orgs.OrganizationEvent, orgs.MembershipEvent, api_keys.APIKeyEvent, webhooks.WebhookEndpointEvent
 
 ### Pending Todos
 
@@ -125,6 +129,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-13T14:35:18.067Z
-Stopped at: Completed 29-audit-logging 29-01-PLAN.md
+Last session: 2026-03-13T14:52:00.828Z
+Stopped at: Completed 29-audit-logging 29-02-PLAN.md
 Resume file: None
