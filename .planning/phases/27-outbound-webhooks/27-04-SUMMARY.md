@@ -130,5 +130,14 @@ Each task was committed atomically:
 
 ---
 
+## Self-Check: PASSED
+
+- FOUND: apps/api/apps/webhooks/schemas.py
+- FOUND: apps/api/apps/webhooks/controllers.py
+- FOUND: .planning/phases/27-outbound-webhooks/27-04-SUMMARY.md
+- FOUND commit: 8f556c6 (test RED)
+- FOUND commit: cf87853 (feat GREEN)
+- 36/36 webhooks tests pass; 219 other tests pass; 10 pre-existing billing errors (out of scope)
+
 _Phase: 27-outbound-webhooks_
 _Completed: 2026-03-13_
