@@ -49,12 +49,14 @@ def endpoint(db, org, org_admin):
     """A WebhookEndpoint belonging to the test org."""
     from apps.webhooks.models import WebhookEndpoint
 
+    raw, signing_key, secret_hash = WebhookEndpoint.generate_secret()
     return WebhookEndpoint.objects.create(
         org=org,
         url="https://example.com/hooks",
         name="Test Hook",
         event_types=["user.created"],
-        secret_hash="fakehash",  # pragma: allowlist secret
+        signing_key=signing_key,
+        secret_hash=secret_hash,
     )
 
 
