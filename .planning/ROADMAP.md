@@ -324,7 +324,13 @@ Plans:
 2. Running `create-foundation-app` without `--with b2b` produces a project with zero B2B imports, no B2B migrations, and a clean `manage.py check` — no `# B2B_START` / `# B2B_END` markers remain in the output
 3. A pytest test in `apps/api/tests/` verifies that `manage.py check` passes on the B2B-removed scaffold — this test is part of the standard CI suite
 
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+
+- [ ] 31-01-PLAN.md — Wave 1: RED test stubs (tests/scaffolder/**init**.py + test_b2b_scaffold.py — two tests covering SCAFF-01)
+- [ ] 31-02-PLAN.md — Wave 2: Fix unmatched B2B marker in base.py + stripMarkerBlocks() + removeB2BModule() + --with b2b flag wiring + pnpm build + tests GREEN
+- [ ] 31-03-PLAN.md — Wave 3: Full pytest suite green + human verify interactive multiselect
 
 ## Progress
 
@@ -360,4 +366,4 @@ Plans:
 | 28. API Key Authentication         | 4/4       | Complete       | 2026-03-13  | -          |
 | 29. Audit Logging                  | 3/3       | Complete       | 2026-03-13  | -          |
 | 30. Admin Backoffice               | 3/3       | Complete       | 2026-03-13  | -          |
-| 31. CLI Scaffolder Integration     | v1.4      | 0/TBD          | Not started | -          |
+| 31. CLI Scaffolder Integration     | v1.4      | 0/3            | Not started | -          |
