@@ -138,6 +138,9 @@ MIDDLEWARE = [
     "apps.core.middleware.RequestContextMiddleware",
     "apps.core.middleware.ObservabilityMiddleware",  # OBSERVABILITY MODULE
     "apps.core.middleware.AuthRateLimitMiddleware",  # RATE LIMITING MODULE
+    # B2B_START
+    "apps.api_keys.middleware.ApiKeyRateLimitMiddleware",  # B2B MODULE — per-key rate limiting
+    # B2B_END
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
