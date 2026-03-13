@@ -352,6 +352,6 @@ Plans:
 | 26. Organization + Per-Org Billing | 6/6       | Complete       | 2026-03-13  | -          |
 | 27. Outbound Webhooks              | 4/4       | Complete       | 2026-03-13  | -          |
 | 28. API Key Authentication         | 4/4       | Complete       | 2026-03-13  | -          |
-| 29. Audit Logging                  | v1.4      | 0/TBD          | Not started | -          |
+| 29. Audit Logging                  | 1/3       | In Progress    |             | -          |
 | 30. Admin Backoffice               | v1.4      | 0/TBD          | Not started | -          |
 | 31. CLI Scaffolder Integration     | v1.4      | 0/TBD          | Not started | -          |
