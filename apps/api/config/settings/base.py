@@ -120,6 +120,9 @@ INSTALLED_APPS = [
     "apps.orgs",  # B2B MODULE — remove this line to exclude B2B
     "apps.webhooks",  # B2B MODULE — outbound webhooks
     "apps.api_keys",  # B2B MODULE — API key authentication
+    "pghistory",  # B2B MODULE — pghistory Context model
+    "pgtrigger",  # B2B MODULE — trigger management
+    "apps.audit",  # B2B MODULE — audit context + query API
     # B2B_END
     "anymail",  # EMAIL MODULE — remove this line to exclude email
     "apps.notifications",  # EMAIL MODULE — remove this line to exclude email
@@ -140,6 +143,7 @@ MIDDLEWARE = [
     "apps.core.middleware.AuthRateLimitMiddleware",  # RATE LIMITING MODULE
     # B2B_START
     "apps.api_keys.middleware.ApiKeyRateLimitMiddleware",  # B2B MODULE — per-key rate limiting
+    "apps.audit.middleware.AuditContextMiddleware",  # B2B MODULE — audit context
     # B2B_END
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
@@ -177,7 +181,7 @@ AUTHENTICATION_BACKENDS = [
 DATABASES = {
     "default": env.db(
         "DATABASE_URL",
-        default="postgres://foundation:foundation@localhost:5432/foundation",
+        default="postgres://foundation:foundation@localhost:5432/foundation",  # noqa: E501  # pragma: allowlist secret
     )
 }
 
@@ -608,7 +612,7 @@ if os.environ.get("DJANGO_SETTINGS_MODULE", "").endswith("production") and not D
     }
 
     _missing = []
-    if SECRET_KEY == "django-insecure-change-me-in-production":
+    if SECRET_KEY == "django-insecure-change-me-in-production":  # pragma: allowlist secret
         _missing.append("SECRET_KEY (still using insecure default)")
     if ALLOWED_HOSTS == ["localhost", "127.0.0.1"]:
         _missing.append("ALLOWED_HOSTS (still using localhost defaults)")
