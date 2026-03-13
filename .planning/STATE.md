@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: B2B Module
 status: planning
-stopped_at: Completed 28-api-key-authentication 28-03-PLAN.md
-last_updated: "2026-03-13T12:53:59.960Z"
+stopped_at: Completed 28-api-key-authentication 28-04-PLAN.md
+last_updated: "2026-03-13T12:57:48.306Z"
 last_activity: 2026-03-13 — v1.4 roadmap created; all 19 requirements mapped across Phases 26–31
 progress:
   total_phases: 12
-  completed_phases: 8
+  completed_phases: 9
   total_plans: 33
-  completed_plans: 32
+  completed_plans: 33
   percent: 0
 ---
 
@@ -60,6 +60,7 @@ _Updated after each plan completion_
 | Phase 28-api-key-authentication P01 | 2 | 2 tasks | 7 files |
 | Phase 28-api-key-authentication P02 | 10 | 2 tasks | 7 files |
 | Phase 28-api-key-authentication P03 | 18 | 2 tasks | 4 files |
+| Phase 28-api-key-authentication P04 | 7 | 1 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -105,6 +106,8 @@ _Updated after each plan completion_
 - [Phase 28-api-key-authentication]: Route paths use trailing slash ('/' not '') in APIKeyController — test contract URLs all have trailing slashes
 - [Phase 28-api-key-authentication]: RequireScope raises PermissionDenied (not returns False) — forces 403 immediately without fallthrough
 - [Phase 28-api-key-authentication]: Management controller (APIKeyController) uses session auth only; ApiKeyAuth is for product endpoints only
+- [Phase 28-api-key-authentication]: get_usage(increment=True) is single enforcement+header counter — no header/enforcement drift possible
+- [Phase 28-api-key-authentication]: ApiKeyRateLimitMiddleware wired inside B2B_START/B2B_END block, consistent with template B2B marker convention
 
 ### Pending Todos
 
@@ -118,6 +121,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-13T12:53:59.956Z
-Stopped at: Completed 28-api-key-authentication 28-03-PLAN.md
+Last session: 2026-03-13T12:57:48.302Z
+Stopped at: Completed 28-api-key-authentication 28-04-PLAN.md
 Resume file: None
