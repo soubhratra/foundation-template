@@ -72,7 +72,7 @@ Full archive: `.planning/milestones/v1.3-ROADMAP.md`
 **Milestone Goal:** Add an optional B2B layer — organizations, outbound webhooks, API keys, audit logging, and admin backoffice — so products targeting teams or developers can scaffold enterprise-grade infrastructure from day one.
 
 - [x] **Phase 26: Organization Model + Per-Org Billing** - Organization, Membership, roles, invitation flow, ownership transfer, per-org Stripe billing, and entitlement resolution (completed 2026-03-13)
-- [ ] **Phase 27: Outbound Webhooks** - Webhook endpoint registry, HMAC-signed Celery delivery with exponential backoff, delivery log, manual retry, auto-disable circuit breaker
+- [x] **Phase 27: Outbound Webhooks** - Webhook endpoint registry, HMAC-signed Celery delivery with exponential backoff, delivery log, manual retry, auto-disable circuit breaker (completed 2026-03-13)
 - [ ] **Phase 28: API Key Authentication** - API key create/revoke/scopes, SHA-256 hash storage, Ninja auth backend, per-key rate limiting, usage tracking
 - [ ] **Phase 29: Audit Logging** - pghistory triggers on all B2B models, AuditContextMiddleware, org-scoped paginated audit log read API
 - [ ] **Phase 30: Admin Backoffice** - django-unfold theme across all ModelAdmins, django-hijack impersonation wired to AuditLog
@@ -337,7 +337,7 @@ Plans:
 | 24. Social Auth OAuth Callback     | v1.3      | 2/2            | Complete    | 2026-03-12 |
 | 25. GDPR Export plan_id Accuracy   | v1.3      | 1/1            | Complete    | 2026-03-12 |
 | 26. Organization + Per-Org Billing | 6/6       | Complete       | 2026-03-13  | -          |
-| 27. Outbound Webhooks              | 3/4       | In Progress    |             | -          |
+| 27. Outbound Webhooks              | 4/4       | Complete       | 2026-03-13  | -          |
 | 28. API Key Authentication         | v1.4      | 0/TBD          | Not started | -          |
 | 29. Audit Logging                  | v1.4      | 0/TBD          | Not started | -          |
 | 30. Admin Backoffice               | v1.4      | 0/TBD          | Not started | -          |

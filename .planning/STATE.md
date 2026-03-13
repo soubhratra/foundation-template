@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: B2B Module
 status: planning
-stopped_at: Completed 27-03-PLAN.md (deliver_webhook task, circuit breaker, cleanup, email templates)
-last_updated: "2026-03-13T11:39:53.091Z"
+stopped_at: Completed 27-04-PLAN.md (webhook schemas and controllers, all 8 HTTP endpoints)
+last_updated: "2026-03-13T11:55:42.098Z"
 last_activity: 2026-03-13 — v1.4 roadmap created; all 19 requirements mapped across Phases 26–31
 progress:
   total_phases: 12
-  completed_phases: 7
+  completed_phases: 8
   total_plans: 29
-  completed_plans: 28
+  completed_plans: 29
   percent: 0
 ---
 
@@ -56,6 +56,7 @@ _Updated after each plan completion_
 | Phase 27-outbound-webhooks P01 | 2 | 1 tasks | 7 files |
 | Phase 27-outbound-webhooks P02 | 8 | 2 tasks | 12 files |
 | Phase 27-outbound-webhooks P03 | 10 | 1 tasks | 7 files |
+| Phase 27-outbound-webhooks P04 | 11 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -92,6 +93,8 @@ _Updated after each plan completion_
 - [Phase 27-outbound-webhooks]: select_related('endpoint') not endpoint\_\_org in deliver_webhook — org accessed lazily only in circuit breaker path to avoid NPlusOneError on common success path
 - [Phase 27-outbound-webhooks]: \_handle_terminal_failure is module-level (not task-internal) to enable direct testing without mocking full Celery retry chain
 - [Phase 27-outbound-webhooks]: Email template at email/webhooks/endpoint_disabled.html (send_email_task resolves email/{template_name})
+- [Phase 27-outbound-webhooks]: 27-04: No from **future** import annotations in ninja_extra controllers/schemas — deferred type eval breaks Pydantic QueryParams.model_rebuild() at runtime
+- [Phase 27-outbound-webhooks]: 27-04: @paginate decorator incompatible with ninja_extra controller methods — use manual page/page_size query params + dict response instead
 
 ### Pending Todos
 
@@ -105,6 +108,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-13T11:39:53.087Z
-Stopped at: Completed 27-03-PLAN.md (deliver_webhook task, circuit breaker, cleanup, email templates)
+Last session: 2026-03-13T11:55:42.093Z
+Stopped at: Completed 27-04-PLAN.md (webhook schemas and controllers, all 8 HTTP endpoints)
 Resume file: None
