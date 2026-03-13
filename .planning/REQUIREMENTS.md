@@ -10,32 +10,32 @@ Requirements for the B2B Module milestone. Each maps to a roadmap phase.
 ### Organizations & Membership
 
 - [x] **ORG-01**: User can create an organization with a name and slug; becomes owner automatically
-- [x] **ORG-02**: Org owner can invite members by email (72h token expiry); accepted via new signup or existing login using existing EmailAdapter
+- [ ] **ORG-02**: Org owner can invite members by email (72h token expiry); accepted via new signup or existing login using existing EmailAdapter
 - [x] **ORG-03**: Org members have owner/admin/member roles; `IsOrgAdmin`/`IsOrgMember` Ninja permission classes enforce access
 - [x] **ORG-04**: Org owner can transfer ownership to another member via dedicated endpoint
 - [x] **ORG-05**: All service methods validate org membership before any ORM access; cross-org resource access returns 403
 
 ### Per-Org Billing
 
-- [x] **BILL-01**: System creates `OrgCustomer` (linked to `Organization`) for per-org Stripe billing, parallel to existing user `Customer` model
+- [ ] **BILL-01**: System creates `OrgCustomer` (linked to `Organization`) for per-org Stripe billing, parallel to existing user `Customer` model
 - [x] **BILL-02**: `_resolve_plan_id` checks org plan before personal plan; entitlement cache invalidated for all org members on subscription update; `has_org_feature()` utility available
 
 ### Outbound Webhooks
 
-- [x] **HOOK-01**: Org admin can register webhook endpoints; deliveries are sent via Celery with exponential backoff (7 retries), HMAC-SHA256 signed, payload versioned
+- [ ] **HOOK-01**: Org admin can register webhook endpoints; deliveries are sent via Celery with exponential backoff (7 retries), HMAC-SHA256 signed, payload versioned
 - [x] **HOOK-02**: User can view paginated delivery history for a webhook endpoint (`GET /api/v1/webhooks/endpoints/{id}/deliveries`)
 - [x] **HOOK-03**: User can manually retry a failed delivery (`POST /api/v1/webhooks/deliveries/{id}/retry`)
 - [x] **HOOK-04**: System auto-disables endpoint after N consecutive failures and notifies org admin by email
 
 ### API Keys
 
-- [x] **AKEY-01**: User can create/revoke API keys with scopes; raw key shown once at creation; prefix + SHA-256 hash stored only; `RequireScope` permission class enforces scope per endpoint
-- [x] **AKEY-02**: API key requests are rate-limited per key via `django-ratelimit`; `X-RateLimit-*` response headers returned
-- [x] **AKEY-03**: System tracks `last_used_at` and `usage_count` on each API key, updated on every authenticated request
+- [ ] **AKEY-01**: User can create/revoke API keys with scopes; raw key shown once at creation; prefix + SHA-256 hash stored only; `RequireScope` permission class enforces scope per endpoint
+- [ ] **AKEY-02**: API key requests are rate-limited per key via `django-ratelimit`; `X-RateLimit-*` response headers returned
+- [ ] **AKEY-03**: System tracks `last_used_at` and `usage_count` on each API key, updated on every authenticated request
 
 ### Audit Logging
 
-- [x] **AUDIT-01**: System records changes to `Organization`, `Membership`, `APIKey`, `WebhookEndpoint` via pghistory triggers; `AuditContextMiddleware` attaches user and org context automatically
+- [ ] **AUDIT-01**: System records changes to `Organization`, `Membership`, `APIKey`, `WebhookEndpoint` via pghistory triggers; `AuditContextMiddleware` attaches user and org context automatically
 - [x] **AUDIT-02**: Org owner and admins can query paginated audit log filtered by actor/date/action (`GET /api/v1/org/{slug}/audit-log`); impersonation entries not exposed to org admins
 
 ### Admin Backoffice
@@ -74,20 +74,20 @@ Which phases cover which requirements. Updated during roadmap creation.
 | Requirement | Phase    | Status   |
 | ----------- | -------- | -------- |
 | ORG-01      | Phase 26 | Complete |
-| ORG-02      | Phase 26 | Complete |
+| ORG-02      | Phase 32 | Pending  |
 | ORG-03      | Phase 26 | Complete |
 | ORG-04      | Phase 26 | Complete |
 | ORG-05      | Phase 26 | Complete |
-| BILL-01     | Phase 26 | Complete |
+| BILL-01     | Phase 34 | Pending  |
 | BILL-02     | Phase 26 | Complete |
-| HOOK-01     | Phase 27 | Complete |
+| HOOK-01     | Phase 32 | Pending  |
 | HOOK-02     | Phase 27 | Complete |
 | HOOK-03     | Phase 27 | Complete |
 | HOOK-04     | Phase 27 | Complete |
-| AKEY-01     | Phase 28 | Complete |
-| AKEY-02     | Phase 28 | Complete |
-| AKEY-03     | Phase 28 | Complete |
-| AUDIT-01    | Phase 29 | Complete |
+| AKEY-01     | Phase 33 | Pending  |
+| AKEY-02     | Phase 33 | Pending  |
+| AKEY-03     | Phase 33 | Pending  |
+| AUDIT-01    | Phase 34 | Pending  |
 | AUDIT-02    | Phase 29 | Complete |
 | ADMIN-01    | Phase 30 | Complete |
 | ADMIN-02    | Phase 30 | Complete |
@@ -98,6 +98,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 - v1.4 requirements: 19 total
 - Mapped to phases: 19 (100% coverage)
 - Unmapped: 0
+- Pending (gap closure): 7 (ORG-02, BILL-01, HOOK-01, AKEY-01, AKEY-02, AKEY-03, AUDIT-01)
 
 ---
 
