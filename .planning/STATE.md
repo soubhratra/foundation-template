@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: B2B Module
 status: planning
-stopped_at: Completed 26-01-PLAN.md (RED test stubs for orgs app)
-last_updated: "2026-03-13T02:53:02.790Z"
+stopped_at: Completed 26-02-PLAN.md (orgs models + migration)
+last_updated: "2026-03-13T03:00:31.950Z"
 last_activity: 2026-03-13 — v1.4 roadmap created; all 19 requirements mapped across Phases 26–31
 progress:
   total_phases: 12
   completed_phases: 6
   total_plans: 25
-  completed_plans: 20
+  completed_plans: 21
   percent: 0
 ---
 
@@ -48,6 +48,7 @@ Progress: [░░░░░░░░░░] 0% (v1.4 IN PROGRESS) | 6 phases pend
 
 _Updated after each plan completion_
 | Phase 26-organization-model-per-org-billing P01 | 277 | 3 tasks | 8 files |
+| Phase 26-organization-model-per-org-billing P02 | 4 | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -64,6 +65,8 @@ _Updated after each plan completion_
 - v1.4 Phase 30 risk: unfold + hijack compatibility is MEDIUM confidence — no single joint integration guide; run smoke test early before building out full admin registrations
 - [Phase 26-organization-model-per-org-billing]: 26-01: Module-top-level imports in tests/orgs/ ensure immediate ImportError at collection time (clean RED state before orgs app exists)
 - [Phase 26-organization-model-per-org-billing]: 26-01: Lazy imports in BILL-02 test stubs appended to existing files prevent breaking 10 passing tests while still defining RED stubs
+- [Phase 26-organization-model-per-org-billing]: 26-02: Invitation field name is 'email' (not 'invited_email') — adapted to match 26-01 RED test contract; tests are authoritative
+- [Phase 26-organization-model-per-org-billing]: 26-02: Organization.owner FK (SET_NULL) added as denormalized convenience field — 26-01 test stubs required it; Membership remains authoritative role source
 
 ### Pending Todos
 
@@ -77,6 +80,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-13T02:53:02.786Z
-Stopped at: Completed 26-01-PLAN.md (RED test stubs for orgs app)
+Last session: 2026-03-13T03:00:31.947Z
+Stopped at: Completed 26-02-PLAN.md (orgs models + migration)
 Resume file: None
