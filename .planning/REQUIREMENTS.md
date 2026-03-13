@@ -40,8 +40,8 @@ Requirements for the B2B Module milestone. Each maps to a roadmap phase.
 
 ### Admin Backoffice
 
-- [ ] **ADMIN-01**: Django admin themed with `django-unfold` across all domain `ModelAdmin` registrations; navigation sidebar configured
-- [ ] **ADMIN-02**: Staff users can impersonate any non-staff user via `django-hijack`; persistent banner shown; impersonation events written to audit log with `impersonator` FK
+- [x] **ADMIN-01**: Django admin themed with `django-unfold` across all domain `ModelAdmin` registrations; navigation sidebar configured
+- [x] **ADMIN-02**: Staff users can impersonate any non-staff user via `django-hijack`; persistent banner shown; impersonation events written to audit log with `impersonator` FK
 
 ### CLI Scaffolder
 
@@ -89,8 +89,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | AKEY-03     | Phase 28 | Complete |
 | AUDIT-01    | Phase 29 | Complete |
 | AUDIT-02    | Phase 29 | Complete |
-| ADMIN-01    | Phase 30 | Pending  |
-| ADMIN-02    | Phase 30 | Pending  |
+| ADMIN-01    | Phase 30 | Complete |
+| ADMIN-02    | Phase 30 | Complete |
 | SCAFF-01    | Phase 31 | Pending  |
 
 **Coverage:**

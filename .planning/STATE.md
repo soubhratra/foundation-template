@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: B2B Module
 status: planning
-stopped_at: Phase 30 context gathered
-last_updated: "2026-03-13T16:04:59.767Z"
+stopped_at: Completed 30-admin-backoffice-01-PLAN.md
+last_updated: "2026-03-13T16:37:16.228Z"
 last_activity: 2026-03-13 — v1.4 roadmap created; all 19 requirements mapped across Phases 26–31
 progress:
   total_phases: 12
   completed_phases: 10
-  total_plans: 36
-  completed_plans: 36
+  total_plans: 39
+  completed_plans: 37
   percent: 0
 ---
 
@@ -64,6 +64,7 @@ _Updated after each plan completion_
 | Phase 29-audit-logging P01 | 3 | 2 tasks | 8 files |
 | Phase 29-audit-logging P02 | 844 | 2 tasks | 14 files |
 | Phase 29-audit-logging P03 | 848 | 2 tasks | 5 files |
+| Phase 30-admin-backoffice P01 | 3 | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -120,6 +121,8 @@ _Updated after each plan completion_
 - [Phase 29-audit-logging]: ninja_extra.QueryParams does not exist — AuditLogQueryParams uses ninja.Schema as base class, bound via Query(...) with # noqa: B008 in controller
 - [Phase 29-audit-logging]: OrgAuditEvents proxy uses across() with positional string args for cross-model union across 4 event tables; encode_cursor operates on raw pgh_created_at/pgh_id (not schema fields)
 - [Phase 29-audit-logging]: DB index on pghistory_context (metadata->>'org_id', created_at DESC, id DESC) deferred — recommend adding as RunSQL migration post-Wave 3
+- [Phase 30-admin-backoffice]: 30-01: No **init**.py RED trigger for tests/admin/ — RED state achieved via lazy imports inside test bodies referencing not-yet-existing modules (unfold, apps.accounts.permissions, apps.audit.models.ImpersonationEvent, hijack)
+- [Phase 30-admin-backoffice]: 30-01: AuditContextMiddleware.get_context() tested directly in hijack middleware test — avoids full request/response cycle, tests context logic in isolation
 
 ### Pending Todos
 
@@ -133,6 +136,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-13T16:04:59.762Z
-Stopped at: Phase 30 context gathered
-Resume file: .planning/phases/30-admin-backoffice/30-CONTEXT.md
+Last session: 2026-03-13T16:37:16.224Z
+Stopped at: Completed 30-admin-backoffice-01-PLAN.md
+Resume file: None

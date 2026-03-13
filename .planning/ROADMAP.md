@@ -359,5 +359,5 @@ Plans:
 | 27. Outbound Webhooks              | 4/4       | Complete       | 2026-03-13  | -          |
 | 28. API Key Authentication         | 4/4       | Complete       | 2026-03-13  | -          |
 | 29. Audit Logging                  | 3/3       | Complete       | 2026-03-13  | -          |
-| 30. Admin Backoffice               | v1.4      | 0/TBD          | Not started | -          |
+| 30. Admin Backoffice               | 1/3       | In Progress    |             | -          |
 | 31. CLI Scaffolder Integration     | v1.4      | 0/TBD          | Not started | -          |
