@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: B2B Module
 status: planning
-stopped_at: Completed 27-01-PLAN.md (RED test stubs for outbound webhooks)
-last_updated: "2026-03-13T11:18:52.363Z"
+stopped_at: Completed 27-02-PLAN.md (webhooks models, fire_webhook_event, WEBHOOK_EVENTS check)
+last_updated: "2026-03-13T11:29:35.217Z"
 last_activity: 2026-03-13 — v1.4 roadmap created; all 19 requirements mapped across Phases 26–31
 progress:
   total_phases: 12
   completed_phases: 7
   total_plans: 29
-  completed_plans: 26
+  completed_plans: 27
   percent: 0
 ---
 
@@ -54,6 +54,7 @@ _Updated after each plan completion_
 | Phase 26-organization-model-per-org-billing P05 | 4 | 2 tasks | 2 files |
 | Phase 26-organization-model-per-org-billing P06 | 7 | 2 tasks | 4 files |
 | Phase 27-outbound-webhooks P01 | 2 | 1 tasks | 7 files |
+| Phase 27-outbound-webhooks P02 | 8 | 2 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -84,6 +85,9 @@ _Updated after each plan completion_
 - [Phase 26-organization-model-per-org-billing]: 26-06: Lazy imports inside \_try_invalidate_org_member_caches() body prevent circular imports between orgs models and billing tasks at Django startup
 - [Phase 27-outbound-webhooks]: Module-level import in **init**.py causes ImportError at collection time — ensures all test files fail RED before any implementation exists
 - [Phase 27-outbound-webhooks]: conftest.py uses lazy imports inside fixture bodies for WebhookEndpoint/WebhookDelivery to prevent double-import errors while keeping **init**.py as the RED trigger
+- [Phase 27-outbound-webhooks]: WebhookDeliveryAttempt truncates response_body at save() so direct objects.create() test assertions work
+- [Phase 27-outbound-webhooks]: fire_webhook_event() tests use transaction=True — default atomic() wrapper defers on_commit indefinitely
+- [Phase 27-outbound-webhooks]: ruff.toml migration exclusion: auto-generated migration files have long lines that cannot be shortened
 
 ### Pending Todos
 
@@ -97,6 +101,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-13T11:18:52.359Z
-Stopped at: Completed 27-01-PLAN.md (RED test stubs for outbound webhooks)
+Last session: 2026-03-13T11:29:35.212Z
+Stopped at: Completed 27-02-PLAN.md (webhooks models, fire_webhook_event, WEBHOOK_EVENTS check)
 Resume file: None
