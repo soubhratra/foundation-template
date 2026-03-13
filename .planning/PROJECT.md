@@ -71,9 +71,19 @@ A new SaaS product goes from zero to running full-stack app (web + mobile + API 
 - ✓ RBAC: `RequireRole` permission class + `@require_role("admin")` decorator; `AdminController` (4 endpoints); `admin`/`member` groups seeded via data migration `0003_seed_roles` — v1.3
 - ✓ Feature entitlements: `has_feature(user, key)` against `BILLING_PLANS` settings dict; Redis-cached (300s TTL, per-user key); invalidated on `customer.subscription.updated` webhook; returns `True` when billing absent — v1.3
 
-### Active (next milestone)
+## Current Milestone: v1.4 B2B Module
 
-_(To be defined with `/gsd:new-milestone`)_
+**Goal:** Add an optional B2B layer — organizations, outbound webhooks, API keys, audit logging, and admin backoffice — so products targeting teams or developers can scaffold enterprise-grade infrastructure from day one.
+
+**Target features:**
+
+- `Organization` model with membership + roles, per-org billing, `--with b2b` scaffolder flag
+- Outbound webhook registry with Celery delivery, exponential backoff, HMAC signing, delivery log
+- `APIKey` model with scopes, per-key rate limiting, usage tracking
+- `AuditLog` via `django-pgaudit` — who changed what, when, from where
+- `django-unfold` admin backoffice + `django-hijack` for customer support impersonation
+
+### Active (v1.4)
 
 ### Out of Scope
 
