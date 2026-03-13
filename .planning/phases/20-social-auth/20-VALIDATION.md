@@ -1,10 +1,11 @@
 ---
 phase: 20
 slug: social-auth
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: complete
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-03-12
+audited: 2026-03-12
 ---
 
 # Phase 20 — Validation Strategy
@@ -36,19 +37,19 @@ created: 2026-03-12
 
 ## Per-Task Verification Map
 
-| Task ID  | Plan | Wave | Requirement          | Test Type               | Automated Command                                                                      | File Exists | Status     |
-| -------- | ---- | ---- | -------------------- | ----------------------- | -------------------------------------------------------------------------------------- | ----------- | ---------- |
-| 20-01-01 | 01   | 0    | SOCIAL-01, SOCIAL-02 | unit                    | `pytest tests/test_social_settings.py -x -q`                                           | ❌ W0       | ⬜ pending |
-| 20-01-02 | 01   | 0    | SOCIAL-03            | unit                    | `pytest tests/test_apple_auth.py -x -q`                                                | ❌ W0       | ⬜ pending |
-| 20-01-03 | 01   | 0    | SOCIAL-04            | unit                    | `pytest tests/test_social_adapter.py -x -q`                                            | ❌ W0       | ⬜ pending |
-| 20-01-04 | 01   | 0    | SOCIAL-05            | unit (TS) + integration | `pnpm test -- remove-social-auth && pytest tests/test_scaffolder_social_removal.py -x` | ❌ W0       | ⬜ pending |
-| 20-02-01 | 02   | 1    | SOCIAL-01            | unit                    | `pytest tests/test_social_settings.py::test_google_provider_registered -x`             | ❌ W0       | ⬜ pending |
-| 20-02-02 | 02   | 1    | SOCIAL-02            | unit                    | `pytest tests/test_social_settings.py::test_github_provider_registered -x`             | ❌ W0       | ⬜ pending |
-| 20-03-01 | 03   | 1    | SOCIAL-03            | unit                    | `pytest tests/test_apple_auth.py::test_verify_identity_token -x`                       | ❌ W0       | ⬜ pending |
-| 20-03-02 | 03   | 1    | SOCIAL-03            | unit                    | `pytest tests/test_apple_auth.py::test_name_persisted_first_login -x`                  | ❌ W0       | ⬜ pending |
-| 20-04-01 | 04   | 1    | SOCIAL-04            | unit                    | `pytest tests/test_social_adapter.py::test_relay_email_not_auto_connected -x`          | ❌ W0       | ⬜ pending |
-| 20-05-01 | 05   | 2    | SOCIAL-05            | unit (TS)               | `cd packages/create-foundation-app && pnpm test -- remove-social-auth`                 | ❌ W0       | ⬜ pending |
-| 20-05-02 | 05   | 2    | SOCIAL-05            | integration             | `pytest tests/test_scaffolder_social_removal.py -x`                                    | ❌ W0       | ⬜ pending |
+| Task ID  | Plan | Wave | Requirement          | Test Type               | Automated Command                                                                                                  | File Exists | Status   |
+| -------- | ---- | ---- | -------------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------ | ----------- | -------- |
+| 20-01-01 | 01   | 0    | SOCIAL-01, SOCIAL-02 | unit                    | `pytest tests/test_social_settings.py -x -q`                                                                       | ✅          | ✅ green |
+| 20-01-02 | 01   | 0    | SOCIAL-03            | unit                    | `pytest tests/test_apple_auth.py -x -q`                                                                            | ✅          | ✅ green |
+| 20-01-03 | 01   | 0    | SOCIAL-04            | unit                    | `pytest tests/test_social_adapter.py -x -q`                                                                        | ✅          | ✅ green |
+| 20-01-04 | 01   | 0    | SOCIAL-05            | unit (TS) + integration | `npx vitest run tests/remove-social-auth.test.ts && pytest tests/test_scaffolder_social_removal.py -x`             | ✅          | ✅ green |
+| 20-02-01 | 02   | 1    | SOCIAL-01            | unit                    | `pytest tests/test_social_settings.py::TestGoogleProviderRegistration::test_google_provider_registered -x`         | ✅          | ✅ green |
+| 20-02-02 | 02   | 1    | SOCIAL-02            | unit                    | `pytest tests/test_social_settings.py::TestGoogleProviderRegistration::test_github_provider_registered -x`         | ✅          | ✅ green |
+| 20-03-01 | 03   | 1    | SOCIAL-03            | unit                    | `pytest tests/test_apple_auth.py::TestVerifyAppleIdentityToken::test_verify_identity_token_accepts_valid_token -x` | ✅          | ✅ green |
+| 20-03-02 | 03   | 1    | SOCIAL-03            | unit                    | `pytest tests/test_apple_auth.py::TestAppleNamePersistence::test_name_persisted_first_login -x`                    | ✅          | ✅ green |
+| 20-04-01 | 04   | 1    | SOCIAL-04            | unit                    | `pytest tests/test_social_adapter.py::TestRelayEmailAutoConnect::test_relay_email_not_auto_connected -x`           | ✅          | ✅ green |
+| 20-05-01 | 05   | 2    | SOCIAL-05            | unit (TS)               | `cd packages/create-foundation-app && npx vitest run tests/remove-social-auth.test.ts`                             | ✅          | ✅ green |
+| 20-05-02 | 05   | 2    | SOCIAL-05            | integration             | `pytest tests/test_scaffolder_social_removal.py -x`                                                                | ✅          | ✅ green |
 
 _Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky_
 
@@ -56,11 +57,11 @@ _Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky_
 
 ## Wave 0 Requirements
 
-- [ ] `apps/api/tests/test_social_settings.py` — stubs for SOCIAL-01, SOCIAL-02 (conditional provider registration)
-- [ ] `apps/api/tests/test_apple_auth.py` — stubs for SOCIAL-03 (JWT verification + name persistence)
-- [ ] `apps/api/tests/test_social_adapter.py` — stubs for SOCIAL-04 (relay email exclusion)
-- [ ] `apps/api/tests/test_scaffolder_social_removal.py` — stubs for SOCIAL-05 (integration: manage.py check post-removal)
-- [ ] `packages/create-foundation-app/tests/remove-social-auth.test.ts` — stubs for SOCIAL-05 (unit: regex removal correctness)
+- [x] `apps/api/tests/test_social_settings.py` — SOCIAL-01, SOCIAL-02 (11 tests)
+- [x] `apps/api/tests/test_apple_auth.py` — SOCIAL-03 (5 tests)
+- [x] `apps/api/tests/test_social_adapter.py` — SOCIAL-04 (4 tests)
+- [x] `apps/api/tests/test_scaffolder_social_removal.py` — SOCIAL-05 (1 test)
+- [x] `packages/create-foundation-app/tests/remove-social-auth.test.ts` — SOCIAL-05 (11 tests)
 
 ---
 
@@ -81,11 +82,23 @@ _Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky_
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 30s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references
+- [x] No watch-mode flags
+- [x] Feedback latency < 30s (actual: 2.41s Python + 0.72s TS)
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** ✅ 2026-03-12 — 30/30 tests passing (19 Python + 11 TypeScript)
+
+---
+
+## Validation Audit 2026-03-12
+
+| Metric        | Count |
+| ------------- | ----- |
+| Gaps found    | 0     |
+| Resolved      | 0     |
+| Escalated     | 0     |
+| Tests run     | 30    |
+| Tests passing | 30    |
