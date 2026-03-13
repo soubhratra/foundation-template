@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: B2B Module
 status: planning
-stopped_at: Completed 26-03-PLAN.md (org permission classes)
-last_updated: "2026-03-13T03:05:02.079Z"
+stopped_at: Completed 26-04-PLAN.md (org service layer)
+last_updated: "2026-03-13T03:21:41.759Z"
 last_activity: 2026-03-13 — v1.4 roadmap created; all 19 requirements mapped across Phases 26–31
 progress:
   total_phases: 12
   completed_phases: 6
   total_plans: 25
-  completed_plans: 22
+  completed_plans: 23
   percent: 0
 ---
 
@@ -50,6 +50,7 @@ _Updated after each plan completion_
 | Phase 26-organization-model-per-org-billing P01 | 277 | 3 tasks | 8 files |
 | Phase 26-organization-model-per-org-billing P02 | 4 | 2 tasks | 7 files |
 | Phase 26-organization-model-per-org-billing P03 | 8 | 1 tasks | 1 files |
+| Phase 26-organization-model-per-org-billing P04 | 13 | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -70,6 +71,9 @@ _Updated after each plan completion_
 - [Phase 26-organization-model-per-org-billing]: 26-02: Organization.owner FK (SET_NULL) added as denormalized convenience field — 26-01 test stubs required it; Membership remains authoritative role source
 - [Phase 26-organization-model-per-org-billing]: 26-03: IsOrgAdmin falls back to org_slug kwargs lookup when request.org is not a real Organization instance — required by test contract
 - [Phase 26-organization-model-per-org-billing]: 26-03: Http404 used for both org-not-found and non-member in IsOrgMember to prevent org existence leakage
+- [Phase 26-organization-model-per-org-billing]: 26-04: Service classes use @classmethod — callers invoke OrgService.create_org() without instantiation
+- [Phase 26-organization-model-per-org-billing]: 26-04: \_resolve_org_plan_id returns None when no org-level Subscription exists — correct until Phase 27+ adds per-org billing
+- [Phase 26-organization-model-per-org-billing]: 26-04: on_commit_immediately is non-autouse conftest fixture to avoid breaking rollback behavior tests
 
 ### Pending Todos
 
@@ -83,6 +87,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-13T03:05:02.075Z
-Stopped at: Completed 26-03-PLAN.md (org permission classes)
+Last session: 2026-03-13T03:21:41.756Z
+Stopped at: Completed 26-04-PLAN.md (org service layer)
 Resume file: None
