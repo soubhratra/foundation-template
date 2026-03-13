@@ -63,13 +63,17 @@ A new SaaS product goes from zero to running full-stack app (web + mobile + API 
 - ✓ `commitlint` pre-commit hook for conventional commit enforcement — v1.2
 - ✓ ruff McCabe complexity gate (max=10) in pre-commit — v1.2
 
-### Active (v1.3)
+### Validated (v1.3)
 
-- [ ] Transactional email via `EmailAdapter` ABC (`SendGridAdapter` default, Celery-queued, HTML templates) — `--without email` removes
-- [ ] Social auth: Google + GitHub (web), Apple (mobile) via Django Allauth — `--without social-auth` removes
-- [ ] GDPR baseline: account hard delete + cascade, JSON data export endpoint, cookie consent banner (Next.js)
-- [ ] RBAC: Django groups + `@require_role("admin")` decorator + role assignment API
-- [ ] Feature entitlements: `has_feature(user, key)` checked against billing plan config in settings
+- ✓ Transactional email via `EmailAdapter` ABC (`ResendAdapter` default, Celery-queued via `on_commit`, CSS inlined via `premailer`, `ConsoleAdapter` in dev) — `--without email` removes — v1.3
+- ✓ Social auth: Google + GitHub OAuth (web) + Apple Sign In (iOS, native JWT endpoint); email-collision auto-merge (Google/GitHub); `SocialAccountAdapter` overrides for Apple relay exclusion — `--without social-auth` removes — v1.3
+- ✓ GDPR baseline: `UserDeletionService` async cascade (Stripe + PostHog + social accounts, HTTP 202); `AccountExportService` JSON export with accurate `plan_id`; `CookieConsentBanner` consent-gating PostHog init — v1.3
+- ✓ RBAC: `RequireRole` permission class + `@require_role("admin")` decorator; `AdminController` (4 endpoints); `admin`/`member` groups seeded via data migration `0003_seed_roles` — v1.3
+- ✓ Feature entitlements: `has_feature(user, key)` against `BILLING_PLANS` settings dict; Redis-cached (300s TTL, per-user key); invalidated on `customer.subscription.updated` webhook; returns `True` when billing absent — v1.3
+
+### Active (next milestone)
+
+_(To be defined with `/gsd:new-milestone`)_
 
 ### Out of Scope
 
@@ -79,7 +83,11 @@ A new SaaS product goes from zero to running full-stack app (web + mobile + API 
 - Specific cloud provider lock-in — Docker-first, deploy anywhere
 - Admin dashboard — Django admin is sufficient for template
 - Real-time features (WebSockets) — product-specific, add per-project
-- Email service integration — template stubs email, each project configures provider
+- Email open/click tracking, MailgunAdapter, SESAdapter — beyond template scope; Resend is the default, swap via one setting
+- Google Sign In on mobile — requires dev build + Android/iOS credentials; high complexity; deferred
+- SSO/SAML, SMS/2FA — product-specific; OpenSpec guide only
+- Object-level permissions (`django-guardian`) — product-specific
+- Multi-tenancy — product-specific tenancy model
 
 ## Context
 
@@ -106,38 +114,45 @@ A new SaaS product goes from zero to running full-stack app (web + mobile + API 
 
 ## Key Decisions
 
-| Decision                                    | Rationale                                                                                                                                                                 | Outcome                                                                                                                              |
-| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| Django Allauth for auth                     | Native Django, full control, no external auth service dependency                                                                                                          | ✓ Good — headless mode + dual auth (session+JWT) works cleanly                                                                       |
-| AI as optional module                       | Not every SaaS needs AI; pluggable avoids bloat                                                                                                                           | ✓ Good — CLI scaffolder removes AI module cleanly via feature flag                                                                   |
-| Billing module in template (v1.1)           | Products need billing fast; adapter pattern keeps it swappable, not coupled                                                                                               | ✓ Good — PaymentAdapter ABC + StripeAdapter; swappable with one Django setting                                                       |
-| No multi-tenancy in template                | Tenancy model depends on product; template shouldn't constrain                                                                                                            | ✓ Good — confirmed valid                                                                                                             |
-| CLI scaffolder for new projects             | Better than GitHub template — can customize features, names, configs                                                                                                      | ✓ Good — `create-foundation-app` with validation + rollback shipped                                                                  |
-| Auto-generated TS from OpenAPI              | Single source of truth for API types; Django Ninja generates OpenAPI natively                                                                                             | ✓ Good — but Allauth headless endpoints missing from spec; manual fetch workaround applied                                           |
-| Docker-first deployment                     | Maximum flexibility across cloud providers; no vendor lock-in                                                                                                             | ✓ Good — multi-stage Dockerfiles ship in Phase 7                                                                                     |
-| React Native Web for shared UI              | Share component primitives across web and mobile in monorepo                                                                                                              | ✓ Good — packages/ui ships shared primitives consumed by both apps                                                                   |
-| Tailwind CSS 3.4 (not 4)                    | Tailwind 4 preview crashes Next.js PostCSS pipeline                                                                                                                       | ⚠️ Revisit — upgrade to Tailwind 4 when stable release ships                                                                         |
-| HS256 JWT (not RSA)                         | Avoids RSA key provisioning complexity in template scaffolding                                                                                                            | ✓ Good — appropriate for template; each product can upgrade                                                                          |
-| PaymentAdapter ABC (not dj-stripe)          | dj-stripe adds ~40 migrations coupling to User model, forces provider lock-in                                                                                             | ✓ Good — domain-centric adapter with StripeAdapter as default; swappable in one setting                                              |
-| Plain Django view for webhook               | Raw body bytes required for Stripe HMAC; Ninja may buffer/parse body                                                                                                      | ✓ Good — reliable HMAC verification, HTTP 200 + Celery dispatch pattern works cleanly                                                |
-| PlanProviderMapping table                   | No `stripe_price_id` on models; internal plan IDs stay provider-agnostic                                                                                                  | ✓ Good — price IDs seeded via migration 0002 for dev/test; no hardcoding in service code                                             |
-| Async PDF via Celery + WeasyPrint           | Never block HTTP request cycle; WeasyPrint has fontconfig deadlock on fork                                                                                                | ✓ Good — lazy import inside task body prevents deadlock; 512KB MAX_PDF_BYTES guard added                                             |
-| Billing in template (v1.1)                  | High-leverage addition; every SaaS product needs billing infrastructure                                                                                                   | ✓ Good — 36 requirements delivered, 40/40 verification truths passed, human-verified                                                 |
-| PostHog over Sentry (v1.2)                  | Single SDK covers errors + analytics + feature flags + session replay; generous free tier; self-hostable; adapter pattern lets projects swap to Sentry if they outgrow it | ✓ Good — PostHogAdapter ships; SentryAdapter stub with migration guide included                                                      |
-| ObservabilityAdapter ABC (v1.2)             | Same pattern as PaymentAdapter — PostHogAdapter default, NoOpAdapter for tests; swappable via one Django setting; avoids SDK lock-in across web/mobile/backend            | ✓ Good — NoOpAdapter is default (zero overhead when POSTHOG_API_KEY absent); all 7 touch points cleaned by `--without observability` |
-| Plain Django views for health probes (v1.2) | Health probes must work even if Ninja app is misconfigured; no auth/middleware overhead                                                                                   | ✓ Good — probes mounted before Ninja path to prevent URL shadowing; internal helpers mockable as module-level functions              |
-| nplusone blinker signal (not plugin) (v1.2) | nplusone 1.0.0 has no pytest plugin; synthetic `nplusone.ext.pytest` module registered in sys.modules for import compatibility                                            | ✓ Good — LazyListener only (not EagerListener) avoids false positives on correct eager loads                                         |
+| Decision                                           | Rationale                                                                                                                                                                 | Outcome                                                                                                                              |
+| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| Django Allauth for auth                            | Native Django, full control, no external auth service dependency                                                                                                          | ✓ Good — headless mode + dual auth (session+JWT) works cleanly                                                                       |
+| AI as optional module                              | Not every SaaS needs AI; pluggable avoids bloat                                                                                                                           | ✓ Good — CLI scaffolder removes AI module cleanly via feature flag                                                                   |
+| Billing module in template (v1.1)                  | Products need billing fast; adapter pattern keeps it swappable, not coupled                                                                                               | ✓ Good — PaymentAdapter ABC + StripeAdapter; swappable with one Django setting                                                       |
+| No multi-tenancy in template                       | Tenancy model depends on product; template shouldn't constrain                                                                                                            | ✓ Good — confirmed valid                                                                                                             |
+| CLI scaffolder for new projects                    | Better than GitHub template — can customize features, names, configs                                                                                                      | ✓ Good — `create-foundation-app` with validation + rollback shipped                                                                  |
+| Auto-generated TS from OpenAPI                     | Single source of truth for API types; Django Ninja generates OpenAPI natively                                                                                             | ✓ Good — but Allauth headless endpoints missing from spec; manual fetch workaround applied                                           |
+| Docker-first deployment                            | Maximum flexibility across cloud providers; no vendor lock-in                                                                                                             | ✓ Good — multi-stage Dockerfiles ship in Phase 7                                                                                     |
+| React Native Web for shared UI                     | Share component primitives across web and mobile in monorepo                                                                                                              | ✓ Good — packages/ui ships shared primitives consumed by both apps                                                                   |
+| Tailwind CSS 3.4 (not 4)                           | Tailwind 4 preview crashes Next.js PostCSS pipeline                                                                                                                       | ⚠️ Revisit — upgrade to Tailwind 4 when stable release ships                                                                         |
+| HS256 JWT (not RSA)                                | Avoids RSA key provisioning complexity in template scaffolding                                                                                                            | ✓ Good — appropriate for template; each product can upgrade                                                                          |
+| PaymentAdapter ABC (not dj-stripe)                 | dj-stripe adds ~40 migrations coupling to User model, forces provider lock-in                                                                                             | ✓ Good — domain-centric adapter with StripeAdapter as default; swappable in one setting                                              |
+| Plain Django view for webhook                      | Raw body bytes required for Stripe HMAC; Ninja may buffer/parse body                                                                                                      | ✓ Good — reliable HMAC verification, HTTP 200 + Celery dispatch pattern works cleanly                                                |
+| PlanProviderMapping table                          | No `stripe_price_id` on models; internal plan IDs stay provider-agnostic                                                                                                  | ✓ Good — price IDs seeded via migration 0002 for dev/test; no hardcoding in service code                                             |
+| Async PDF via Celery + WeasyPrint                  | Never block HTTP request cycle; WeasyPrint has fontconfig deadlock on fork                                                                                                | ✓ Good — lazy import inside task body prevents deadlock; 512KB MAX_PDF_BYTES guard added                                             |
+| Billing in template (v1.1)                         | High-leverage addition; every SaaS product needs billing infrastructure                                                                                                   | ✓ Good — 36 requirements delivered, 40/40 verification truths passed, human-verified                                                 |
+| PostHog over Sentry (v1.2)                         | Single SDK covers errors + analytics + feature flags + session replay; generous free tier; self-hostable; adapter pattern lets projects swap to Sentry if they outgrow it | ✓ Good — PostHogAdapter ships; SentryAdapter stub with migration guide included                                                      |
+| ObservabilityAdapter ABC (v1.2)                    | Same pattern as PaymentAdapter — PostHogAdapter default, NoOpAdapter for tests; swappable via one Django setting; avoids SDK lock-in across web/mobile/backend            | ✓ Good — NoOpAdapter is default (zero overhead when POSTHOG_API_KEY absent); all 7 touch points cleaned by `--without observability` |
+| Plain Django views for health probes (v1.2)        | Health probes must work even if Ninja app is misconfigured; no auth/middleware overhead                                                                                   | ✓ Good — probes mounted before Ninja path to prevent URL shadowing; internal helpers mockable as module-level functions              |
+| nplusone blinker signal (not plugin) (v1.2)        | nplusone 1.0.0 has no pytest plugin; synthetic `nplusone.ext.pytest` module registered in sys.modules for import compatibility                                            | ✓ Good — LazyListener only (not EagerListener) avoids false positives on correct eager loads                                         |
+| Resend over SendGrid for email (v1.3)              | anymail dropped official SendGrid support June 2025; Resend is the community-recommended default                                                                          | ✓ Good — `ConsoleAdapter` auto-activates in dev when `RESEND_API_KEY` absent; zero-credential local setup                            |
+| Apple Sign In native JWT endpoint (v1.3)           | Expo JWT audience (`aud` = Bundle ID) differs from allauth standard endpoint expectation (`aud` = Services ID) — standard social token flow cannot be reused              | ✓ Good — dedicated `POST /api/v1/auth/apple/` with JWKS cache-bust on key rotation; handles test isolation correctly                 |
+| `RequireRole` returns `False` not exception (v1.3) | ninja_extra converts `False` to `HttpError 403`; `raise PermissionDenied` would return 500 in some middleware configs                                                     | ✓ Good — consistent 403 behavior for both unauthenticated and non-admin users                                                        |
+| Entitlement cache key per-user (v1.3)              | `entitlements:{user.pk}` with 300s TTL; invalidated unconditionally on `customer.subscription.updated` (even when PlanProviderMapping has no entry)                       | ✓ Good — covers unmapped plan downgrades; targeted invalidation avoids cache stampede on global invalidation                         |
+| `UserDeletionService` orchestrator (v1.3)          | `user.delete()` alone leaves orphaned Stripe customer + PostHog person (Article 17 violation); dedicated service cascades third-party deletion before ORM delete          | ✓ Good — tech debt: Celery task duplicates the 4-step cascade; consolidate in future milestone                                       |
 
-## Current State (v1.2)
+## Current State (v1.3)
 
-- **Version shipped:** v1.2 (2026-03-12)
-- **Stack:** Django Ninja Extra + Next.js 15 + Expo SDK 53 + Turborepo + pnpm + Stripe SDK v14 + Celery + WeasyPrint + structlog + OpenTelemetry + PostHog (via ObservabilityAdapter) + django-redis + django-ratelimit + django-csp + schemathesis
-- **CLI:** `create-foundation-app` — feature flags: `--without billing`, `--without ai`, `--without mobile`, `--without observability`
-- **Observability:** structlog JSON logs + OTel traces (Jaeger in compose) + PostHog error/analytics adapter — all zero-config for developers
-- **Security:** Redis-backed rate limiting + CSP/HSTS/X-Frame-Options headers + Redis cache + session backend
-- **Dev-time gates:** detect-secrets + bandit + pip-audit + nplusone + schemathesis + commitlint + ruff complexity (max=10)
-- **Next milestone:** v1.3 — define with `/gsd:new-milestone`
+- **Version shipped:** v1.3 (2026-03-13)
+- **Stack:** Django Ninja Extra + Next.js 15 + Expo SDK 53 + Turborepo + pnpm + Stripe SDK v14 + Celery + WeasyPrint + structlog + OpenTelemetry + PostHog (ObservabilityAdapter) + django-redis + django-ratelimit + django-csp + schemathesis + django-anymail (Resend) + premailer + expo-apple-authentication
+- **CLI:** `create-foundation-app` — feature flags: `--without billing`, `--without ai`, `--without mobile`, `--without observability`, `--without email`, `--without social-auth`
+- **Auth:** Email/password + Google OAuth + GitHub OAuth (web) + Apple Sign In (iOS) — all via Django Allauth headless; email-collision merge for Google/GitHub
+- **GDPR:** `DELETE /api/v1/account/` cascades Stripe + PostHog + social; `GET /api/v1/account/export` returns full JSON; cookie consent banner gates PostHog
+- **RBAC:** `@require_role("admin")` decorator + `AdminController`; `admin`/`member` groups seeded on first deploy
+- **Entitlements:** `has_feature(user, key)` Redis-cached, billing-plan-driven, billing-absent fallback returns `True`
+- **Known tech debt:** No `/settings` "Download my data" UI; `UserDeletionService` + Celery task duplicate GDPR cascade
+- **Next milestone:** to be defined with `/gsd:new-milestone`
 
 ---
 
-_Last updated: 2026-03-11 after v1.3 milestone planning started_
+_Last updated: 2026-03-13 after v1.3 milestone_

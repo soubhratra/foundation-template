@@ -1,5 +1,29 @@
 # Milestones
 
+## v1.3 SaaS Functional Baseline (Shipped: 2026-03-13)
+
+**Phases completed:** 7 phases, 23 plans | **Phases:** 19–25
+**Timeline:** 2026-03-12 (1 day) | **Verifications:** Phase 19 (9/9) + Phase 20 (30/30) + Phase 21 (30/30) + Phase 22 (14/14) + Phase 23 (9/9) + Phase 24 (9/9) + Phase 25 (8/8) = 109/109 truths
+
+**Key accomplishments:**
+
+1. `EmailAdapter` ABC with `ResendAdapter` default — Celery-queued async dispatch via `transaction.on_commit()`, CSS inlined via `premailer`, `ConsoleAdapter` auto-activated in dev (no credentials needed); `--without email` removes module cleanly
+2. Google + GitHub OAuth on web (allauth headless) + Apple Sign In on iOS with native JWT verification endpoint; email-collision auto-merge for Google/GitHub; `SocialAccountAdapter` overridden to exclude Apple relay addresses; `--without social-auth` flag
+3. Account hard delete cascading Stripe + PostHog + social accounts via `UserDeletionService` + async Celery task (HTTP 202 immediately); JSON personal data export via `AccountExportService` with billing plan accuracy; `CookieConsentBanner` consent-gating PostHog init (GDPR Article 17/20)
+4. `RequireRole` permission class + `@require_role("admin")` decorator returning HTTP 403; `AdminController` with 4 role endpoints; `admin`/`member` groups seeded via data migration `0003_seed_roles` — zero manual fixture loading
+5. `has_feature(user, key)` checked against `BILLING_PLANS` settings dict; Redis-cached (300s TTL, `entitlements:{user.pk}` key); auto-invalidated on `customer.subscription.updated` webhook; returns `True` for all features when billing module absent
+6. Gap closure: OAuth callback/error pages at `/auth/callback` + `/auth/error` (INT-01, INT-02); GDPR export `plan_id` reads from `Subscription.plan_id` ORM instead of hard-coded `None` (INT-03)
+
+**Known Tech Debt:**
+
+- No "Download my data" button in `/settings` UI — `GET /api/v1/account/export` works but has no frontend trigger
+- `UserDeletionService` + Celery task both implement the 4-step GDPR cascade (future changes must be applied in two places)
+- `AdminController` uses Django middleware auth rather than ninja auth stack (documented, functional)
+
+**Archive:** `.planning/milestones/v1.3-ROADMAP.md` | `.planning/milestones/v1.3-REQUIREMENTS.md`
+
+---
+
 ## v1.2 Observability & DevEx Hardening (Shipped: 2026-03-12)
 
 **Phases completed:** 6 phases, 19 plans | **Phases:** 13–18

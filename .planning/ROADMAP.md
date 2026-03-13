@@ -5,7 +5,7 @@
 - ✅ **v1.0 Foundation Template** — Phases 1–8 (shipped 2026-03-07)
 - ✅ **v1.1 Billing & Payments Module** — Phases 9–12 (shipped 2026-03-11)
 - ✅ **v1.2 Observability & DevEx Hardening** — Phases 13–18 (shipped 2026-03-12)
-- 🚧 **v1.3 SaaS Functional Baseline** — Phases 19–23 (in progress)
+- ✅ **v1.3 SaaS Functional Baseline** — Phases 19–25 (shipped 2026-03-13)
 
 ## Phases
 
@@ -51,17 +51,20 @@ Full archive: `.planning/milestones/v1.2-ROADMAP.md`
 
 </details>
 
-### 🚧 v1.3 SaaS Functional Baseline (In Progress)
+<details>
+<summary>✅ v1.3 SaaS Functional Baseline (Phases 19–25) — SHIPPED 2026-03-13</summary>
 
-**Milestone Goal:** Every scaffolded product starts with transactional email, social login, GDPR compliance, role-based access control, and plan-gated feature entitlements already wired in.
+- [x] Phase 19: Transactional Email (4/4 plans) — `EmailAdapter` ABC with `ResendAdapter` default; Celery-queued async dispatch; HTML templates with inline CSS; `ConsoleAdapter` for dev; `--without email` scaffolder flag (completed 2026-03-12)
+- [x] Phase 20: Social Auth (6/6 plans) — Google + GitHub OAuth on web; Apple Sign In on iOS mobile; email-collision account merge; `--without social-auth` scaffolder flag (completed 2026-03-12)
+- [x] Phase 21: GDPR Baseline (4/4 plans) — Async account hard delete cascading all third-party data; JSON personal data export; cookie consent banner gating PostHog (completed 2026-03-12)
+- [x] Phase 22: RBAC (3/3 plans) — `@require_role("admin")` decorator; role assignment API; seeded `admin`/`member` groups via data migration (completed 2026-03-12)
+- [x] Phase 23: Feature Entitlements (3/3 plans) — `has_feature(user, key)` utility; Redis-cached results; billing-off fallback returns `True` (completed 2026-03-12)
+- [x] Phase 24: Social Auth OAuth Callback Pages (2/2 plans) — OAuth callback/error pages at `/auth/callback` + `/auth/error`; closes INT-01, INT-02 (completed 2026-03-12)
+- [x] Phase 25: GDPR Export plan_id Accuracy (1/1 plan) — `AccountExportService` reads `Subscription.plan_id` from ORM; closes INT-03 (completed 2026-03-12)
 
-- [x] **Phase 19: Transactional Email** — `EmailAdapter` ABC with `ResendAdapter` default; Celery-queued async dispatch; HTML templates with inline CSS; `ConsoleAdapter` for dev; `--without email` scaffolder flag (completed 2026-03-12)
-- [x] **Phase 20: Social Auth** — Google + GitHub OAuth on web; Apple Sign In on iOS mobile; email-collision account merge; `--without social-auth` scaffolder flag (completed 2026-03-12)
-- [x] **Phase 21: GDPR Baseline** — Async account hard delete cascading all third-party data; JSON personal data export; cookie consent banner gating PostHog (completed 2026-03-12)
-- [x] **Phase 22: RBAC** — `@require_role("admin")` decorator; role assignment API; seeded `admin`/`member` groups via data migration (completed 2026-03-12)
-- [x] **Phase 23: Feature Entitlements** — `has_feature(user, key)` utility; Redis-cached results; billing-off fallback returns `True` (completed 2026-03-12)
-- [x] **Phase 24: Social Auth OAuth Callback Pages** — Create missing `(auth)/callback/page.tsx` and `(auth)/error/page.tsx` in Next.js web app; closes INT-01 and INT-02; unblocks Google/GitHub OAuth E2E flows (completed 2026-03-12)
-- [x] **Phase 25: GDPR Export plan_id Accuracy** — Update `AccountExportService.export()` to read `Subscription.plan_id` from ORM instead of hard-coding `None`; closes INT-03 (completed 2026-03-12)
+Full archive: `.planning/milestones/v1.3-ROADMAP.md`
+
+</details>
 
 ## Phase Details
 
@@ -191,173 +194,34 @@ Plans:
 - [x] 18-02-PLAN.md — Wave 2: Install nplusone + conftest fixture + commitlint hook + ruff McCabe config, turn tests GREEN
 - [x] 18-03-PLAN.md — Wave 1: schemathesis dev dep + CI contract fuzzing job
 
-### Phase 19: Transactional Email
-
-**Goal**: Every scaffolded product can send transactional emails asynchronously via a swappable adapter, with no credentials required in development
-**Depends on**: Phase 18 (v1.2 complete)
-**Requirements**: EMAIL-01, EMAIL-02, EMAIL-03, EMAIL-04, EMAIL-05
-**Success Criteria** (what must be TRUE):
-
-1. Application code calls `send_email(to, template, context)` without knowing which ESP is active — swapping from `ResendAdapter` to a future `MailgunAdapter` requires changing one Django setting
-2. An email triggered during an HTTP request is dispatched via Celery after the database transaction commits — no email is ever sent if the triggering transaction rolls back
-3. An HTML email received in an email client renders correctly without visible broken styles — CSS is inlined before dispatch, not left in `<style>` blocks
-4. Running the app locally with no `RESEND_API_KEY` set causes all outgoing emails to appear in the Django console log — no credentials, no error, no silent drop
-5. Running `create-foundation-app --without email` produces a project with no `notifications` app, no anymail in `INSTALLED_APPS`, and `manage.py check` passes clean
-
-**Plans**: 4 plans
-
-Plans:
-
-- [ ] 19-01-PLAN.md — Wave 1: RED test stubs for EMAIL-01 through EMAIL-05
-- [ ] 19-02-PLAN.md — Wave 1: notifications app scaffold, settings auto-switch, dependencies
-- [ ] 19-03-PLAN.md — Wave 2: send_email() utility, send_email_task Celery task, HTML templates
-- [ ] 19-04-PLAN.md — Wave 3: removeEmailModule() scaffolder flag, prompts.ts, index.ts wiring
-
-### Phase 20: Social Auth
-
-**Goal**: Users can sign up and log in via Google, GitHub, or Apple without creating a password, and existing password-account users are auto-merged on email match
-**Depends on**: Phase 19
-**Requirements**: SOCIAL-01, SOCIAL-02, SOCIAL-03, SOCIAL-04, SOCIAL-05
-**Success Criteria** (what must be TRUE):
-
-1. A user can click "Continue with Google" on the web app sign-in page, complete the OAuth flow, and land on the dashboard as a logged-in user — no manual account creation step
-2. A user can click "Continue with GitHub" on the web app sign-in page and complete sign-in — GitHub email is used as the account identifier
-3. A user on iOS can tap "Sign in with Apple" in the mobile app, authorize, and be logged into the app — the Apple-issued relay email is stored without triggering account merge with an existing Google/GitHub account
-4. A user who previously signed up with email/password can use "Continue with Google" with the same email and lands on their existing account — no duplicate account is created, no error shown
-5. Running `create-foundation-app --without social-auth` produces a project with no `SOCIALACCOUNT_PROVIDERS` config, no social provider apps in `INSTALLED_APPS`, and `manage.py check` passes clean
-
-**Plans**: 6 plans
-
-Plans:
-
-- [ ] 20-01-PLAN.md — Wave 1: RED test stubs for SOCIAL-01 through SOCIAL-05
-- [ ] 20-02-PLAN.md — Wave 2: Django settings block (SOCIAL AUTH MODULE) + SocialAccountAdapter
-- [ ] 20-03-PLAN.md — Wave 2: Apple JWT verification endpoint (POST /api/v1/auth/apple/)
-- [ ] 20-04-PLAN.md — Wave 3: Web SocialButtons component + login/signup pages + .env.example
-- [ ] 20-05-PLAN.md — Wave 3: Mobile Apple Sign In button (iOS-only, sign-in screen)
-- [ ] 20-06-PLAN.md — Wave 4: removeSocialAuthModule() scaffolder flag + prompts + index wiring
-
-### Phase 21: GDPR Baseline
-
-**Goal**: Users have full control over their personal data — they can permanently erase their account or export everything they've given the app
-**Depends on**: Phase 20
-**Requirements**: GDPR-01, GDPR-02, GDPR-03
-**Success Criteria** (what must be TRUE):
-
-1. A user who calls `DELETE /api/v1/account/` receives HTTP 202 immediately — their Stripe customer record, PostHog person record, social accounts, and Django user row are all deleted asynchronously with no orphaned data in any system
-2. A user who calls `GET /api/v1/account/export` receives a JSON document containing all personal data the app holds: profile fields, email addresses, social accounts, billing history, and subscription status
-3. A first-time visitor to the web app sees a cookie consent banner — PostHog does not initialise or set any tracking cookies until the user explicitly accepts; declining consent leaves PostHog in the opted-out state for the session and future visits
-
-**Plans**: 4 plans
-
-Plans:
-
-- [ ] 21-01-PLAN.md — Wave 1: RED test stubs for GDPR-01 and GDPR-02 (test_deletion.py, test_export.py)
-- [ ] 21-02-PLAN.md — Wave 2: Backend — adapter extensions + UserDeletionService + AccountExportService + AccountController
-- [ ] 21-03-PLAN.md — Wave 2: Frontend — CookieConsentBanner + providers.tsx refactor + layout.tsx wiring
-- [ ] 21-04-PLAN.md — Wave 3: Frontend — /settings Danger Zone + DeleteAccountModal + Dialog install
-
-### Phase 22: RBAC
-
-**Goal**: API endpoints can be guarded by role and administrators can assign roles to users — with `admin` and `member` available from the first deploy
-**Depends on**: Phase 21
-**Requirements**: RBAC-01, RBAC-02, RBAC-03
-**Success Criteria** (what must be TRUE):
-
-1. A request to an endpoint decorated with `@require_role("admin")` from a user without the `admin` group membership returns HTTP 403 with a JSON error body — no stack trace, no 500
-2. An authenticated admin user can call `POST /api/v1/users/{id}/roles` to assign or remove a role from another user — a non-admin calling this endpoint receives HTTP 403
-3. On a fresh database after running migrations, Django Groups named `admin` and `member` exist without any manual fixture loading or admin UI interaction
-
-**Plans**: 3 plans
-
-Plans:
-
-- [ ] 22-01-PLAN.md — Wave 1: RED test stubs (test_rbac.py covering RBAC-01, RBAC-02, RBAC-03)
-- [ ] 22-02-PLAN.md — Wave 2: RequireRole permission class + 0003_seed_roles data migration
-- [ ] 22-03-PLAN.md — Wave 3: AdminController (4 endpoints) + schemas + UserService role methods
-
-### Phase 23: Feature Entitlements
-
-**Goal**: Application code can gate features by billing plan using a single function call, with Redis-cached results and a safe fallback when billing is not installed
-**Depends on**: Phase 22
-**Requirements**: ENT-01, ENT-02, ENT-03
-**Success Criteria** (what must be TRUE):
-
-1. A developer can call `has_feature(user, "advanced_analytics")` anywhere in the application and receive `True` or `False` based on the user's active subscription plan and the `BILLING_PLANS` settings dict — no database query is made on the second call within the cache TTL
-2. When a Stripe `customer.subscription.updated` webhook is processed (plan upgrade or downgrade), the user's cached entitlement keys are invalidated immediately — the next `has_feature()` call reflects the new plan without waiting for TTL expiry
-3. In a project generated with `--without billing`, `has_feature(user, any_key)` returns `True` for every key — features are fully accessible and no import errors occur when the billing module is absent
-
-**Plans**: 3 plans
-
-Plans:
-
-- [ ] 23-01-PLAN.md — Wave 0: RED test stubs (ENT-01, ENT-02, ENT-03)
-- [ ] 23-02-PLAN.md — Wave 1: model migration + BILLING_PLANS extension + billing/core entitlement modules
-- [ ] 23-03-PLAN.md — Wave 2: webhook handler update (plan_id write + cache invalidation)
-
-### Phase 24: Social Auth OAuth Callback Pages
-
-**Goal**: Complete the Google/GitHub web OAuth flow by adding the missing Next.js callback and error pages so users can successfully sign in via social providers
-**Depends on**: Phase 23
-**Requirements**: SOCIAL-01, SOCIAL-02
-**Gap Closure**: Closes INT-01, INT-02 from v1.3 audit; restores Google OAuth web login, GitHub OAuth web login, and OAuth error recovery E2E flows
-**Success Criteria** (what must be TRUE):
-
-1. A user completing Google OAuth is redirected to `/auth/callback`, the page reads the allauth session, calls `useAuth().refetch()`, and the user lands on the dashboard — no 404
-2. A user whose OAuth flow fails is redirected to `/auth/error` and sees a human-readable error message with a link back to the sign-in page — no 404
-3. Both pages are within the `(auth)` route group and render without errors in dev and production builds
-
-**Plans**: 2 plans
-
-Plans:
-
-- [ ] 24-01-PLAN.md — Wave 1: callback page (test stubs + implementation) — refetch auth, redirect to dashboard
-- [ ] 24-02-PLAN.md — Wave 1: error page (test stubs + implementation) — display OAuth error, link back to sign-in
-
-### Phase 25: GDPR Export plan_id Accuracy
-
-**Goal**: Fix `AccountExportService` to return the actual `plan_id` from the `Subscription` model instead of always returning `null`
-**Depends on**: Phase 23
-**Requirements**: GDPR-02
-**Gap Closure**: Closes INT-03 from v1.3 audit; GDPR data export reflects actual billing plan
-**Success Criteria** (what must be TRUE):
-
-1. `GET /api/v1/account/export` returns `"subscription": {"plan_id": "<actual-plan-id>"}` for a user with a resolved `Subscription.plan_id` — not `null`
-2. Export still returns `plan_id: null` for users without an active subscription (no regression)
-3. Existing GDPR export tests remain green; new test covers plan_id round-trip
-
-**Plans**: 1 plan
-
-Plans:
-
-- [ ] 25-01-PLAN.md — Wave 1: Update `AccountExportService.export()` to read `subscription.plan_id` from ORM + update/add test
+> Phase details for v1.3 (Phases 19–25) archived to `.planning/milestones/v1.3-ROADMAP.md`
 
 ## Progress
 
-| Phase                            | Milestone | Plans Complete | Status     | Completed  |
-| -------------------------------- | --------- | -------------- | ---------- | ---------- |
-| 1. Monorepo Foundation           | v1.0      | 4/4            | Complete   | 2026-02-17 |
-| 2. API Core + Auth Backend       | v1.0      | 5/5            | Complete   | 2026-02-17 |
-| 3. Shared Packages + Types       | v1.0      | 6/6            | Complete   | 2026-02-17 |
-| 4. Web Application               | v1.0      | 5/5            | Complete   | 2026-02-17 |
-| 5. Mobile Application            | v1.0      | 4/4            | Complete   | 2026-02-17 |
-| 6. AI Module                     | v1.0      | 5/5            | Complete   | 2026-02-17 |
-| 7. DevEx + CI/CD                 | v1.0      | 4/4            | Complete   | 2026-02-17 |
-| 8. CLI Scaffolder                | v1.0      | 3/3            | Complete   | 2026-02-17 |
-| 9. Billing Scaffold              | v1.1      | 3/3            | Complete   | 2026-03-07 |
-| 10. Webhook Infra + Service      | v1.1      | 3/3            | Complete   | 2026-03-08 |
-| 11. API Endpoints + Frontend     | v1.1      | 8/8            | Complete   | 2026-03-10 |
-| 12. Invoice PDF + CLI            | v1.1      | 3/3            | Complete   | 2026-03-11 |
-| 13. Structured Logging + Tracing | v1.2      | 3/3            | Complete   | 2026-03-11 |
-| 14. ObservabilityAdapter         | v1.2      | 4/4            | Complete   | 2026-03-11 |
-| 15. Health Probes + Celery Infra | v1.2      | 3/3            | Complete   | 2026-03-11 |
-| 16. Security Hardening           | v1.2      | 3/3            | Complete   | 2026-03-11 |
-| 17. Dev-Time Security Gates      | v1.2      | 3/3            | Complete   | 2026-03-11 |
-| 18. Dev-Time Quality Gates       | v1.2      | 3/3            | Complete   | 2026-03-11 |
-| 19. Transactional Email          | 4/4       | Complete       | 2026-03-12 | -          |
-| 20. Social Auth                  | 6/6       | Complete       | 2026-03-12 | -          |
-| 21. GDPR Baseline                | 4/4       | Complete       | 2026-03-12 | -          |
-| 22. RBAC                         | 3/3       | Complete       | 2026-03-12 | -          |
-| 23. Feature Entitlements         | 3/3       | Complete       | 2026-03-12 | -          |
-| 24. Social Auth OAuth Callback   | 2/2       | Complete       | 2026-03-12 | -          |
-| 25. GDPR Export plan_id Accuracy | 1/1       | Complete       | 2026-03-12 | -          |
+| Phase                            | Milestone | Plans Complete | Status   | Completed  |
+| -------------------------------- | --------- | -------------- | -------- | ---------- |
+| 1. Monorepo Foundation           | v1.0      | 4/4            | Complete | 2026-02-17 |
+| 2. API Core + Auth Backend       | v1.0      | 5/5            | Complete | 2026-02-17 |
+| 3. Shared Packages + Types       | v1.0      | 6/6            | Complete | 2026-02-17 |
+| 4. Web Application               | v1.0      | 5/5            | Complete | 2026-02-17 |
+| 5. Mobile Application            | v1.0      | 4/4            | Complete | 2026-02-17 |
+| 6. AI Module                     | v1.0      | 5/5            | Complete | 2026-02-17 |
+| 7. DevEx + CI/CD                 | v1.0      | 4/4            | Complete | 2026-02-17 |
+| 8. CLI Scaffolder                | v1.0      | 3/3            | Complete | 2026-02-17 |
+| 9. Billing Scaffold              | v1.1      | 3/3            | Complete | 2026-03-07 |
+| 10. Webhook Infra + Service      | v1.1      | 3/3            | Complete | 2026-03-08 |
+| 11. API Endpoints + Frontend     | v1.1      | 8/8            | Complete | 2026-03-10 |
+| 12. Invoice PDF + CLI            | v1.1      | 3/3            | Complete | 2026-03-11 |
+| 13. Structured Logging + Tracing | v1.2      | 3/3            | Complete | 2026-03-11 |
+| 14. ObservabilityAdapter         | v1.2      | 4/4            | Complete | 2026-03-11 |
+| 15. Health Probes + Celery Infra | v1.2      | 3/3            | Complete | 2026-03-11 |
+| 16. Security Hardening           | v1.2      | 3/3            | Complete | 2026-03-11 |
+| 17. Dev-Time Security Gates      | v1.2      | 3/3            | Complete | 2026-03-11 |
+| 18. Dev-Time Quality Gates       | v1.2      | 3/3            | Complete | 2026-03-11 |
+| 19. Transactional Email          | v1.3      | 4/4            | Complete | 2026-03-12 |
+| 20. Social Auth                  | v1.3      | 6/6            | Complete | 2026-03-12 |
+| 21. GDPR Baseline                | v1.3      | 4/4            | Complete | 2026-03-12 |
+| 22. RBAC                         | v1.3      | 3/3            | Complete | 2026-03-12 |
+| 23. Feature Entitlements         | v1.3      | 3/3            | Complete | 2026-03-12 |
+| 24. Social Auth OAuth Callback   | v1.3      | 2/2            | Complete | 2026-03-12 |
+| 25. GDPR Export plan_id Accuracy | v1.3      | 1/1            | Complete | 2026-03-12 |
