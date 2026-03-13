@@ -1,3 +1,10 @@
+"""Permission functions and classes for accounts domain.
+
+Contains both Django Ninja Extra permission classes (for API endpoints)
+and plain functions for django-hijack impersonation (referenced via
+HIJACK_PERMISSION_CHECK dotted import path in settings).
+"""
+
 from django.http import HttpRequest
 from ninja_extra import ControllerBase
 from ninja_extra.permissions import BasePermission
@@ -30,3 +37,30 @@ class RequireRole(BasePermission):
         if not user.groups.filter(name=self.role).exists():
             return False
         return True
+
+
+# B2B_START — django-hijack permission function
+def staff_can_hijack_regular_users(*, hijacker, hijacked) -> bool:
+    """Staff can impersonate only non-staff, non-superuser, active accounts.
+
+    Called by django-hijack before every hijack attempt. Returns True if
+    hijacker is allowed to impersonate hijacked.
+
+    Rules:
+    - hijacked must be active
+    - hijacker must be staff or superuser (extra safety)
+    - hijacked must NOT be staff or superuser
+
+    Referenced via HIJACK_PERMISSION_CHECK in settings
+    ("apps.accounts.permissions.staff_can_hijack_regular_users").
+    """
+    if not hijacked.is_active:
+        return False
+    if not (hijacker.is_staff or hijacker.is_superuser):
+        return False
+    if hijacked.is_staff or hijacked.is_superuser:
+        return False
+    return True
+
+
+# B2B_END

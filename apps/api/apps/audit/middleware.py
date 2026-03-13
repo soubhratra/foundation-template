@@ -30,4 +30,11 @@ class AuditContextMiddleware(pghistory.middleware.HistoryMiddleware):
         org = getattr(request, "org", None)
         if org is not None:
             ctx["org_id"] = str(org.id)
+        # B2B_START — inject impersonator context during hijack sessions
+        hijack_history = getattr(request, "hijack_history", None)
+        if hijack_history:
+            # hijack_history is a list of original user PKs;
+            # first element is the staff user who initiated the session
+            ctx["impersonator_id"] = hijack_history[0]
+        # B2B_END
         return ctx
