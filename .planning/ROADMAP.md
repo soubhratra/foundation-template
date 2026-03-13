@@ -305,7 +305,13 @@ Plans:
 2. A staff user can impersonate any non-staff, non-superuser account from the admin interface; a persistent banner is visible on every page during impersonation; the session cannot impersonate another staff user or superuser
 3. Every impersonation start and end event writes an AuditLog entry with the `impersonator` FK populated — the entry is visible to staff in the admin but excluded from org-level audit queries
 
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+
+- [ ] 30-01-PLAN.md — Wave 0: RED test stubs (test_admin_smoke, test_unfold_config, test_hijack)
+- [ ] 30-02-PLAN.md — Wave 1: Install deps + settings wiring + ImpersonationEvent model + signals + permission function
+- [ ] 30-03-PLAN.md — Wave 2: All domain admin.py files (accounts, billing, orgs, api_keys, webhooks, audit) + human verify checkpoint
 
 ### Phase 31: CLI Scaffolder Integration
 
