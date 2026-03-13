@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: B2B Module
 status: planning
-stopped_at: Completed 32-webhook-wiring-invite-url 32-01-PLAN.md
-last_updated: "2026-03-13T23:36:31.126Z"
+stopped_at: Completed 32-webhook-wiring-invite-url 32-02-PLAN.md
+last_updated: "2026-03-13T23:45:43.478Z"
 last_activity: 2026-03-13 — v1.4 roadmap created; all 19 requirements mapped across Phases 26–31
 progress:
   total_phases: 15
-  completed_phases: 12
+  completed_phases: 13
   total_plans: 44
-  completed_plans: 43
+  completed_plans: 44
   percent: 0
 ---
 
@@ -71,6 +71,7 @@ _Updated after each plan completion_
 | Phase 31-cli-scaffolder-integration P02 | 2 | 2 tasks | 5 files |
 | Phase 31-cli-scaffolder-integration P03 | 5 | 2 tasks | 1 files |
 | Phase 32-webhook-wiring-invite-url P01 | 4 | 2 tasks | 2 files |
+| Phase 32-webhook-wiring-invite-url P02 | 8 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -143,6 +144,8 @@ _Updated after each plan completion_
 - [Phase Phase 31-cli-scaffolder-integration]: debug console.error removed from catch block — catch block uses only Clack p.log.error for clean styled output
 - [Phase 32-webhook-wiring-invite-url]: Customer.objects.get_or_create(user=user) in billing webhook test — post_save signal auto-creates Customer for every User; Customer.objects.create() raises UniqueViolation
 - [Phase 32-webhook-wiring-invite-url]: RED failures for billing test are AttributeError (fire_webhook_event not yet imported in tasks module) — valid RED state; patch target becomes valid after Plan 32-02 adds lazy import
+- [Phase 32-webhook-wiring-invite-url]: fire_webhook_event imported at module level (not lazy) in services.py and tasks.py — required for patch('apps.orgs.services.fire_webhook_event') and patch('apps.billing.tasks.fire_webhook_event') test patterns
+- [Phase 32-webhook-wiring-invite-url]: Module-level fire_webhook_event import placed inside B2B block in tasks.py — scaffolder strips whole blocks atomically, removing both import and helper function in non-B2B scaffolds
 
 ### Pending Todos
 
@@ -156,6 +159,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-13T23:36:31.121Z
-Stopped at: Completed 32-webhook-wiring-invite-url 32-01-PLAN.md
+Last session: 2026-03-13T23:45:43.472Z
+Stopped at: Completed 32-webhook-wiring-invite-url 32-02-PLAN.md
 Resume file: None
