@@ -1,18 +1,18 @@
 # Phase 29: Audit Logging - Research
 
-**Researched:** 2026-03-13
-**Domain:** Django audit logging with PostgreSQL triggers (django-pghistory)
+**Researched:** 2026-03-13 (updated from prior draft with CONTEXT.md decisions)
+**Domain:** django-pghistory, PostgreSQL triggers, audit context middleware, cursor pagination
 **Confidence:** HIGH
 
 ## Summary
 
-Phase 29 adds automatic audit logging to four B2B models: `Organization`, `Membership`, `APIKey`, and `WebhookEndpoint`. The locked library is `django-pghistory` — which uses PostgreSQL triggers to capture every insert, update, and delete, including bulk ORM operations and raw SQL that Django signals miss. This is the right tool for the job.
+Phase 29 implements automatic audit logging for four B2B models (`Organization`, `Membership`, `APIKey`, `WebhookEndpoint`) using `django-pghistory` 3.9.2. The library installs PostgreSQL trigger functions that fire on INSERT/UPDATE/DELETE and write row snapshots to auto-generated event tables — no per-operation logging call is required in application code. This is the only Django audit library that captures bulk ORM (`queryset.update()`) and raw SQL, which is why it was chosen (locked in STATE.md).
 
-The implementation has two distinct halves. The first is infrastructure: decorating the four models with `@pghistory.track()`, installing `AuditContextMiddleware` to bind user and org context automatically on every request, and registering `pghistory` + `pgtrigger` in INSTALLED_APPS. The second is the query API: a Django Ninja Extra endpoint at `GET /api/v1/org/{slug}/audit-log` that queries the aggregate `pghistory.models.Events` (or `pghistory.models.MiddlewareEvents`) CTE, applies org-scoping, supports pagination and filtering, and strips the `impersonator` context key before returning results to non-staff callers.
+The implementation splits into three concerns. First, **infrastructure**: add `@pghistory.track()` decorators to the four models with domain-prefixed event labels (`org.created`, `membership.deleted`, etc.), install `pghistory`/`pgtrigger` in `INSTALLED_APPS`, and run `makemigrations`. Second, **context binding**: a custom `AuditContextMiddleware` subclasses `pghistory.middleware.HistoryMiddleware`, adding `org_id` (from `request.org` if set) and a placeholder `impersonator=None` slot (populated by Phase 30). Celery tasks use the thin `audit_context(user_id, org_id)` wrapper in `apps/audit/context.py`. Third, **query API**: `AuditLogController` at `GET /api/v1/org/{slug}/audit-log` queries across all four event tables via `pghistory.models.MiddlewareEvents` with a custom `OrgAuditEvents` proxy that surfaces `org_id` as a `ProxyField`; cursor pagination is implemented manually using a `(pgh_created_at, pgh_id)` compound key.
 
-The primary constraint is impersonation data isolation: every audit entry stores full context including an `impersonator` field (written by Phase 30's `django-hijack` integration), but org-level queries must silently omit that field. The field is stored; it is just not serialised in the non-staff response schema.
+A critical constraint is **impersonation data isolation**: the `impersonator` key is stored in `pgh_context.metadata` but `AuditEntryOut` never serialises it — org admins cannot see it even after Phase 30 ships. The field is stored; it is not exposed.
 
-**Primary recommendation:** Decorate all four models in-place, install a custom `AuditContextMiddleware` that extends `pghistory.middleware.HistoryMiddleware` to add `org_id` + `impersonator` to context, and query via `pghistory.models.MiddlewareEvents` with a `references()` filter scoped to org objects.
+**Primary recommendation:** Use `@pghistory.track()` with explicit InsertEvent/UpdateEvent/DeleteEvent labels and `exclude=["updated_at"]`. Subclass `HistoryMiddleware` for request context. Use `OrgAuditEvents(MiddlewareEvents)` proxy with `ProxyField("pgh_context__org_id")` for org-scoped queries. Implement cursor pagination manually (no existing helper in codebase).
 
 ---
 
@@ -20,37 +20,61 @@ The primary constraint is impersonation data isolation: every audit entry stores
 
 ## User Constraints (from CONTEXT.md)
 
-No CONTEXT.md exists for Phase 29 yet. All decisions below come from the accumulated STATE.md decisions log and are therefore treated as locked.
-
 ### Locked Decisions
 
-- Audit library: `django-pghistory` (NOT `django-pgaudit` — 404 on PyPI; NOT signal-based `django-auditlog` — triggers capture bulk ORM + raw SQL that signals miss)
-- Impersonation library (Phase 30): `django-hijack` 3.7.6 — impersonation events must include `impersonator` FK in audit context
-- Impersonation field NOT exposed to org admins: stored in context JSON, excluded from org-level response schema; staff-only
-- All B2B code uses `# B2B_START` / `# B2B_END` markers; new middleware, INSTALLED_APPS entries, and settings must follow this convention
+**Audit entry response schema**
+
+- Summary-only response — no raw before/after diffs in `AuditEntryOut`; pghistory stores full row snapshots internally but Phase 29 does not expose them
+- Actor fields: both `actor_id` (UUID) and `actor_email` in every entry; both become `null` if the actor was later deleted — no FK constraint on audit entries referencing users
+- Object identification: `model_name` (e.g. `"Organization"`) + `object_id` (UUID/PK) — generic across all 4 tracked models; no `object_repr` in Phase 29
+- Timestamp: ISO 8601 UTC string
+- Impersonator field: stored in pghistory context JSON but excluded from `AuditEntryOut`; never serialised for org-level callers; staff-only (future phase)
+- Minimum `AuditEntryOut` fields: `id`, `timestamp`, `action` (e.g. `org.updated`), `model_name`, `object_id`, `actor_id`, `actor_email`, `url`
+
+**Org context resolution**
+
+- URL-first, then null: `AuditContextMiddleware` extracts `org_id` from the URL if `request.org` is set; for non-org URLs `org_id` is `null` in context
+- Unauthenticated requests: both `user_id` and `org_id` are `null` in context; triggers still fire, context is anonymous
+- Middleware placement: after `SessionMiddleware` and `AuthenticationMiddleware`; before any view-level middleware
+
+**Task / Celery context API**
+
+- API: `audit_context(user_id, org_id)` — a context manager in `apps/audit/context.py`
+- Graceful degradation: `audit_context()` is a no-op context manager when `pghistory` is not in `INSTALLED_APPS`
+
+**Filtering interface**
+
+- Query params (all optional, combinable): `actor_id` (UUID exact match), `from` (ISO 8601 datetime), `to` (ISO 8601 datetime), `action` (exact string match, e.g. `org.updated`)
+- Pagination: cursor-based; default `page_size=50`, max 200
+- Default sort: newest first (`ORDER BY timestamp DESC`)
 
 ### Claude's Discretion
 
-- How to structure the `AuditLog` app: create a new `apps/audit` app vs. adding to `apps/orgs` — recommend new `apps/audit` for B2B_START/B2B_END cleanness
-- Exact name of the middleware class and where to register it in the MIDDLEWARE stack
-- Which fields to include in the paginated response schema (`AuditEntryOut`)
-- Whether to use `pghistory.models.MiddlewareEvents` or a custom proxy model for the query layer
+- Whether to use `pghistory.models.MiddlewareEvents` or a custom proxy model — recommend `MiddlewareEvents` subclass with `ProxyField` for `org_id`
+- Exact cursor implementation — implement per-field cursor on `(pgh_created_at, pgh_id)` since no existing helper exists
+- DB index strategy on event tables for org-scoped + timestamp queries
+- Exact `AuditConfig` app label and `apps.py` content
+- Whether to expose `url` in `AuditEntryOut` — research recommends YES (already captured by HistoryMiddleware; useful for debugging)
 
 ### Deferred Ideas (OUT OF SCOPE)
 
-- AUDIT-F01: External audit log shipping (Splunk, Datadog Logs) — template provides foundation; products add exporters
-- Audit logging for `Invitation` model — not listed in AUDIT-01 requirements
-- Per-field diff exposure in the API — store it internally, don't expose in Phase 29 API
+- AUDIT-F01: External audit log shipping (Splunk, Datadog Logs)
+- Per-field diff exposure (`before`/`after` JSON in API)
+- Audit logging for `Invitation` model
+- `object_repr` in `AuditEntryOut`
+- Action prefix matching (e.g. `?action=org.` matches all org events)
   </user_constraints>
+
+---
 
 <phase_requirements>
 
 ## Phase Requirements
 
-| ID       | Description                                                                                                                                                                      | Research Support                                                                                                                            |
-| -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| AUDIT-01 | System records changes to `Organization`, `Membership`, `APIKey`, `WebhookEndpoint` via pghistory triggers; `AuditContextMiddleware` attaches user and org context automatically | `@pghistory.track()` decorator on each model + custom HistoryMiddleware subclass that adds `org_id` to context                              |
-| AUDIT-02 | Org owner and admins can query paginated audit log filtered by actor/date/action (`GET /api/v1/org/{slug}/audit-log`); impersonation entries not exposed to org admins           | `pghistory.models.Events.objects.references(org)` as base queryset; `AuditEntryOut` schema omits `impersonator`; IsOrgAdmin permission gate |
+| ID       | Description                                                                                                                                                                      | Research Support                                                                                                                                                                                             |
+| -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| AUDIT-01 | System records changes to `Organization`, `Membership`, `APIKey`, `WebhookEndpoint` via pghistory triggers; `AuditContextMiddleware` attaches user and org context automatically | `@pghistory.track(InsertEvent, UpdateEvent, DeleteEvent)` on all 4 models; `AuditContextMiddleware` subclasses `HistoryMiddleware.get_context()` to add `org_id`; `audit_context()` wrapper for Celery tasks |
+| AUDIT-02 | Org owner and admins can query paginated audit log filtered by actor/date/action (`GET /api/v1/org/{slug}/audit-log`); impersonation entries not exposed to org admins           | `OrgAuditEvents` proxy with `org_id` ProxyField; cursor pagination on `(pgh_created_at, pgh_id)`; `[IsAuthenticated, IsOrgMember, IsOrgAdmin]` permission gate; `AuditEntryOut` excludes `impersonator`      |
 
 </phase_requirements>
 
@@ -60,26 +84,27 @@ No CONTEXT.md exists for Phase 29 yet. All decisions below come from the accumul
 
 ### Core
 
-| Library          | Version                  | Purpose                                | Why Standard                                                                                   |
-| ---------------- | ------------------------ | -------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| django-pghistory | 3.9.2                    | PostgreSQL-trigger-based audit logging | Locked project decision; captures bulk ORM + raw SQL; no app-code changes required after setup |
-| pgtrigger        | (installed by pghistory) | Low-level trigger management           | pghistory is built on pgtrigger; auto-installed as dependency                                  |
+| Library          | Version                              | Purpose                                       | Why Standard                                                                                  |
+| ---------------- | ------------------------------------ | --------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| django-pghistory | 3.9.2 (Feb 2026)                     | PostgreSQL-trigger-based model history        | Locked project decision; captures bulk ORM + raw SQL; no per-operation logging calls required |
+| pgtrigger        | (transitive dep of django-pghistory) | Django abstraction over PG trigger management | Auto-installed; pghistory triggers are pgtrigger-managed                                      |
 
 ### Supporting
 
-| Library                                | Version  | Purpose                                             | When to Use                                                    |
-| -------------------------------------- | -------- | --------------------------------------------------- | -------------------------------------------------------------- |
-| pghistory.middleware.HistoryMiddleware | built-in | Wraps requests with user + url context              | Subclass it to add `org_id`; don't use it bare                 |
-| pghistory.models.Events                | built-in | Cross-model CTE that aggregates all event tables    | Base for audit log queries; use `references()` for org-scoping |
-| pghistory.models.MiddlewareEvents      | built-in | Events with pre-attached `user` + `url` ProxyFields | Use when the response schema needs `user` as a navigable FK    |
+| Library                                | Version  | Purpose                                                       | When to Use                                                                    |
+| -------------------------------------- | -------- | ------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| pghistory.middleware.HistoryMiddleware | built-in | Base middleware that captures user + url in pgh_context       | Subclass with `get_context()` override — never use bare                        |
+| pghistory.models.MiddlewareEvents      | built-in | Events proxy with pre-added `user` and `url` ProxyFields      | Use as the base class for `OrgAuditEvents`; already has user/url               |
+| pghistory.models.Events                | built-in | Raw CTE UNION ALL proxy across all event tables               | Used internally by MiddlewareEvents; use `across()` and `references()` methods |
+| pghistory.ProxyField                   | built-in | Surfaces pgh_context metadata as typed queryset filter fields | Required to add `org_id` filter capability on `OrgAuditEvents`                 |
 
 ### Alternatives Considered
 
-| Instead of         | Could Use                         | Tradeoff                                                                                        |
-| ------------------ | --------------------------------- | ----------------------------------------------------------------------------------------------- |
-| django-pghistory   | django-auditlog                   | Auditlog uses Django signals — misses bulk ORM + raw SQL. Rejected.                             |
-| django-pghistory   | django-pgaudit                    | 404 on PyPI as of research date. Rejected.                                                      |
-| Custom proxy model | pghistory.models.MiddlewareEvents | MiddlewareEvents is simpler; only need proxy if adding extra ProxyFields beyond user/url/org_id |
+| Instead of                  | Could Use                 | Tradeoff                                                                                      |
+| --------------------------- | ------------------------- | --------------------------------------------------------------------------------------------- |
+| django-pghistory            | django-auditlog (signals) | Signal-based misses bulk ORM + raw SQL — rejected at project level                            |
+| django-pghistory            | django-pgaudit            | 404 on PyPI — does not exist                                                                  |
+| MiddlewareEvents ProxyField | Custom AuditEntry model   | Custom model duplicates data or requires 4-table UNION manually; Events CTE already does this |
 
 **Installation:**
 
@@ -87,7 +112,7 @@ No CONTEXT.md exists for Phase 29 yet. All decisions below come from the accumul
 uv add django-pghistory
 ```
 
-Both `pghistory` and `pgtrigger` must be added to `INSTALLED_APPS`. Run `python manage.py migrate` after adding — pghistory creates a `pghistory_context` table.
+Both `pghistory` and `pgtrigger` must also be added to `INSTALLED_APPS`. Running `migrate` after this creates the `pghistory_context` table.
 
 ---
 
@@ -95,30 +120,33 @@ Both `pghistory` and `pgtrigger` must be added to `INSTALLED_APPS`. Run `python 
 
 ### Recommended Project Structure
 
-The cleanest B2B scaffold is a new `apps/audit` app. This keeps audit code fully wrapped in `# B2B_START` / `# B2B_END` markers and avoids adding Phase-29-only endpoints to the already-large `apps/orgs` controllers.
-
 ```
 apps/api/apps/audit/
 ├── __init__.py
-├── apps.py           # AuditConfig (no ready() hook needed for Phase 29)
-├── middleware.py     # AuditContextMiddleware (extends HistoryMiddleware)
-├── controllers.py    # AuditLogController — GET /org/{slug}/audit-log
-├── schemas.py        # AuditEntryOut (impersonator field excluded)
-└── migrations/       # Empty (no new Django models in Phase 29)
+├── apps.py              # AuditConfig — no ready() hook needed in Phase 29
+├── context.py           # audit_context() context manager + no-op fallback
+├── middleware.py        # AuditContextMiddleware (subclasses HistoryMiddleware)
+├── schemas.py           # AuditEntryOut, AuditLogQueryParams, CursorPageOut
+├── controllers.py       # AuditLogController — GET /api/v1/org/{slug}/audit-log
+└── selectors.py         # build_audit_queryset(), cursor encode/decode
 tests/audit/
-├── __init__.py       # module-level import → RED before app exists
-├── conftest.py       # lazy imports in fixtures
-├── test_middleware.py
-└── test_controllers.py
+├── __init__.py          # RED trigger: module-level import from apps.audit.context
+├── conftest.py          # lazy imports in fixtures; org + admin user fixtures
+├── test_models.py       # AUDIT-01 trigger coverage (events written on save/delete)
+├── test_middleware.py   # AuditContextMiddleware.get_context() tests
+├── test_context.py      # audit_context() no-op test
+├── test_controllers.py  # AUDIT-02 endpoint tests
+└── test_schemas.py      # AuditEntryOut field exclusion test
 ```
 
-No new Django ORM model is introduced. The `pghistory_context` and auto-generated `*Event` tables are managed entirely by pghistory migrations.
+No `models.py` in `apps/audit/` — the app owns no DB models. All event tables are auto-generated by the `@pghistory.track()` decorators on the source models.
 
-### Pattern 1: Decorating Tracked Models
+### Pattern 1: Model Decorators with Domain-Prefixed Labels
 
-Add `@pghistory.track()` to each of the four B2B models. The decorator must be applied to the existing model class in-place; no new model files are created.
+Apply `@pghistory.track()` in-place to all four source models. Labels must be chosen now — changing them later invalidates existing event rows in the audit table. Use domain-prefixed dot-notation matching the CONTEXT.md action format.
 
 ```python
+# Source: django-pghistory readthedocs event_tracking
 # apps/orgs/models.py
 import pghistory
 
@@ -126,17 +154,16 @@ import pghistory
     pghistory.InsertEvent("org.created"),
     pghistory.UpdateEvent("org.updated"),
     pghistory.DeleteEvent("org.deleted"),
+    exclude=["updated_at"],  # suppress auto_now noise
 )
 class Organization(models.Model):
     ...
-```
 
-```python
-# apps/orgs/models.py (continued — Membership)
 @pghistory.track(
     pghistory.InsertEvent("membership.created"),
     pghistory.UpdateEvent("membership.updated"),
     pghistory.DeleteEvent("membership.deleted"),
+    exclude=["updated_at"],
 )
 class Membership(models.Model):
     ...
@@ -148,6 +175,7 @@ class Membership(models.Model):
     pghistory.InsertEvent("api_key.created"),
     pghistory.UpdateEvent("api_key.updated"),
     pghistory.DeleteEvent("api_key.deleted"),
+    exclude=["last_used_at", "usage_count"],  # AKEY-03 fields — update on every auth request
 )
 class APIKey(models.Model):
     ...
@@ -159,230 +187,309 @@ class APIKey(models.Model):
     pghistory.InsertEvent("webhook_endpoint.created"),
     pghistory.UpdateEvent("webhook_endpoint.updated"),
     pghistory.DeleteEvent("webhook_endpoint.deleted"),
+    exclude=["updated_at", "consecutive_failures"],  # counter updates on delivery failure
 )
 class WebhookEndpoint(models.Model):
     ...
 ```
 
-Each decorated model gets a dynamically-generated `{ModelName}Event` table (e.g. `OrganizationEvent`, `MembershipEvent`) created by `makemigrations`.
-
-**Important:** `pgh_label` values (the strings like `"org.created"`) are what the API exposes as `action`. Choose them now; changing them later invalidates existing audit records.
+After decorating, run `python manage.py makemigrations`. Expect new migrations in: `pghistory` (Context model), `pgtrigger` (trigger registry), `apps.orgs` (OrganizationEvent + MembershipEvent tables + triggers), `apps.api_keys` (APIKeyEvent), `apps.webhooks` (WebhookEndpointEvent).
 
 ### Pattern 2: AuditContextMiddleware
 
-Extend `pghistory.middleware.HistoryMiddleware` to inject `org_id` and (for Phase 30 compatibility) `impersonator` into context. The built-in middleware already captures `user` (the authenticated user's PK) and `url`.
+Subclass `pghistory.middleware.HistoryMiddleware`. The base class automatically captures `user` (authenticated user pk) and `url` (request path) via `pghistory.context()`. Override `get_context()` to merge `org_id` and a Phase-30 placeholder `impersonator=None`.
 
 ```python
+# Source: django-pghistory readthedocs context/
 # apps/audit/middleware.py
 import pghistory.middleware
 
 
 class AuditContextMiddleware(pghistory.middleware.HistoryMiddleware):
-    """Wraps every request in a pghistory context, adding org_id.
+    """Wraps every HTTP request in a pghistory context.
 
-    Built-in HistoryMiddleware adds: user (PK of request.user), url.
-    We extend it to add: org_id (from request.org, if set by IsOrgMember).
+    Built-in HistoryMiddleware captures: user (pk), url.
+    This subclass adds: org_id (from request.org, set by IsOrgMember/IsOrgAdmin).
 
-    impersonator is added by Phase 30 (django-hijack signal handler).
-    It is stored in the shared pgh_context metadata JSON but is never
-    serialised into AuditEntryOut (org-level schema excludes it).
+    impersonator is injected by Phase 30 (django-hijack signal); leave as None here.
+    It is stored in pgh_context.metadata JSON but never serialised in AuditEntryOut.
     """
 
     def get_context(self, request):
         ctx = super().get_context(request)
-        # request.org is set by IsOrgMember/IsOrgAdmin permission classes
-        # when an org-scoped endpoint is hit. May be None on non-org endpoints.
         org = getattr(request, "org", None)
         if org is not None:
-            ctx["org_id"] = org.pk
+            ctx["org_id"] = str(org.id)
         return ctx
 ```
 
-Register it in `MIDDLEWARE` inside the `# B2B_START` block, immediately after `ApiKeyRateLimitMiddleware`:
+**Placement in `settings/base.py`** (inside B2B_START/B2B_END block):
 
 ```python
-# config/settings/base.py — inside # B2B_START block
+# B2B_START
+"apps.api_keys.middleware.ApiKeyRateLimitMiddleware",
 "apps.audit.middleware.AuditContextMiddleware",  # B2B MODULE — audit context
+# B2B_END
 ```
 
-**Position matters:** Place it after `AuthenticationMiddleware` and `AccountMiddleware` so `request.user` is already populated when `get_context()` runs.
+Must appear after `AuthenticationMiddleware` — `request.user` must already be resolved.
 
-### Pattern 3: Celery Task Context (no request.user)
+### Pattern 3: audit_context() for Celery Tasks
 
-For tasks that modify audit-tracked models (e.g. bulk operations in webhooks or billing), pass the acting user ID explicitly as a task argument and wrap the task body with `pghistory.context()`:
+The `audit_context()` context manager is a thin wrapper over `pghistory.context()` that also supports `org_id`. It degrades to a no-op when `pghistory` is absent (B2B-removed projects).
 
 ```python
-# Example: a task that modifies an org on behalf of a user
-from celery import shared_task
+# apps/audit/context.py
+from contextlib import contextmanager, nullcontext
+
+
+@contextmanager
+def audit_context(user_id=None, org_id=None):
+    """Context manager for attaching audit context in Celery tasks.
+
+    Wraps pghistory.context() with org_id support. Degrades to a no-op
+    when pghistory is not in INSTALLED_APPS so B2B-removed projects compile
+    cleanly without conditional imports.
+
+    Usage:
+        from apps.audit.context import audit_context
+
+        @app.task
+        def provision_org(user_id, org_id):
+            with audit_context(user_id=user_id, org_id=org_id):
+                org.is_active = True
+                org.save()
+    """
+    from django.apps import apps as django_apps
+    if not django_apps.is_installed("pghistory"):
+        with nullcontext():
+            yield
+        return
+
+    import pghistory
+    org_id_str = str(org_id) if org_id is not None else None
+    with pghistory.context(user=user_id, org_id=org_id_str):
+        yield
+```
+
+### Pattern 4: OrgAuditEvents Proxy for Cross-Model Queries
+
+`pghistory.models.MiddlewareEvents` already surfaces `user` and `url` as `ProxyField`s. Subclass it to add `org_id`:
+
+```python
+# Source: django-pghistory readthedocs aggregating_events
+# apps/audit/selectors.py (or a module-level class in models.py if preferred)
 import pghistory
+from pghistory import models as pgh_models
+from django.db import models as dj_models
 
-@shared_task
-def some_org_task(org_id: int, actor_user_id: int) -> None:
-    with pghistory.context(user=actor_user_id, task="some_org_task"):
-        # changes to tracked models here will reference this context
-        ...
+
+class OrgAuditEvents(pgh_models.MiddlewareEvents):
+    """Unified event view across all 4 B2B models with org_id surfaced."""
+    org_id = pghistory.ProxyField("pgh_context__org_id", dj_models.TextField(null=True))
+
+    class Meta:
+        proxy = True
 ```
 
-Never use `request.user` inside Celery tasks — there is no request. Pass actor ID explicitly as a task argument.
-
-### Pattern 4: Audit Log Query API
+**Querying:**
 
 ```python
-# apps/audit/controllers.py
-import pghistory.models
-from ninja_extra import ControllerBase, api_controller, route
-from ninja_extra.permissions import IsAuthenticated
-from apps.orgs.permissions import IsOrgAdmin
-from apps.audit.schemas import AuditEntryOut, AuditLogResponse
+# Source: django-pghistory readthedocs aggregating_events
+from apps.audit.selectors import OrgAuditEvents
 
-@api_controller(
-    "/org/{org_slug}/audit-log",
-    tags=["audit"],
-    auth=[SessionAuth(), jwt_token_auth],
-    permissions=[IsAuthenticated, IsOrgAdmin],
+# NOTE: verify these model label strings after makemigrations
+events = (
+    OrgAuditEvents.objects
+    .across(
+        "orgs.OrganizationEvent",
+        "orgs.MembershipEvent",
+        "api_keys.APIKeyEvent",
+        "webhooks.WebhookEndpointEvent",
+    )
+    .filter(org_id=str(org.id))
+    .order_by("-pgh_created_at", "-pgh_id")
 )
-class AuditLogController(ControllerBase):
-    @route.get("/", response={200: AuditLogResponse}, url_name="audit-log-list")
-    def list_audit_log(
-        self,
-        request,
-        org_slug: str,
-        page: int = 1,
-        page_size: int = 50,
-        actor: int | None = None,
-        action: str | None = None,
-        date_from: str | None = None,
-        date_to: str | None = None,
-    ):
-        from apps.orgs.models import Organization
-        org = request.org  # set by IsOrgAdmin/IsOrgMember
-
-        # references() returns all events that have any FK to org
-        # This covers Organization, Membership, APIKey, WebhookEndpoint events
-        qs = pghistory.models.Events.objects.references(org).order_by("-pgh_created_at")
-
-        if actor is not None:
-            qs = qs.filter(pgh_context__metadata__user=actor)
-        if action is not None:
-            qs = qs.filter(pgh_label=action)
-        # date filters use pgh_created_at
-        if date_from:
-            qs = qs.filter(pgh_created_at__date__gte=date_from)
-        if date_to:
-            qs = qs.filter(pgh_created_at__date__lte=date_to)
-
-        count = qs.count()
-        offset = (page - 1) * page_size
-        results = list(qs[offset:offset + page_size])
-        return 200, {"count": count, "results": [AuditEntryOut.from_event(e) for e in results]}
 ```
 
-### Pattern 5: AuditEntryOut — Impersonator Exclusion
+**Critical note on APIKey:** `APIKey` has a `user` FK only, not an `org` FK. `references(org)` will NOT catch APIKey events. The `across()` approach above handles this — filter `org_id` from context rather than object FK.
 
-The `impersonator` field in `pgh_context.metadata` is written by Phase 30. In Phase 29, the schema simply never reads it, which means org admins cannot see it even after Phase 30 ships. Staff endpoints (Phase 30 admin) can expose it separately.
+### Pattern 5: actor_email Resolution (Bulk Lookup, Not Per-Row)
+
+The `AuditEntryOut` requires `actor_email`. pghistory stores only `user` pk in context. Resolve emails in bulk before building the response to avoid N+1 queries (the `nplusone` guard in conftest will catch violations):
 
 ```python
-# apps/audit/schemas.py
-from ninja import Schema
-from typing import Any
+# apps/audit/selectors.py
+from django.contrib.auth import get_user_model
 
-class AuditEntryOut(Schema):
-    pgh_id: int
-    pgh_created_at: Any  # datetime
-    pgh_label: str        # e.g. "org.updated"
-    pgh_obj_model: str    # e.g. "orgs.Organization"
-    pgh_obj_id: str
-    actor_id: int | None  # from pgh_context.metadata["user"]
-    url: str | None       # from pgh_context.metadata["url"]
-    # impersonator intentionally omitted — staff-only, Phase 30
+User = get_user_model()
 
-    @classmethod
-    def from_event(cls, event) -> "AuditEntryOut":
-        metadata = {}
-        if event.pgh_context:
-            metadata = event.pgh_context  # JSON dict on MiddlewareEvents
-        return cls(
-            pgh_id=event.pgh_id,
-            pgh_created_at=event.pgh_created_at,
-            pgh_label=event.pgh_label,
-            pgh_obj_model=event.pgh_obj_model,
-            pgh_obj_id=str(event.pgh_obj_id),
-            actor_id=metadata.get("user"),
-            url=metadata.get("url"),
-        )
+def enrich_with_actor_emails(events: list) -> dict[int, str]:
+    """Return {user_pk: email} for all actors in the event list."""
+    actor_pks = {
+        e.pgh_context.get("user")
+        for e in events
+        if e.pgh_context and e.pgh_context.get("user")
+    }
+    if not actor_pks:
+        return {}
+    return dict(
+        User.objects.filter(pk__in=actor_pks).values_list("pk", "email")
+    )
 ```
 
-### Pattern 6: Impersonator Field (Phase 30 prep)
+### Pattern 6: Cursor Pagination on (pgh_created_at, pgh_id)
 
-Phase 30 will add a `django-hijack` signal handler that calls `pghistory.context(impersonator=request.user.pk)` when an impersonation session is active. This Phase 29 research documents that the field name is `impersonator` so Phase 30 can write it consistently.
+No cursor pagination helper exists in the codebase (Phase 27 uses offset pagination). Implement in `apps/audit/selectors.py`:
 
-The `AuditContextMiddleware` does NOT need to handle this — `django-hijack` provides signals (`hijack_started`, `hijack_ended`) that Phase 30 uses to push context.
+```python
+import base64
+from datetime import datetime
+
+def encode_cursor(ts: datetime, pgh_id: int) -> str:
+    raw = f"{ts.isoformat()}:{pgh_id}"
+    return base64.urlsafe_b64encode(raw.encode()).decode()
+
+def decode_cursor(cursor: str) -> tuple[datetime, int] | None:
+    try:
+        raw = base64.urlsafe_b64decode(cursor.encode()).decode()
+        ts_str, id_str = raw.rsplit(":", 1)
+        return datetime.fromisoformat(ts_str), int(id_str)
+    except Exception:
+        return None
+```
+
+**Newest-first keyset query:**
+
+```python
+# WHERE (pgh_created_at, pgh_id) < (cursor_ts, cursor_id)
+if cursor_decoded:
+    cursor_ts, cursor_id = cursor_decoded
+    qs = qs.filter(
+        pgh_created_at__lt=cursor_ts
+    ) | qs.filter(
+        pgh_created_at=cursor_ts, pgh_id__lt=cursor_id
+    )
+```
+
+Response shape (consistent with Phase 27 `{"items": [...], "count": N}` dict response):
+
+```python
+{"items": [...], "next_cursor": "..." or None, "page_size": 50}
+```
+
+### INSTALLED_APPS and MIDDLEWARE additions
+
+```python
+# config/settings/base.py
+INSTALLED_APPS = [
+    ...
+    # B2B_START
+    "apps.orgs",
+    "apps.webhooks",
+    "apps.api_keys",
+    "pghistory",     # B2B MODULE — pghistory Context model
+    "pgtrigger",     # B2B MODULE — trigger management
+    "apps.audit",    # B2B MODULE — audit context + query API
+    # B2B_END
+    ...
+]
+
+MIDDLEWARE = [
+    ...
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "allauth.account.middleware.AccountMiddleware",
+    "apps.core.middleware.RequestContextMiddleware",
+    "apps.core.middleware.ObservabilityMiddleware",
+    "apps.core.middleware.AuthRateLimitMiddleware",
+    # B2B_START
+    "apps.api_keys.middleware.ApiKeyRateLimitMiddleware",
+    "apps.audit.middleware.AuditContextMiddleware",  # B2B MODULE
+    # B2B_END
+    ...
+]
+```
 
 ### Anti-Patterns to Avoid
 
-- **Do not track `Invitation`, `WebhookDelivery`, `WebhookDeliveryAttempt`, or `OrgCustomer`:** these are high-write, low-audit-value models. AUDIT-01 names only four models.
-- **Do not use bare `pghistory.middleware.HistoryMiddleware`:** it does not attach `org_id`; use the custom subclass.
-- **Do not filter Events by `pgh_model` string directly:** use `across()` or `references()` — they use proper indexes.
-- **Do not expose `pgh_diff` in the org-level API for Phase 29:** before/after diffs bloat the response and are not in the AUDIT-02 spec. Store them; don't expose them yet.
-- **Do not pass `request.user` into Celery tasks:** always pass `actor_user_id` as an explicit integer argument.
-- **Do not put `@pghistory.track()` on any model that has `auto_now_add` or `auto_now` fields without listing `exclude=["updated_at"]`:** every save() on a model with `auto_now=True` triggers an `UpdateEvent` even if no application field changed. This creates noise. Use `exclude=["updated_at"]` to suppress timestamp-only events, or accept the noise.
+- **`from __future__ import annotations` in controllers/schemas**: Phase 27 note — deferred type eval breaks Pydantic `QueryParams.model_rebuild()` at runtime. Never add this import to controller or schema files.
+- **`@pghistory.track()` on Invitation, WebhookDelivery, WebhookDeliveryAttempt**: Not in AUDIT-01 requirements; high-write low-audit-value models.
+- **Using `references(org)` as the only query method**: Misses `APIKey` events (no direct org FK). Must use `across()` with explicit event model labels.
+- **Using `pgh_context.metadata` via FK join without ProxyField**: Use `ProxyField("pgh_context__org_id")` to expose metadata fields as filterable queryset attributes on the proxy model.
+- **`@paginate` decorator on the controller**: Phase 27 confirmed it is incompatible with ninja_extra controller methods. Use manual dict response.
+- **Bare `pghistory.middleware.HistoryMiddleware`**: Does not add `org_id`. Always use the custom subclass.
 
 ---
 
 ## Don't Hand-Roll
 
-| Problem                                   | Don't Build                         | Use Instead                   | Why                                                                                                     |
-| ----------------------------------------- | ----------------------------------- | ----------------------------- | ------------------------------------------------------------------------------------------------------- |
-| Capturing bulk QuerySet.update()          | Custom signals or post_save         | `@pghistory.track()` triggers | Signals fire per-instance; bulk update bypasses them entirely. Triggers fire at the Postgres row level. |
-| Capturing raw SQL changes                 | Manual logging                      | Triggers                      | Raw SQL bypasses ORM layer; only triggers see it.                                                       |
-| Before/after diff calculation             | Window functions, manual comparison | `pgh_diff` on Events CTE      | pghistory computes diffs using Postgres window functions automatically.                                 |
-| Cross-model unified audit query           | UNION ALL query                     | `pghistory.models.Events`     | Already a CTE UNION ALL; use `references()` for FK-based scoping.                                       |
-| Context grouping across middleware → task | Thread locals                       | `pghistory.context()`         | pghistory context uses `contextvars` — safe across async and properly scoped per request.               |
+| Problem                      | Don't Build                                  | Use Instead                                 | Why                                                                                   |
+| ---------------------------- | -------------------------------------------- | ------------------------------------------- | ------------------------------------------------------------------------------------- |
+| INSERT/UPDATE/DELETE capture | Custom signals or post_save hooks            | `@pghistory.track()` triggers               | Signals miss `queryset.update()` and raw SQL; triggers capture all writes at DB level |
+| Before/after diff            | Manual field comparison                      | `pgh_diff` on Events CTE                    | pghistory computes diffs via Postgres window functions; stored automatically          |
+| Cross-model UNION query      | Manual `UNION ALL` SQL                       | `Events.objects.across(...)`                | CTE already handles UNION ALL; `ProxyField` surfaces metadata as filter fields        |
+| Context grouping             | `threading.local()` / `contextvars` manually | `pghistory.context()`                       | pghistory uses `contextvars` internally; context manager is safe across async         |
+| Trigger installation SQL     | Custom migration `RunSQL`                    | `makemigrations` after `@pghistory.track()` | pghistory generates correct trigger SQL with proper ON CONFLICT and cascade behaviour |
 
-**Key insight:** The entire value of django-pghistory over signal-based libraries is that triggers fire unconditionally at the database level. Any hand-rolled solution will have a gap for bulk operations.
+**Key insight:** The core value is triggers — they fire unconditionally at the database level. Any hand-rolled solution will have a gap for bulk operations.
 
 ---
 
 ## Common Pitfalls
 
-### Pitfall 1: auto_now / auto_now_add Field Noise
+### Pitfall 1: auto_now / auto_now_add Fields Create Audit Noise
 
-**What goes wrong:** Every `model.save()` also updates `updated_at` (auto_now=True). This creates an `UpdateEvent` with `pgh_diff: {"updated_at": [...]}` even when no user-facing field changed. The audit log fills with meaningless timestamp events.
-**Why it happens:** Postgres triggers fire on every row write; they don't know which fields the application considers "significant."
-**How to avoid:** Add `exclude=["updated_at"]` to each `@pghistory.track()` call. The `Organization`, `Membership`, and `WebhookEndpoint` models all have `updated_at = models.DateTimeField(auto_now=True)`. `APIKey` does not have `updated_at` but has `last_used_at` and `usage_count` which update on every API key authentication — definitely exclude these from audit tracking.
-**Warning signs:** High event table row counts after a short time; many events with only `pgh_diff: {"updated_at": [...]}`.
+**What goes wrong:** Every `model.save()` updates `updated_at` (auto_now=True), generating an `UpdateEvent` even when no user-facing field changed. The audit log fills with noise.
+**Why it happens:** PostgreSQL triggers fire on every row write; they do not distinguish application-significant changes from timestamp-only changes.
+**How to avoid:** `exclude=["updated_at"]` on `Organization`, `Membership`, `WebhookEndpoint`. For `APIKey`, also exclude `last_used_at` and `usage_count` (updated on every API key authentication per AKEY-03).
+**Warning signs:** High event table row counts; events with only `pgh_diff: {"updated_at": [...]}`.
 
-### Pitfall 2: Missing org_id in Context for Non-Org Endpoints
+### Pitfall 2: Actor Email Requires Bulk User Lookup
 
-**What goes wrong:** `AuditContextMiddleware.get_context()` reads `request.org`. But `request.org` is only set by `IsOrgMember`/`IsOrgAdmin` permission classes on org-scoped endpoints. Requests to non-org endpoints (e.g. creating an API key via `/me/api-keys/`) do not set `request.org`, so the audit context has no `org_id`.
-**Why it happens:** Middleware runs before permission classes, so `request.org` is not yet set when middleware `get_context()` is called. However, `HistoryMiddleware` wraps the full request — so the context is open during the entire request, including after permissions run.
-**How to avoid:** In `get_context()`, only add `org_id` if `request.org` is already set (guard with `getattr(request, "org", None)`). Alternatively, use `pghistory.context(org_id=org.pk)` inside the org-scoped service methods as a nested context call to overlay `org_id` after permission checks.
-**Warning signs:** Audit entries for Membership changes that have no `org_id` in their context.
+**What goes wrong:** Fetching `actor_email` inside a serialization loop triggers the `nplusone` guard in `conftest.py`.
+**Why it happens:** pghistory only stores user pk in context. Email must be resolved via a User lookup. The global `_nplusone_guard` autouse fixture raises `NPlusOneError` on lazy per-row queries.
+**How to avoid:** Use a single `User.objects.filter(pk__in=unique_actor_pks).values_list("pk", "email")` before building the response list. Cache the result as a dict.
+**Warning signs:** `NPlusOneError` in `test_controllers.py` audit log response tests.
 
-### Pitfall 3: references() Scope — Only One FK Level Deep
+### Pitfall 3: APIKey Events Missing from Org Audit Log
 
-**What goes wrong:** `Events.objects.references(org)` returns events for objects that have a direct FK to `Organization`. `Organization` itself has no FK to itself. `Membership` and `WebhookEndpoint` have `org` FK. `APIKey` has a `user` FK, not an `org` FK — it is not directly connected to Organization.
-**Why it happens:** `references()` only traverses one FK hop. `APIKey` is not scoped to an org in the data model.
-**How to avoid:** Use `across()` to explicitly name which event models to include, rather than relying solely on `references()`. Combine: `Events.objects.references(org).across("orgs.OrganizationEvent", "orgs.MembershipEvent", "webhooks.WebhookEndpointEvent") | Events.objects.across("api_keys.APIKeyEvent").filter(pgh_data__user__in=org_user_ids)`. Alternatively, scope the `APIKeyEvent` query by filtering `pgh_data__user__in=org.memberships.values("user_id")`. Confirm via test that APIKey events show up in the audit log.
-**Warning signs:** API key create/revoke events missing from the org audit log.
+**What goes wrong:** `Events.objects.references(org)` returns no APIKey events.
+**Why it happens:** `references()` only traverses one FK hop. `APIKey` has a `user` FK, not an `org` FK — it is not directly connected to `Organization`.
+**How to avoid:** Use `across()` with explicit event model label strings for all four models rather than `references()`. Context-based `org_id` filter handles APIKey scoping since `audit_context()` stores `org_id` when the request hits an org-scoped endpoint.
+**Warning signs:** API key create/revoke events absent from org audit log in controller tests.
 
-### Pitfall 4: makemigrations Creates Event Model Migrations in the Wrong App
+### Pitfall 4: pgh_context is None Outside HTTP Requests
 
-**What goes wrong:** When `@pghistory.track()` is applied to `Organization` (in `apps.orgs`), the auto-generated `OrganizationEvent` migration is created inside `apps/orgs/migrations/`. This is correct. But pghistory also creates a migration for the shared `pghistory_context` table in the `pghistory` app itself.
-**Why it happens:** pghistory uses a shared `Context` model registered under the `pghistory` app.
-**How to avoid:** Run `makemigrations` normally; inspect the diff. Expect new migrations in: `pghistory`, `pgtrigger`, `apps.orgs` (2 event models), `apps.api_keys` (1 event model), `apps.webhooks` (1 event model).
+**What goes wrong:** Events created in tests, migrations, or management commands have `pgh_context=None`. Filtering on `ProxyField("pgh_context__org_id")` returns zero results.
+**Why it happens:** `AuditContextMiddleware` only runs in HTTP request/response cycles.
+**How to avoid:** In integration tests that verify audit log content, wrap model mutations with `pghistory.context(user=user.pk, org_id=str(org.id))` or use `audit_context()`. Always guard: `metadata = event.pgh_context or {}`.
+**Warning signs:** `OrgAuditEvents.objects.filter(org_id=...).count() == 0` even after saving tracked models.
 
-### Pitfall 5: pgh_context Is None for Unauthenticated Requests
+### Pitfall 5: Event Model App Label Strings Must Match After makemigrations
 
-**What goes wrong:** Queries on `Events` that assume `pgh_context` is never None will raise `AttributeError` or produce unexpected nulls for changes made outside a request context (e.g. data migrations, management commands, test fixtures).
-**Why it happens:** pghistory context is nullable — it requires `pghistory.context()` to be active.
-**How to avoid:** Always guard: `metadata = event.pgh_context or {}`. In tests, wrap fixture setup in `pghistory.context(user=0)` if you want test events to have context, or accept null context and ensure `from_event()` handles it.
+**What goes wrong:** `Events.objects.across("orgs.OrganizationEvent")` raises `LookupError` if the auto-generated model name differs.
+**Why it happens:** pghistory names the event model `{ClassName}Event` in the same app as the tracked model. Must verify after generating migrations.
+**How to avoid:** After running `makemigrations`, open the generated migration and confirm the model class names. Expected: `OrganizationEvent`, `MembershipEvent`, `APIKeyEvent`, `WebhookEndpointEvent`. Adjust `across()` calls if they differ.
+**Warning signs:** `LookupError` or `ValueError` when calling `.across()` in tests.
 
-### Pitfall 6: ruff migration exclusion
+### Pitfall 6: Cursor Stability Requires Composite Key
 
-**What goes wrong:** Auto-generated pghistory/pgtrigger migration files may contain lines that exceed ruff's line length limit.
-**Why it happens:** pghistory generates trigger SQL inline in migrations; SQL strings can be very long.
-**How to avoid:** The project already has a `ruff.toml` exclusion pattern for migrations (added in Phase 27). Verify it covers `apps/*/migrations/*.py` — it should already apply.
+**What goes wrong:** Cursor based only on `pgh_created_at` breaks when multiple events share the same timestamp (batch operations, test fixtures that create events in tight loops).
+**Why it happens:** `pgh_created_at` has microsecond resolution but trigger-level events in the same DB transaction can share identical timestamps.
+**How to avoid:** Always use `(pgh_created_at, pgh_id)` as the compound cursor key. `pgh_id` is an auto-increment integer and is unique within each event table.
+**Warning signs:** Duplicate or skipped entries in paginated responses during tests that create multiple events rapidly.
+
+### Pitfall 7: ruff Migration Line Length
+
+**What goes wrong:** Ruff lint fails on auto-generated pghistory migration files containing long trigger SQL strings.
+**Why it happens:** pghistory embeds trigger SQL as Python strings; these exceed the 88-char line length limit.
+**How to avoid:** The project already has a ruff migration exclusion in `ruff.toml` (added Phase 27). Verify it covers `apps/*/migrations/*.py` patterns.
+
+### Pitfall 8: B2B_START/B2B_END Markers Must Wrap All Additions
+
+**What goes wrong:** `manage.py check` fails after B2B removal if `apps.audit` or `pghistory`/`pgtrigger` remain in `INSTALLED_APPS`.
+**Why it happens:** The scaffolder removes code between the B2B markers. Additions outside markers survive removal as orphan references.
+**How to avoid:** Every addition to `INSTALLED_APPS`, `MIDDLEWARE`, and settings constants must be inside `# B2B_START / # B2B_END`. All code in `apps/audit/` is inherently B2B-only.
 
 ---
 
@@ -390,127 +497,188 @@ The `AuditContextMiddleware` does NOT need to handle this — `django-hijack` pr
 
 Verified patterns from official sources:
 
-### Installing pghistory (INSTALLED_APPS)
+### Minimum AuditEntryOut Schema
 
 ```python
-# config/settings/base.py — inside # B2B_START block
-# Source: https://django-pghistory.readthedocs.io/en/stable/installation/
-INSTALLED_APPS = [
-    ...
-    # B2B_START
-    "apps.orgs",
-    "apps.webhooks",
-    "apps.api_keys",
-    "pghistory",    # B2B MODULE — audit event storage
-    "pgtrigger",    # B2B MODULE — trigger management (pghistory dependency)
-    "apps.audit",   # B2B MODULE — audit context middleware + query API
-    # B2B_END
-    ...
-]
+# apps/audit/schemas.py
+# Note: no `from __future__ import annotations` — breaks Pydantic in ninja_extra
+from datetime import datetime
+from uuid import UUID
+from ninja import Schema
+
+
+class AuditEntryOut(Schema):
+    id: int                    # pgh_id — auto-increment within each event table
+    timestamp: datetime        # pgh_created_at (ISO 8601 UTC)
+    action: str                # pgh_label e.g. "org.updated"
+    model_name: str            # e.g. "Organization"
+    object_id: str             # pgh_obj_id as string
+    actor_id: str | None       # user pk from pgh_context.metadata["user"]
+    actor_email: str | None    # resolved via bulk User lookup
+    url: str | None            # from pgh_context.metadata["url"]
+    # impersonator intentionally omitted — staff-only; populated in Phase 30
+
+
+class CursorPageOut(Schema):
+    items: list[AuditEntryOut]
+    next_cursor: str | None
+    page_size: int
 ```
 
-### Basic track decorator with labels
+### Full HistoryMiddleware Subclass
 
 ```python
-# Source: https://django-pghistory.readthedocs.io/en/stable/event_tracking/
-import pghistory
-
-@pghistory.track(
-    pghistory.InsertEvent("org.created"),
-    pghistory.UpdateEvent("org.updated"),
-    pghistory.DeleteEvent("org.deleted"),
-    exclude=["updated_at"],  # suppress auto_now noise
-)
-class Organization(models.Model):
-    ...
-```
-
-### Extending HistoryMiddleware
-
-```python
-# Source: https://django-pghistory.readthedocs.io/en/stable/context/
+# Source: django-pghistory readthedocs context/
+# apps/audit/middleware.py
 import pghistory.middleware
 
+
 class AuditContextMiddleware(pghistory.middleware.HistoryMiddleware):
+    """Wraps every HTTP request in pghistory context with org_id added.
+
+    Base HistoryMiddleware captures: user (pk), url.
+    This adds: org_id (from request.org if set by org-scoped permission classes).
+    impersonator: populated by Phase 30 django-hijack signal; None here.
+    """
+
     def get_context(self, request):
         ctx = super().get_context(request)
         org = getattr(request, "org", None)
         if org is not None:
-            ctx["org_id"] = org.pk
+            ctx["org_id"] = str(org.id)
         return ctx
 ```
 
-### Using context() in Celery tasks
+### audit_context() No-Op Pattern
 
 ```python
-# Source: https://django-pghistory.readthedocs.io/en/stable/context/
+# apps/audit/context.py
+from contextlib import contextmanager, nullcontext
+
+
+@contextmanager
+def audit_context(user_id=None, org_id=None):
+    from django.apps import apps as django_apps
+    if not django_apps.is_installed("pghistory"):
+        with nullcontext():
+            yield
+        return
+    import pghistory
+    with pghistory.context(
+        user=user_id,
+        org_id=str(org_id) if org_id is not None else None,
+    ):
+        yield
+```
+
+### OrgAuditEvents with org_id ProxyField
+
+```python
+# Source: django-pghistory readthedocs aggregating_events
 import pghistory
+from pghistory import models as pgh_models
+from django.db import models as dj_models
 
-@shared_task
-def org_task(org_id: int, actor_user_id: int) -> None:
-    with pghistory.context(user=actor_user_id, task="org_task"):
-        ...  # changes here have context
+
+class OrgAuditEvents(pgh_models.MiddlewareEvents):
+    org_id = pghistory.ProxyField("pgh_context__org_id", dj_models.TextField(null=True))
+
+    class Meta:
+        proxy = True
 ```
 
-### Querying the audit log with references()
+### Full get_audit_log_page Selector
 
 ```python
-# Source: https://django-pghistory.readthedocs.io/en/stable/aggregating_events/
-import pghistory.models
+# apps/audit/selectors.py
+import base64
+from datetime import datetime
+from django.contrib.auth import get_user_model
 
-qs = pghistory.models.Events.objects.references(org).order_by("-pgh_created_at")
+User = get_user_model()
 
-# Filter by actor
-qs = qs.filter(pgh_context__metadata__user=actor_id)
 
-# Filter by label/action
-qs = qs.filter(pgh_label="org.updated")
-```
+def get_audit_log_page(org, actor_id=None, from_ts=None, to_ts=None,
+                       action=None, cursor=None, page_size=50):
+    qs = (
+        OrgAuditEvents.objects
+        .across(
+            "orgs.OrganizationEvent",
+            "orgs.MembershipEvent",
+            "api_keys.APIKeyEvent",
+            "webhooks.WebhookEndpointEvent",
+        )
+        .filter(org_id=str(org.id))
+        .order_by("-pgh_created_at", "-pgh_id")
+    )
+    if actor_id:
+        qs = qs.filter(user=actor_id)        # ProxyField from MiddlewareEvents
+    if action:
+        qs = qs.filter(pgh_label=action)
+    if from_ts:
+        qs = qs.filter(pgh_created_at__gte=from_ts)
+    if to_ts:
+        qs = qs.filter(pgh_created_at__lte=to_ts)
+    if cursor:
+        decoded = decode_cursor(cursor)
+        if decoded:
+            cur_ts, cur_id = decoded
+            qs = qs.filter(pgh_created_at__lt=cur_ts) | qs.filter(
+                pgh_created_at=cur_ts, pgh_id__lt=cur_id
+            )
 
-### Reading context metadata safely
+    page = list(qs[:page_size + 1])
+    has_more = len(page) > page_size
+    page = page[:page_size]
 
-```python
-# pgh_context is None if change happened outside a request/context manager
-metadata = getattr(event, "pgh_context", None) or {}
-actor_id = metadata.get("user")
-url = metadata.get("url")
-impersonator = metadata.get("impersonator")  # Phase 30 only — don't expose in Phase 29
+    actor_pks = {e.pgh_context.get("user") for e in page if e.pgh_context}
+    email_map = dict(User.objects.filter(pk__in=actor_pks).values_list("pk", "email"))
+
+    next_cursor = None
+    if has_more and page:
+        last = page[-1]
+        next_cursor = encode_cursor(last.pgh_created_at, last.pgh_id)
+
+    items = [_to_entry_out(e, email_map) for e in page]
+    return items, next_cursor
 ```
 
 ---
 
 ## State of the Art
 
-| Old Approach                                  | Current Approach                            | When Changed            | Impact                                        |
-| --------------------------------------------- | ------------------------------------------- | ----------------------- | --------------------------------------------- |
-| Signal-based audit (`pre_save` / `post_save`) | Postgres trigger-based (`django-pghistory`) | Locked in v1.4 planning | Captures bulk `QuerySet.update()` and raw SQL |
-| Shared event model per app                    | Per-model `{ModelName}Event` tables         | pghistory v2+           | Clean isolation; query via `Events` CTE       |
-| Custom context thread locals                  | `pghistory.context()` / `contextvars`       | pghistory v2            | Safe across async and request boundaries      |
-| django-pgaudit                                | Not available (404 on PyPI)                 | —                       | Use django-pghistory                          |
+| Old Approach                            | Current Approach                                  | When Changed             | Impact                                                           |
+| --------------------------------------- | ------------------------------------------------- | ------------------------ | ---------------------------------------------------------------- |
+| Signal-based audit (pre_save/post_save) | PostgreSQL trigger-based (@pghistory.track)       | Locked in v1.4 planning  | Captures bulk queryset.update() and raw SQL that signals miss    |
+| pghistory.SnapshotEvent                 | pghistory.InsertEvent / UpdateEvent / DeleteEvent | pghistory 3.0            | Explicit event type selection; SnapshotEvent is deprecated       |
+| Context via thread locals               | pghistory.context() with contextvars              | pghistory 2.0            | Safe across async and per-request scoped                         |
+| AggregateEvent                          | pghistory.models.Events                           | pghistory 3.x            | No model called AggregateEvent exists in current API             |
+| Offset pagination                       | Cursor pagination (keyset)                        | Phase 29 design decision | Stable for append-only audit logs; offset breaks under insertion |
 
-**Deprecated/outdated:**
+**Deprecated / outdated:**
 
-- `django-pgaudit`: 404 on PyPI, not available.
-- Signal-based audit (`django-auditlog`): misses bulk ORM operations. Not used.
+- `pghistory.SnapshotEvent`: Removed in 3.x — use `InsertEvent`/`UpdateEvent`/`DeleteEvent`.
+- `django-pgaudit`: 404 on PyPI — does not exist.
+- Signal-based `django-auditlog`: Rejected — misses bulk ORM.
 
 ---
 
 ## Open Questions
 
-1. **APIKey org-scoping for audit log**
-   - What we know: `APIKey` has `user` FK only, not `org` FK. `references(org)` won't catch it.
-   - What's unclear: The most efficient join path — query `org.memberships.values("user_id")` and filter `pgh_data__user__in=...` OR use `across("api_keys.APIKeyEvent")` with a subquery.
-   - Recommendation: At plan time, implement as `Events.objects.across("api_keys.APIKeyEvent").filter(pgh_data__user__in=org.memberships.values("user_id"))` and UNION with `references(org)` covering the other three models. Write a test to confirm APIKey create/revoke events appear in the org audit log.
+1. **Exact auto-generated event model app label strings**
+   - What we know: pghistory names event models `{ClassName}Event` in the same app
+   - What's unclear: Whether `across("orgs.OrganizationEvent")` uses the correct casing / label
+   - Recommendation: Wave 0 task — run `makemigrations`, inspect migration, confirm label strings before writing `across()` calls in selectors
 
-2. **Phase 30 impersonator context injection point**
-   - What we know: `django-hijack` emits `hijack_started` / `hijack_ended` signals. The `AuditContextMiddleware` does not handle this yet.
-   - What's unclear: Whether to write a Phase 29 placeholder signal receiver or leave it entirely to Phase 30.
-   - Recommendation: Leave impersonator context injection entirely to Phase 30. Phase 29 only guarantees the field is absent (not present) in the org-level response schema.
+2. **MiddlewareEvents.user ProxyField type vs actor_id filtering**
+   - What we know: `MiddlewareEvents` exposes `user` as a `ProxyField`. The context stores `user` as the user pk integer.
+   - What's unclear: Whether `qs.filter(user=actor_id)` works correctly when `actor_id` is a UUID string (from the `actor_id` query param defined as UUID in CONTEXT.md) vs an integer pk
+   - Recommendation: In the selector, always cast to the correct pk type. User pks in this project are integers (BigAutoField). The `actor_id` query param should be typed `int` not `UUID`.
 
-3. **pgh_diff exposure in audit API**
-   - What we know: `pgh_diff` is available on every `Events` row as a JSON dict of `{field: [old, new]}`.
-   - What's unclear: Whether the response schema should expose `pgh_diff` for Phase 29.
-   - Recommendation: Exclude from Phase 29 API — not specified in AUDIT-02. Can be added in a later phase without a breaking change (additive schema field).
+3. **OrgAuditEvents proxy placement**
+   - What we know: Proxy models require `Meta: proxy = True` and a registered base model
+   - What's unclear: Whether `OrgAuditEvents` should live in `apps/audit/` or be inline in `selectors.py`
+   - Recommendation: Define it at module level in `apps/audit/selectors.py`; it does not need to be in `models.py` since it owns no migrations
 
 ---
 
@@ -527,18 +695,23 @@ impersonator = metadata.get("impersonator")  # Phase 30 only — don't expose in
 
 ### Phase Requirements → Test Map
 
-| Req ID   | Behavior                                                                     | Test Type   | Automated Command                                                                     | File Exists? |
-| -------- | ---------------------------------------------------------------------------- | ----------- | ------------------------------------------------------------------------------------- | ------------ |
-| AUDIT-01 | `@pghistory.track()` on Organization — create writes OrganizationEvent       | integration | `pytest tests/audit/test_middleware.py::test_org_create_writes_event -x`              | Wave 0       |
-| AUDIT-01 | `@pghistory.track()` on Membership — delete writes MembershipEvent           | integration | `pytest tests/audit/test_middleware.py::test_membership_delete_writes_event -x`       | Wave 0       |
-| AUDIT-01 | `@pghistory.track()` on APIKey — revoke writes APIKeyEvent                   | integration | `pytest tests/audit/test_middleware.py::test_apikey_revoke_writes_event -x`           | Wave 0       |
-| AUDIT-01 | `@pghistory.track()` on WebhookEndpoint — update writes WebhookEndpointEvent | integration | `pytest tests/audit/test_middleware.py::test_webhook_endpoint_update_writes_event -x` | Wave 0       |
-| AUDIT-01 | AuditContextMiddleware attaches user and org_id to pgh_context               | integration | `pytest tests/audit/test_middleware.py::test_context_attaches_user_and_org_id -x`     | Wave 0       |
-| AUDIT-02 | GET /api/v1/org/{slug}/audit-log returns paginated entries                   | integration | `pytest tests/audit/test_controllers.py::test_list_audit_log_paginated -x`            | Wave 0       |
-| AUDIT-02 | Audit log filtered by actor returns only that user's changes                 | integration | `pytest tests/audit/test_controllers.py::test_filter_by_actor -x`                     | Wave 0       |
-| AUDIT-02 | Audit log response never contains impersonator field                         | unit        | `pytest tests/audit/test_controllers.py::test_impersonator_not_in_response -x`        | Wave 0       |
-| AUDIT-02 | Non-admin org member cannot access audit log (403)                           | integration | `pytest tests/audit/test_controllers.py::test_member_cannot_access_audit_log -x`      | Wave 0       |
-| AUDIT-02 | APIKey audit events appear in org audit log                                  | integration | `pytest tests/audit/test_controllers.py::test_apikey_events_in_org_audit_log -x`      | Wave 0       |
+| Req ID   | Behavior                                                                 | Test Type   | Automated Command                                                            | File Exists? |
+| -------- | ------------------------------------------------------------------------ | ----------- | ---------------------------------------------------------------------------- | ------------ |
+| AUDIT-01 | Organization.save() creates OrganizationEvent row                        | integration | `pytest tests/audit/test_models.py::test_org_insert_event -x`                | ❌ Wave 0    |
+| AUDIT-01 | Organization.delete() creates delete event with org.deleted label        | integration | `pytest tests/audit/test_models.py::test_org_delete_event -x`                | ❌ Wave 0    |
+| AUDIT-01 | Membership update creates event                                          | integration | `pytest tests/audit/test_models.py::test_membership_update_event -x`         | ❌ Wave 0    |
+| AUDIT-01 | APIKey create creates api_key.created event                              | integration | `pytest tests/audit/test_models.py::test_apikey_insert_event -x`             | ❌ Wave 0    |
+| AUDIT-01 | WebhookEndpoint create creates webhook_endpoint.created event            | integration | `pytest tests/audit/test_models.py::test_webhook_endpoint_insert_event -x`   | ❌ Wave 0    |
+| AUDIT-01 | AuditContextMiddleware.get_context() adds org_id when request.org is set | unit        | `pytest tests/audit/test_middleware.py::test_middleware_adds_org_id -x`      | ❌ Wave 0    |
+| AUDIT-01 | AuditContextMiddleware.get_context() sets no org_id for non-org request  | unit        | `pytest tests/audit/test_middleware.py::test_middleware_null_org_id -x`      | ❌ Wave 0    |
+| AUDIT-01 | audit_context() is a no-op when pghistory not in INSTALLED_APPS          | unit        | `pytest tests/audit/test_context.py::test_audit_context_noop -x`             | ❌ Wave 0    |
+| AUDIT-02 | GET /api/v1/org/{slug}/audit-log returns 200 for org admin               | integration | `pytest tests/audit/test_controllers.py::test_audit_log_admin_200 -x`        | ❌ Wave 0    |
+| AUDIT-02 | GET /api/v1/org/{slug}/audit-log returns 403 for org member (non-admin)  | integration | `pytest tests/audit/test_controllers.py::test_audit_log_member_403 -x`       | ❌ Wave 0    |
+| AUDIT-02 | ?actor_id= filter returns only entries for that actor                    | integration | `pytest tests/audit/test_controllers.py::test_filter_actor_id -x`            | ❌ Wave 0    |
+| AUDIT-02 | ?action=org.updated filter returns only org update events                | integration | `pytest tests/audit/test_controllers.py::test_filter_action -x`              | ❌ Wave 0    |
+| AUDIT-02 | Cursor pagination: next_cursor present; second page is stable            | integration | `pytest tests/audit/test_controllers.py::test_cursor_pagination -x`          | ❌ Wave 0    |
+| AUDIT-02 | AuditEntryOut does NOT contain impersonator field                        | unit        | `pytest tests/audit/test_schemas.py::test_impersonator_excluded -x`          | ❌ Wave 0    |
+| AUDIT-02 | APIKey events appear in org audit log (not skipped by references())      | integration | `pytest tests/audit/test_controllers.py::test_apikey_events_in_audit_log -x` | ❌ Wave 0    |
 
 ### Sampling Rate
 
@@ -548,12 +721,16 @@ impersonator = metadata.get("impersonator")  # Phase 30 only — don't expose in
 
 ### Wave 0 Gaps
 
-- [ ] `tests/audit/__init__.py` — module-level import triggers RED state (matches project pattern)
-- [ ] `tests/audit/conftest.py` — lazy imports in fixture bodies; org + user fixtures
-- [ ] `tests/audit/test_middleware.py` — AUDIT-01 trigger coverage
-- [ ] `tests/audit/test_controllers.py` — AUDIT-02 endpoint coverage
+- [ ] `tests/audit/__init__.py` — module-level import from `apps.audit.context` (RED trigger per Phase 27/28 pattern)
+- [ ] `tests/audit/conftest.py` — lazy imports inside fixture bodies; org, membership (admin role), and user fixtures
+- [ ] `tests/audit/test_models.py` — RED stubs for AUDIT-01 event creation
+- [ ] `tests/audit/test_middleware.py` — RED stubs for AuditContextMiddleware.get_context()
+- [ ] `tests/audit/test_context.py` — RED stub for audit_context() no-op
+- [ ] `tests/audit/test_controllers.py` — RED stubs for AUDIT-02 endpoint tests
+- [ ] `tests/audit/test_schemas.py` — RED stub for AuditEntryOut field exclusion
+- [ ] Framework install: `uv add django-pghistory` — adds pghistory + pgtrigger
 
-_(No test framework gaps — pytest + pytest-django already installed and configured)_
+_(No existing test infrastructure gaps — pytest + pytest-django already configured in pyproject.toml)_
 
 ---
 
@@ -561,21 +738,26 @@ _(No test framework gaps — pytest + pytest-django already installed and config
 
 ### Primary (HIGH confidence)
 
-- [django-pghistory PyPI](https://pypi.org/project/django-pghistory/) — current version 3.9.2, supported Django versions
-- [django-pghistory event tracking docs](https://django-pghistory.readthedocs.io/en/stable/event_tracking/) — `@pghistory.track()` decorator options, tracker types, labels
-- [django-pghistory context docs](https://django-pghistory.readthedocs.io/en/stable/context/) — `pghistory.context()` manager, HistoryMiddleware extension, Celery pattern
-- [django-pghistory event models docs](https://django-pghistory.readthedocs.io/en/stable/event_models/) — auto-generated fields, pgh_diff, custom event models
-- [django-pghistory aggregating events docs](https://django-pghistory.readthedocs.io/en/stable/aggregating_events/) — `Events` CTE, `references()`, `across()`, `tracks()`, `pgh_diff` structure
-- [django-pghistory settings docs](https://django-pghistory.readthedocs.io/en/stable/settings/) — PGHISTORY_MIDDLEWARE_METHODS, PGHISTORY_JSON_ENCODER, admin settings
+- [django-pghistory PyPI](https://pypi.org/project/django-pghistory/) — version 3.9.2 confirmed, Django 4.2–5.2 compatibility
+- [django-pghistory event tracking docs](https://django-pghistory.readthedocs.io/en/stable/event_tracking/) — `@pghistory.track()`, InsertEvent/UpdateEvent/DeleteEvent, custom labels
+- [django-pghistory context docs 3.5.2](https://django-pghistory.readthedocs.io/en/3.5.2/context/) — HistoryMiddleware subclassing, get_context() override, pghistory.context() in tasks
+- [django-pghistory aggregating events docs](https://django-pghistory.readthedocs.io/en/latest/aggregating_events/) — Events CTE, MiddlewareEvents, ProxyField, across(), references()
+- [django-pghistory event models docs](https://django-pghistory.readthedocs.io/en/3.4.2/event_models/) — pgh_id, pgh_label, pgh_created_at, pgh_obj, pgh_context structure
+- [django-pghistory installation docs](https://django-pghistory.readthedocs.io/en/latest/installation/) — INSTALLED_APPS requirement for pghistory + pgtrigger
+- Project `apps/api/apps/orgs/models.py` — Organization, Membership field names confirmed
+- Project `apps/api/apps/api_keys/models.py` — APIKey fields, last_used_at/usage_count exclude candidates
+- Project `apps/api/apps/webhooks/models.py` — WebhookEndpoint fields, consecutive_failures exclude candidate
+- Project `apps/api/config/settings/base.py` — INSTALLED_APPS structure, MIDDLEWARE order, B2B_START/B2B_END markers
+- Project `apps/api/apps/webhooks/controllers.py` — confirmed @paginate incompatibility, manual dict response pattern
+- Project `.planning/STATE.md` — pghistory library choice locked; B2B marker convention confirmed
 
 ### Secondary (MEDIUM confidence)
 
-- [Caktus Group blog — tips for django-pghistory (April 2025)](https://www.caktusgroup.com/blog/2025/04/07/tips-tracking-django-model-changes-django-pghistory/) — selective tracking, initial snapshots pattern
-- [Collecting Context — pghistory 3.0 docs](https://django-pghistory.readthedocs.io/en/3.0.0/context/) — verified against current stable docs
+- [Caktus Group blog — tips for django-pghistory (April 2025)](https://www.caktusgroup.com/blog/2025/04/07/tips-tracking-django-model-changes-django-pghistory/) — selective tracking, exclude patterns
 
 ### Tertiary (LOW confidence)
 
-- STATE.md accumulated decisions — locked choices for audit library confirmed here
+- Exact auto-generated event model app label strings (e.g. `"orgs.OrganizationEvent"`) — must verify after running `makemigrations`
 
 ---
 
@@ -583,9 +765,9 @@ _(No test framework gaps — pytest + pytest-django already installed and config
 
 **Confidence breakdown:**
 
-- Standard stack: HIGH — django-pghistory 3.9.2, locked decision, docs verified
-- Architecture: HIGH — patterns drawn from official docs; Pitfall 3 (APIKey scoping) is confirmed by `references()` one-hop limitation from official docs
-- Pitfalls: HIGH for pitfalls 1, 2, 5; MEDIUM for pitfall 3 (APIKey org-scope workaround needs test validation)
+- Standard stack: HIGH — django-pghistory 3.9.2 confirmed from PyPI; library choice locked in STATE.md
+- Architecture: HIGH — HistoryMiddleware subclassing, ProxyField, Events.across() all confirmed from official readthedocs; no-op pattern from Python contextlib
+- Pitfalls: HIGH for pitfalls 1 (auto_now noise), 2 (N+1 actor email), 4 (null context), 7 (ruff migration), 8 (B2B markers); MEDIUM for pitfall 3 (APIKey org scoping via across() — correct approach but exact label strings unverified)
 
 **Research date:** 2026-03-13
-**Valid until:** 2026-04-13 (django-pghistory is stable; 30-day window is safe)
+**Valid until:** 2026-04-13 (stable library; 30-day window)
