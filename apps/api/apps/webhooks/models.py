@@ -6,10 +6,17 @@ import hashlib
 import secrets
 import uuid
 
+import pghistory
 from django.core.exceptions import ValidationError
 from django.db import models
 
 
+@pghistory.track(
+    pghistory.InsertEvent("webhook_endpoint.created"),
+    pghistory.UpdateEvent("webhook_endpoint.updated"),
+    pghistory.DeleteEvent("webhook_endpoint.deleted"),
+    exclude=["updated_at", "consecutive_failures"],
+)
 class WebhookEndpoint(models.Model):
     """A registered endpoint that receives webhook events for an org."""
 

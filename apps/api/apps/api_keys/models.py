@@ -2,10 +2,17 @@ import hashlib
 import secrets
 import uuid
 
+import pghistory
 from django.conf import settings
 from django.db import models
 
 
+@pghistory.track(
+    pghistory.InsertEvent("api_key.created"),
+    pghistory.UpdateEvent("api_key.updated"),
+    pghistory.DeleteEvent("api_key.deleted"),
+    exclude=["last_used_at", "usage_count"],
+)
 class APIKey(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(

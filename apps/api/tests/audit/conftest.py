@@ -70,7 +70,7 @@ def api_key_instance(db, org_owner):
         user=org_owner,
         name="Test key",
         prefix=prefix,
-        hashed_key=hashed,
+        key_hash=hashed,
         scopes=["read"],
     )
 
@@ -80,10 +80,10 @@ def webhook_endpoint_instance(db, org):
     """A WebhookEndpoint for the test org."""
     from apps.webhooks.models import WebhookEndpoint
 
-    raw_secret, display_secret, hashed = WebhookEndpoint.generate_secret()
+    raw_secret, signing_key, secret_hash = WebhookEndpoint.generate_secret()
     return WebhookEndpoint.objects.create(
         org=org,
         url="https://example.com/hook",
-        hashed_secret=hashed,
-        display_secret=display_secret,
+        signing_key=signing_key,
+        secret_hash=secret_hash,
     )

@@ -12,6 +12,7 @@ These models are the data foundation for all Phase 26+ B2B features.
 import secrets
 from datetime import timedelta
 
+import pghistory
 from django.conf import settings
 from django.db import models
 from django.utils import timezone
@@ -20,6 +21,12 @@ from django.utils.translation import gettext_lazy as _
 INVITATION_EXPIRY_HOURS = 72
 
 
+@pghistory.track(
+    pghistory.InsertEvent("org.created"),
+    pghistory.UpdateEvent("org.updated"),
+    pghistory.DeleteEvent("org.deleted"),
+    exclude=["updated_at"],
+)
 class Organization(models.Model):
     """A multi-tenant organization.
 
@@ -47,6 +54,12 @@ class Organization(models.Model):
         return f"Organization({self.slug})"
 
 
+@pghistory.track(
+    pghistory.InsertEvent("membership.created"),
+    pghistory.UpdateEvent("membership.updated"),
+    pghistory.DeleteEvent("membership.deleted"),
+    exclude=["updated_at"],
+)
 class Membership(models.Model):
     """A user's membership in an organization with an explicit role.
 
