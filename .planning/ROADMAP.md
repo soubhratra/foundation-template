@@ -245,7 +245,14 @@ Plans:
 4. After N consecutive failures across deliveries to the same endpoint, the endpoint is automatically disabled and the org admin receives an email notification identifying the endpoint and last failure reason
 5. A user can manually trigger a retry for any individual failed delivery via `POST /api/v1/webhooks/deliveries/{id}/retry` without needing to re-register the endpoint
 
-**Plans**: TBD
+**Plans**: 4 plans
+
+Plans:
+
+- [ ] 27-01-PLAN.md — Wave 1: RED test stubs (test_models, test_utils, test_tasks, test_controllers, test_checks)
+- [ ] 27-02-PLAN.md — Wave 2: apps/webhooks/ app — models + migration + fire_webhook_event() + WEBHOOK_EVENTS check
+- [ ] 27-03-PLAN.md — Wave 3: deliver_webhook Celery task — HMAC signing, retry, circuit breaker, cleanup
+- [ ] 27-04-PLAN.md — Wave 4: schemas + controllers — all 8 HTTP endpoints, auto-discovered
 
 ### Phase 28: API Key Authentication
 
@@ -330,7 +337,7 @@ Plans:
 | 24. Social Auth OAuth Callback     | v1.3      | 2/2            | Complete    | 2026-03-12 |
 | 25. GDPR Export plan_id Accuracy   | v1.3      | 1/1            | Complete    | 2026-03-12 |
 | 26. Organization + Per-Org Billing | 6/6       | Complete       | 2026-03-13  | -          |
-| 27. Outbound Webhooks              | v1.4      | 0/TBD          | Not started | -          |
+| 27. Outbound Webhooks              | v1.4      | 0/4            | Not started | -          |
 | 28. API Key Authentication         | v1.4      | 0/TBD          | Not started | -          |
 | 29. Audit Logging                  | v1.4      | 0/TBD          | Not started | -          |
 | 30. Admin Backoffice               | v1.4      | 0/TBD          | Not started | -          |
