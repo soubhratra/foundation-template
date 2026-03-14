@@ -29,9 +29,9 @@ Requirements for the B2B Module milestone. Each maps to a roadmap phase.
 
 ### API Keys
 
-- [ ] **AKEY-01**: User can create/revoke API keys with scopes; raw key shown once at creation; prefix + SHA-256 hash stored only; `RequireScope` permission class enforces scope per endpoint
-- [ ] **AKEY-02**: API key requests are rate-limited per key via `django-ratelimit`; `X-RateLimit-*` response headers returned
-- [ ] **AKEY-03**: System tracks `last_used_at` and `usage_count` on each API key, updated on every authenticated request
+- [x] **AKEY-01**: User can create/revoke API keys with scopes; raw key shown once at creation; prefix + SHA-256 hash stored only; `RequireScope` permission class enforces scope per endpoint
+- [x] **AKEY-02**: API key requests are rate-limited per key via `django-ratelimit`; `X-RateLimit-*` response headers returned
+- [x] **AKEY-03**: System tracks `last_used_at` and `usage_count` on each API key, updated on every authenticated request
 
 ### Audit Logging
 
@@ -84,9 +84,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | HOOK-02     | Phase 27 | Complete |
 | HOOK-03     | Phase 27 | Complete |
 | HOOK-04     | Phase 27 | Complete |
-| AKEY-01     | Phase 33 | Pending  |
-| AKEY-02     | Phase 33 | Pending  |
-| AKEY-03     | Phase 33 | Pending  |
+| AKEY-01     | Phase 33 | Complete |
+| AKEY-02     | Phase 33 | Complete |
+| AKEY-03     | Phase 33 | Complete |
 | AUDIT-01    | Phase 34 | Pending  |
 | AUDIT-02    | Phase 29 | Complete |
 | ADMIN-01    | Phase 30 | Complete |
