@@ -1,6 +1,6 @@
 from typing import Any
 
-from django.http import HttpRequest
+from django.http import Http404, HttpRequest
 from ninja_extra import ControllerBase, api_controller, route
 from ninja_extra.permissions import IsAuthenticated
 
@@ -24,14 +24,28 @@ class APIKeyController(ControllerBase):
     @route.post("/", response={201: APIKeyCreateOut}, url_name="api_key_create")
     def create_key(self, request: HttpRequest, body: APIKeyIn) -> Any:
         """Create a new API key. Raw key returned ONCE — copy and store immediately."""
+        org = None
+        if body.org_slug:
+            from django.core.exceptions import PermissionDenied
+
+            from apps.orgs.models import Membership, Organization
+
+            try:
+                org = Organization.objects.get(slug=body.org_slug)
+            except Organization.DoesNotExist:
+                raise Http404 from None
+            if not Membership.objects.filter(org=org, user=request.user).exists():
+                raise PermissionDenied()
         api_key, raw_key = APIKeyService.create(
             user=request.user,
             name=body.name,
             scopes=body.scopes,
+            org=org,
         )
         return 201, {
             "id": str(api_key.id),
             "name": api_key.name,
+            "org_slug": org.slug if org else None,
             "scopes": api_key.scopes,
             "prefix": api_key.prefix,
             "is_active": api_key.is_active,
@@ -48,6 +62,7 @@ class APIKeyController(ControllerBase):
             APIKeyOut(
                 id=str(k.id),
                 name=k.name,
+                org_slug=k.org.slug if k.org_id else None,
                 scopes=k.scopes,
                 prefix=k.prefix,
                 is_active=k.is_active,

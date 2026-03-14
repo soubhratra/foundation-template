@@ -9,6 +9,7 @@ class APIKeyIn(Schema):
     """Request body for POST /me/api-keys/."""
 
     name: str = ""
+    org_slug: str | None = None
     scopes: list[str]
 
     @field_validator("scopes")
@@ -31,6 +32,7 @@ class APIKeyCreateOut(Schema):
     scopes: list[str]
     prefix: str  # e.g. "ft_a1b2c3d4" — human-visible identifier in list views
     is_active: bool
+    org_slug: str | None
     created_at: datetime
     key: str  # Raw key — COPY AND STORE IMMEDIATELY; never shown again
 
@@ -43,6 +45,7 @@ class APIKeyOut(Schema):
     scopes: list[str]
     prefix: str
     is_active: bool
+    org_slug: str | None
     last_used_at: datetime | None
     usage_count: int
     created_at: datetime

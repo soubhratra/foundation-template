@@ -20,6 +20,13 @@ class APIKey(models.Model):
         on_delete=models.CASCADE,
         related_name="api_keys",
     )
+    org = models.ForeignKey(
+        "orgs.Organization",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="api_keys",
+    )
     prefix = models.CharField(max_length=32, unique=True)
     key_hash = models.CharField(max_length=64)  # SHA-256 hex — 64 chars
     scopes = models.JSONField(default=list)

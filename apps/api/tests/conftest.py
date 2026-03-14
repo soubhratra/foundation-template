@@ -42,6 +42,15 @@ sys.modules.setdefault("nplusone.ext", _synthetic_ext)
 sys.modules["nplusone.ext.pytest"] = _synthetic_pytest
 
 
+_NPLUSONE_WHITELIST = [
+    # APIKey.org is eagerly loaded via select_related("org") in list_for_user()
+    # to prevent N+1 queries when serializing org_slug. Tests that use keys
+    # without an org assignment correctly don't touch the org field — this is
+    # not an N+1, the eager load is correct for production paths with org keys.
+    {"label": "unused_eager_load", "model": "APIKey", "field": "org"},
+]
+
+
 @pytest.fixture(autouse=True)
 def _nplusone_guard(request):
     """Autouse fixture: raise NPlusOneError on N+1 queries in all tests.
@@ -54,7 +63,7 @@ def _nplusone_guard(request):
         yield
         return
 
-    with Profiler():
+    with Profiler(whitelist=_NPLUSONE_WHITELIST):
         yield
 
 
