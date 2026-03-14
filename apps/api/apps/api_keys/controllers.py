@@ -4,7 +4,8 @@ from django.http import HttpRequest
 from ninja_extra import ControllerBase, api_controller, route
 from ninja_extra.permissions import IsAuthenticated
 
-from apps.api_keys.schemas import APIKeyCreateOut, APIKeyIn, APIKeyOut
+from apps.api_keys.auth import ApiKeyAuth, RequireScope
+from apps.api_keys.schemas import APIKeyCreateOut, APIKeyIn, APIKeyOut, PingOut
 from apps.api_keys.services import APIKeyService
 
 
@@ -57,6 +58,25 @@ class APIKeyController(ControllerBase):
             for k in result["results"]
         ]
         return 200, result
+
+    @route.get(
+        "/ping/",
+        auth=[ApiKeyAuth()],
+        permissions=[IsAuthenticated, RequireScope("read")],
+        response={200: PingOut},
+        url_name="api_key_ping",
+    )
+    def ping(self, request: HttpRequest) -> Any:
+        """Verify the API key is valid and has read scope.
+
+        Returns {"status": "ok"} when the full chain passes:
+        ApiKeyAuth (token lookup + usage tracking) -> RequireScope (scope check) ->
+        ApiKeyRateLimitMiddleware (rate limit + X-RateLimit-* headers).
+
+        This endpoint stays in every product built from the template — it is a
+        standard developer ergonomics affordance for verifying a key is functional.
+        """
+        return 200, {"status": "ok"}
 
     @route.delete("/{key_id}/", response={204: None}, url_name="api_key_revoke")
     def revoke_key(self, request: HttpRequest, key_id: str) -> Any:

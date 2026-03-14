@@ -39,7 +39,9 @@ class TestApiKeyPingEndpoint:
         from django.contrib.auth import get_user_model
 
         User = get_user_model()
-        user = User.objects.create_user(email="scopetest@example.com", password="x")
+        user = User.objects.create_user(
+            username="scopetest", email="scopetest@example.com", password="x"
+        )
         raw_key, prefix, key_hash = APIKey.generate_key()
         key = APIKey.objects.create(
             user=user,

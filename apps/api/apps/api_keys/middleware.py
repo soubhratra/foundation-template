@@ -34,16 +34,52 @@ class ApiKeyRateLimitMiddleware:
         self.get_response = get_response
 
     def __call__(self, request: HttpRequest) -> HttpResponse:
+        # Check for API key BEFORE calling the view (handles middleware-level attachment).
+        # If not set yet, call the view first — Django Ninja authentication sets
+        # request.api_key inside the view dispatch cycle — then check again after.
+        api_key = getattr(request, "api_key", None)
+        if api_key is not None:
+            return self._apply_rate_limit(request, api_key)
+
+        # Call the view — authentication happens here (sets request.api_key on success)
+        view_response = self.get_response(request)
+
+        # Check again after the view — api_key may now be set by ApiKeyAuth.authenticate()
         api_key = getattr(request, "api_key", None)
         if api_key is None:
-            # Session-authenticated request — no rate limit for API key middleware
-            return self.get_response(request)
+            # Session-authenticated or unauthenticated request — no rate limit headers
+            return view_response
 
+        # Key was authenticated during view dispatch; enforce rate limit and inject headers.
+        # increment=True counts this request and enforces the limit.
+        # If exceeded, replace the view response with a 429.
         rate: str = getattr(settings, "API_KEY_RATE_LIMIT", "1000/h")
         usage = get_usage(
             request,
-            group="api_key",  # Required — raises ImproperlyConfigured if absent
-            key=lambda g, r: api_key.prefix,  # Callable closure — string would fail
+            group="api_key",
+            key=lambda g, r: api_key.prefix,
+            rate=rate,
+            increment=True,
+        )
+
+        if usage and usage["should_limit"]:
+            from apps.core.ratelimit import ratelimited_error
+
+            response = ratelimited_error(request)
+            self._inject_headers(response, usage, rate)
+            return response
+
+        if usage:
+            self._inject_headers(view_response, usage, rate)
+        return view_response
+
+    def _apply_rate_limit(self, request: HttpRequest, api_key) -> HttpResponse:  # type: ignore[type-arg]
+        """Apply rate limiting for a pre-authenticated request (api_key already on request)."""
+        rate: str = getattr(settings, "API_KEY_RATE_LIMIT", "1000/h")
+        usage = get_usage(
+            request,
+            group="api_key",
+            key=lambda g, r: api_key.prefix,
             rate=rate,
             increment=True,  # Enforce limit (counts this request)
         )
