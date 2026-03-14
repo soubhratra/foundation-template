@@ -1,5 +1,32 @@
 # Milestones
 
+## v1.4 B2B Module (Shipped: 2026-03-14)
+
+**Phases completed:** 9 phases (26–34), 29 plans | **Requirements:** 19/19
+**Timeline:** 2026-03-13 → 2026-03-14 (2 days) | **Verifications:** Phase 26 (15/15) + Phase 27 (32/32) + Phase 28 (30/30) + Phase 29 (16/16) + Phase 30 (19/19 auto) + Phase 31 (2/2 TTY approved) + Phase 32 (20/20) + Phase 33 (38/38) + Phase 34 (64/64) = 236/236 truths
+
+**Key accomplishments:**
+
+1. `Organization` model with membership/roles (owner/admin/member), email invitation flow (72h token), ownership transfer; `IsOrgMember`/`IsOrgAdmin` Ninja permission classes; `OrgCustomer` for per-org Stripe billing; `has_org_feature(user, org, key)` with org-member cache invalidation on subscription update; `--with b2b` scaffolder flag (opt-in)
+2. Outbound webhook registry — `WebhookEndpoint` CRUD + HMAC-SHA256 signed delivery via Celery (7-retry exponential backoff); circuit breaker auto-disables endpoint after N consecutive failures + emails org admin; `fire_webhook_event()` wired to user.created, org.member_added, subscription.updated event sites; delivery history + manual retry API
+3. `APIKey` model — scoped keys with SHA-256 hash storage (raw key shown once); `ApiKeyAuth` Ninja auth backend + `RequireScope` permission class; `ApiKeyRateLimitMiddleware` with `X-RateLimit-*` response headers; `last_used_at`/`usage_count` tracking; `/me/api-keys/ping` demonstrator endpoint activating full auth chain
+4. Audit logging via `django-pghistory` — `@track()` triggers on Organization, Membership, APIKey, WebhookEndpoint; `AuditContextMiddleware` attaches `user_id` + `org_id` automatically; org-scoped cursor-paginated `GET /api/v1/org/{slug}/audit-log`; impersonation entries present but `impersonator` field excluded from org-level queries
+5. `django-unfold` theme across all domain ModelAdmins; `django-hijack` staff impersonation with persistent banner; `ImpersonationEvent` model + hijack signals → audit log with `impersonator` FK; `OrgCustomerAdmin` in unfold sidebar for per-org billing inspection
+6. Full B2B scaffolder integration — `B2B_START`/`B2B_END` markers throughout; `removeB2BModule()` CLI strips module cleanly; `manage.py check` verified post-removal; pytest test in CI suite confirms clean removal on every push
+
+**Known Tech Debt:**
+
+- `_resolve_org_plan_id()` stub always returns None — per-org Subscription lookup deferred (BILL-02 structurally present but non-functional until Subscription is linked to OrgCustomer)
+- `IsOrgAdmin` on transfer-ownership endpoint (should be IsOwner — admin can transfer without owner consent)
+- API key revoke route uses `{key_id}` UUID (spec says `{prefix}`) — spec divergence deferred
+- No composite DB index on `(org_id, pgh_created_at, pgh_id)` for audit log cursor pagination
+- 4 browser verification items for Admin Backoffice (Unfold theme, hijack button/banner/redirect) — automated tests pass; requires live dev server
+- Phase 34 VALIDATION.md in draft state (run `/gsd:validate-phase 34` to close formality)
+
+**Archive:** `.planning/milestones/v1.4-ROADMAP.md` | `.planning/milestones/v1.4-REQUIREMENTS.md`
+
+---
+
 ## v1.3 SaaS Functional Baseline (Shipped: 2026-03-13)
 
 **Phases completed:** 7 phases, 23 plans | **Phases:** 19–25
