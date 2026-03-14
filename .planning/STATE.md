@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-03-13)
 Phase: 26 of 31 (Organization Model + Per-Org Billing)
 Plan: — (not yet planned)
 Status: Ready to plan
-Last activity: 2026-03-13 — v1.4 roadmap created; all 19 requirements mapped across Phases 26–31
+Last activity: 2026-03-14 - Completed quick task 2: Fix HOOK-04 circuit breaker email: change template_name to 'webhooks/endpoint_disabled.html' in apps/api/apps/webhooks/tasks.py \_handle_terminal_failure()
 
 Progress: [░░░░░░░░░░] 0% (v1.4 IN PROGRESS) | 6 phases pending
 
@@ -161,6 +161,12 @@ _Updated after each plan completion_
 ### Pending Todos
 
 None yet.
+
+### Quick Tasks Completed
+
+| #   | Description                                                                                                                                                 | Date       | Commit  | Directory                                                                                         |
+| --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- | ------- | ------------------------------------------------------------------------------------------------- |
+| 2   | Fix HOOK-04 circuit breaker email: change template_name to 'webhooks/endpoint_disabled.html' in apps/api/apps/webhooks/tasks.py \_handle_terminal_failure() | 2026-03-14 | 60d3182 | [2-fix-hook-04-circuit-breaker-email-change](./quick/2-fix-hook-04-circuit-breaker-email-change/) |
 
 ### Blockers/Concerns
 
