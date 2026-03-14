@@ -372,8 +372,8 @@ Plans:
 
 Plans:
 
-- [ ] 33-01-PLAN.md — Add `GET /api/v1/api-keys/me/ping` demo endpoint with `auth=[ApiKeyAuth()]` + `RequireScope("api:read")` + update existing api_keys controller
-- [ ] 33-02-PLAN.md — Integration tests verifying full chain: auth → scope → rate limit → tracking all activate
+- [ ] 33-01-PLAN.md — Wave 0: RED integration test stubs (test_ping.py — 8 cases covering AKEY-01, AKEY-02, AKEY-03)
+- [ ] 33-02-PLAN.md — Wave 1: PingOut schema + ping route on APIKeyController — turns all tests GREEN
 
 ### Phase 34: Admin + Audit Context Fixes
 
