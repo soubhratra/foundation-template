@@ -189,7 +189,7 @@ def _handle_terminal_failure(
         for membership in admin_memberships:
             send_email(
                 to=membership.user.email,
-                template_name="webhooks/endpoint_disabled",
+                template_name="webhooks/endpoint_disabled.html",
                 context={
                     "endpoint_url": endpoint.url,
                     "endpoint_name": endpoint.name or endpoint.url,

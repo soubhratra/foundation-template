@@ -236,7 +236,7 @@ def test_circuit_breaker_sends_email(endpoint, org_admin):
     template_arg = call_kwargs.kwargs.get("template_name") or (
         call_kwargs.args[1] if len(call_kwargs.args) > 1 else None
     )
-    assert template_arg == "webhooks/endpoint_disabled"
+    assert template_arg == "webhooks/endpoint_disabled.html"
 
 
 @pytest.mark.django_db(transaction=True)
