@@ -54,3 +54,13 @@ def revoked_api_key(db, api_user):
     )
     key._raw_key = raw_key
     return key
+
+
+@pytest.fixture
+def org_for_apikey(db, api_user):
+    """An Organization where api_user is a member — for org-scoped key tests."""
+    from apps.orgs.models import Membership, Organization
+
+    org = Organization.objects.create(name="API Key Org", slug="api-key-org", owner=api_user)
+    Membership.objects.create(user=api_user, org=org, role="admin")
+    return org

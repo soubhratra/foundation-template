@@ -90,3 +90,70 @@ class TestAPIKeyController:
             record = results[0]
             assert "usage_count" in record
             assert "last_used_at" in record
+
+    def test_create_key_with_org_slug(self, client, api_user, org_for_apikey):
+        """POST /me/api-keys/ with org_slug returns 201 with org_slug in response (AUDIT-01)."""
+        self._login(client, api_user)
+        response = client.post(
+            "/api/v1/me/api-keys/",
+            data={"name": "Org Key", "scopes": ["read"], "org_slug": org_for_apikey.slug},
+            content_type="application/json",
+        )
+        assert response.status_code == 201
+        data = response.json()
+        assert data.get("org_slug") == org_for_apikey.slug
+
+    def test_create_key_event_in_audit_log(self, client, api_user, org_for_apikey):
+        """APIKey create event appears in org audit log when org_slug provided (AUDIT-01)."""
+        from apps.audit.selectors import get_audit_log_page
+
+        self._login(client, api_user)
+        client.post(
+            "/api/v1/me/api-keys/",
+            data={"name": "Audit Key", "scopes": ["read"], "org_slug": org_for_apikey.slug},
+            content_type="application/json",
+        )
+        items, _ = get_audit_log_page(org=org_for_apikey)
+        actions = [item.action for item in items]
+        assert "api_key.created" in actions, f"Expected api_key.created in audit log; got {actions}"
+
+    def test_revoke_key_event_in_audit_log(self, client, api_user, org_for_apikey):
+        """APIKey revoke event appears in org audit log (AUDIT-01)."""
+        # Create key directly with org association so org_id is in context
+        import pghistory
+
+        from apps.api_keys.models import APIKey
+        from apps.audit.selectors import get_audit_log_page
+
+        raw_key, stored_prefix, key_hash = APIKey.generate_key()
+        with pghistory.context(user=api_user.pk, org_id=str(org_for_apikey.id)):
+            key = APIKey.objects.create(
+                user=api_user,
+                org=org_for_apikey,
+                prefix=stored_prefix,
+                key_hash=key_hash,
+                scopes=["read"],
+                name="Revoke Test",
+                is_active=True,
+            )
+
+        self._login(client, api_user)
+        response = client.delete(f"/api/v1/me/api-keys/{key.id}/")
+        assert response.status_code == 204
+
+        items, _ = get_audit_log_page(org=org_for_apikey)
+        actions = [item.action for item in items]
+        assert "api_key.updated" in actions, f"Expected api_key.updated in audit log; got {actions}"
+
+    def test_create_key_without_org_slug_still_works(self, client, api_user):
+        """POST /me/api-keys/ without org_slug returns 201 with org_slug=null (AUDIT-01)."""
+        self._login(client, api_user)
+        response = client.post(
+            "/api/v1/me/api-keys/",
+            data={"name": "Personal Key", "scopes": ["read"]},
+            content_type="application/json",
+        )
+        assert response.status_code == 201
+        data = response.json()
+        assert "org_slug" in data
+        assert data["org_slug"] is None
