@@ -17,7 +17,7 @@ Requirements for the B2B Module milestone. Each maps to a roadmap phase.
 
 ### Per-Org Billing
 
-- [ ] **BILL-01**: System creates `OrgCustomer` (linked to `Organization`) for per-org Stripe billing, parallel to existing user `Customer` model
+- [x] **BILL-01**: System creates `OrgCustomer` (linked to `Organization`) for per-org Stripe billing, parallel to existing user `Customer` model
 - [x] **BILL-02**: `_resolve_plan_id` checks org plan before personal plan; entitlement cache invalidated for all org members on subscription update; `has_org_feature()` utility available
 
 ### Outbound Webhooks
@@ -35,7 +35,7 @@ Requirements for the B2B Module milestone. Each maps to a roadmap phase.
 
 ### Audit Logging
 
-- [ ] **AUDIT-01**: System records changes to `Organization`, `Membership`, `APIKey`, `WebhookEndpoint` via pghistory triggers; `AuditContextMiddleware` attaches user and org context automatically
+- [x] **AUDIT-01**: System records changes to `Organization`, `Membership`, `APIKey`, `WebhookEndpoint` via pghistory triggers; `AuditContextMiddleware` attaches user and org context automatically
 - [x] **AUDIT-02**: Org owner and admins can query paginated audit log filtered by actor/date/action (`GET /api/v1/org/{slug}/audit-log`); impersonation entries not exposed to org admins
 
 ### Admin Backoffice
@@ -78,7 +78,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ORG-03      | Phase 26 | Complete |
 | ORG-04      | Phase 26 | Complete |
 | ORG-05      | Phase 26 | Complete |
-| BILL-01     | Phase 34 | Pending  |
+| BILL-01     | Phase 34 | Complete |
 | BILL-02     | Phase 26 | Complete |
 | HOOK-01     | Phase 32 | Complete |
 | HOOK-02     | Phase 27 | Complete |
@@ -87,7 +87,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | AKEY-01     | Phase 33 | Complete |
 | AKEY-02     | Phase 33 | Complete |
 | AKEY-03     | Phase 33 | Complete |
-| AUDIT-01    | Phase 34 | Pending  |
+| AUDIT-01    | Phase 34 | Complete |
 | AUDIT-02    | Phase 29 | Complete |
 | ADMIN-01    | Phase 30 | Complete |
 | ADMIN-02    | Phase 30 | Complete |

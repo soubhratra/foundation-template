@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: B2B Module
 status: planning
-stopped_at: Completed 34-01-PLAN.md
-last_updated: "2026-03-14T01:06:49.452Z"
+stopped_at: Completed 34-02-PLAN.md
+last_updated: "2026-03-14T01:31:52.502Z"
 last_activity: 2026-03-13 — v1.4 roadmap created; all 19 requirements mapped across Phases 26–31
 progress:
   total_phases: 15
-  completed_phases: 14
+  completed_phases: 15
   total_plans: 48
-  completed_plans: 47
+  completed_plans: 48
   percent: 0
 ---
 
@@ -75,6 +75,7 @@ _Updated after each plan completion_
 | Phase 33-apikey-auth-example-endpoint P01 | 5 | 1 tasks | 1 files |
 | Phase 33-apikey-auth-example-endpoint P02 | 10 | 2 tasks | 4 files |
 | Phase 34-admin-audit-context-fixes P01 | 12 | 2 tasks | 4 files |
+| Phase 34-admin-audit-context-fixes P02 | 25 | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -153,6 +154,9 @@ _Updated after each plan completion_
 - [Phase 33-apikey-auth-example-endpoint]: ping route must be declared before /{key_id}/ in APIKeyController (static before parametric to avoid route shadowing)
 - [Phase 33-apikey-auth-example-endpoint]: ApiKeyRateLimitMiddleware post-auth path: request.api_key set by Ninja inside view dispatch, middleware must check after get_response() for integration tests
 - [Phase 34-admin-audit-context-fixes]: 34-01: OrgCustomerAdmin registered in apps/orgs/admin.py inside B2B markers with list_display=(org, stripe_customer_id, created_at); stripe_customer_id editable for staff corrections; Org Billing sidebar entry uses receipt icon (Material Symbols)
+- [Phase 34-admin-audit-context-fixes]: APIKey.org FK is nullable (SET_NULL) — personal keys (org=None) are a valid use case, not an error state
+- [Phase 34-admin-audit-context-fixes]: Service-layer audit_context() wrapping for /me/api-keys/ routes follows Phase 29 Celery task pattern — controllers own HTTP auth, services own domain mutations with audit context injection
+- [Phase 34-admin-audit-context-fixes]: nplusone Profiler whitelist for APIKey.org: select_related is correct for production paths with org keys; false positive only fires in tests using personal-key fixtures (org_id=NULL, field never touched)
 
 ### Pending Todos
 
@@ -166,6 +170,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-14T01:06:49.446Z
-Stopped at: Completed 34-01-PLAN.md
+Last session: 2026-03-14T01:31:52.497Z
+Stopped at: Completed 34-02-PLAN.md
 Resume file: None
