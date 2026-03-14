@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: B2B Module
 status: planning
-stopped_at: Phase 34 context gathered
-last_updated: "2026-03-14T00:42:54.225Z"
+stopped_at: Completed 34-01-PLAN.md
+last_updated: "2026-03-14T01:06:49.452Z"
 last_activity: 2026-03-13 — v1.4 roadmap created; all 19 requirements mapped across Phases 26–31
 progress:
   total_phases: 15
   completed_phases: 14
-  total_plans: 46
-  completed_plans: 46
+  total_plans: 48
+  completed_plans: 47
   percent: 0
 ---
 
@@ -74,6 +74,7 @@ _Updated after each plan completion_
 | Phase 32-webhook-wiring-invite-url P02 | 8 | 2 tasks | 2 files |
 | Phase 33-apikey-auth-example-endpoint P01 | 5 | 1 tasks | 1 files |
 | Phase 33-apikey-auth-example-endpoint P02 | 10 | 2 tasks | 4 files |
+| Phase 34-admin-audit-context-fixes P01 | 12 | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -151,6 +152,7 @@ _Updated after each plan completion_
 - [Phase 33-apikey-auth-example-endpoint]: 8 test methods (not 6 as stated in objective): includes test_invalid_key_returns_401 and test_no_auth_returns_401 as auth-failure sanity cases per done criteria
 - [Phase 33-apikey-auth-example-endpoint]: ping route must be declared before /{key_id}/ in APIKeyController (static before parametric to avoid route shadowing)
 - [Phase 33-apikey-auth-example-endpoint]: ApiKeyRateLimitMiddleware post-auth path: request.api_key set by Ninja inside view dispatch, middleware must check after get_response() for integration tests
+- [Phase 34-admin-audit-context-fixes]: 34-01: OrgCustomerAdmin registered in apps/orgs/admin.py inside B2B markers with list_display=(org, stripe_customer_id, created_at); stripe_customer_id editable for staff corrections; Org Billing sidebar entry uses receipt icon (Material Symbols)
 
 ### Pending Todos
 
@@ -164,6 +166,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-14T00:42:54.219Z
-Stopped at: Phase 34 context gathered
-Resume file: .planning/phases/34-admin-audit-context-fixes/34-CONTEXT.md
+Last session: 2026-03-14T01:06:49.446Z
+Stopped at: Completed 34-01-PLAN.md
+Resume file: None

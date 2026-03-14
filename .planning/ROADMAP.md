@@ -430,4 +430,4 @@ Plans:
 | 31. CLI Scaffolder Integration     | 3/3       | Complete       | 2026-03-13 | -          |
 | 32. Webhook Wiring + Invite URL    | 2/2       | Complete       | 2026-03-13 | -          |
 | 33. ApiKeyAuth Example Endpoint    | 2/2       | Complete       | 2026-03-14 | -          |
-| 34. Admin + Audit Context Fixes    | v1.4      | 0/2            | Pending    | -          |
+| 34. Admin + Audit Context Fixes    | 1/2       | In Progress    |            | -          |
