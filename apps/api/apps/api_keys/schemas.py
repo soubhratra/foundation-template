@@ -46,3 +46,9 @@ class APIKeyOut(Schema):
     last_used_at: datetime | None
     usage_count: int
     created_at: datetime
+
+
+class PingOut(Schema):
+    """Response for GET /me/api-keys/ping/ — confirms the key is valid and has read scope."""
+
+    status: str = "ok"
