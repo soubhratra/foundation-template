@@ -98,3 +98,28 @@ def test_impersonation_event_admin_is_readonly():
     assert admin_instance.has_add_permission(mock_request) is False
     assert admin_instance.has_change_permission(mock_request) is False
     assert admin_instance.has_delete_permission(mock_request) is False
+
+
+@pytest.mark.django_db
+def test_org_customer_admin_inherits_unfold():
+    """orgs.OrgCustomerAdmin must inherit from unfold.admin.ModelAdmin (BILL-01)."""
+    from unfold.admin import ModelAdmin as UnfoldModelAdmin
+
+    from apps.orgs.admin import OrgCustomerAdmin
+
+    assert issubclass(OrgCustomerAdmin, UnfoldModelAdmin), (
+        "OrgCustomerAdmin must inherit UnfoldModelAdmin"
+    )
+
+
+@pytest.mark.django_db
+def test_org_customer_admin_list_display():
+    """OrgCustomerAdmin must display org, stripe_customer_id, created_at columns (BILL-01)."""
+    from django.contrib.admin.sites import AdminSite
+
+    from apps.orgs.admin import OrgCustomerAdmin
+    from apps.orgs.models import OrgCustomer
+
+    site = AdminSite()
+    admin_instance = OrgCustomerAdmin(OrgCustomer, site)
+    assert admin_instance.list_display == ("org", "stripe_customer_id", "created_at")

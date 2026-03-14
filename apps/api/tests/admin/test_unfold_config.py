@@ -54,3 +54,15 @@ def test_unfold_sidebar_has_system_section():
     navigation = sidebar.get("navigation", [])
     titles = [s.get("title") for s in navigation]
     assert "System" in titles, f"System section missing. Found: {titles}"
+
+
+@pytest.mark.django_db
+def test_unfold_sidebar_has_org_billing_link():
+    """UNFOLD B2B section must include an Org Billing sidebar item (BILL-01)."""
+    sidebar = settings.UNFOLD.get("SIDEBAR", {})
+    navigation = sidebar.get("navigation", [])
+    b2b_sections = [s for s in navigation if s.get("title") == "B2B"]
+    assert len(b2b_sections) == 1, "Expected exactly one B2B section"
+    b2b_items = b2b_sections[0].get("items", [])
+    item_titles = {item["title"] for item in b2b_items}
+    assert "Org Billing" in item_titles, f"B2B section missing 'Org Billing'. Found: {item_titles}"
