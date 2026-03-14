@@ -1,10 +1,11 @@
 ---
 phase: 30
 slug: admin-backoffice
-status: draft
+status: complete
 nyquist_compliant: true
-wave_0_complete: false
+wave_0_complete: true
 created: 2026-03-13
+audited: 2026-03-13
 ---
 
 # Phase 30 — Validation Strategy
@@ -36,14 +37,14 @@ created: 2026-03-13
 
 ## Per-Task Verification Map
 
-| Task ID  | Plan | Wave | Requirement | Test Type   | Automated Command                                                                                                                                           | File Exists | Status     |
-| -------- | ---- | ---- | ----------- | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- | ---------- |
-| 30-01-01 | 01   | 0    | ADMIN-01    | unit        | `cd apps/api && python -m pytest tests/admin/test_admin_smoke.py -x -q`                                                                                     | ❌ W0       | ⬜ pending |
-| 30-01-02 | 01   | 0    | ADMIN-01    | unit        | `cd apps/api && python -m pytest tests/admin/test_unfold_config.py -x -q`                                                                                   | ❌ W0       | ⬜ pending |
-| 30-02-01 | 02   | 0    | ADMIN-02    | integration | `cd apps/api && python -m pytest tests/admin/test_hijack.py -x -q`                                                                                          | ❌ W0       | ⬜ pending |
-| 30-02-02 | 02   | 0    | ADMIN-02    | unit        | `cd apps/api && python -m pytest tests/admin/test_hijack.py::test_signal_start_writes_event tests/admin/test_hijack.py::test_signal_end_writes_event -x -q` | ❌ W0       | ⬜ pending |
-| 30-02-03 | 02   | 0    | ADMIN-02    | unit        | `cd apps/api && python -m pytest tests/audit/test_middleware.py::test_impersonator_context -x -q`                                                           | ❌ W0       | ⬜ pending |
-| 30-02-04 | 02   | 1    | ADMIN-02    | integration | `cd apps/api && python -m pytest tests/audit/test_controllers.py -x -q`                                                                                     | ✅          | ⬜ pending |
+| Task ID  | Plan | Wave | Requirement | Test Type   | Automated Command                                                                                                                                           | File Exists | Status   |
+| -------- | ---- | ---- | ----------- | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- | -------- |
+| 30-01-01 | 01   | 0    | ADMIN-01    | unit        | `cd apps/api && python -m pytest tests/admin/test_admin_smoke.py -x -q`                                                                                     | ✅          | ✅ green |
+| 30-01-02 | 01   | 0    | ADMIN-01    | unit        | `cd apps/api && python -m pytest tests/admin/test_unfold_config.py -x -q`                                                                                   | ✅          | ✅ green |
+| 30-02-01 | 02   | 0    | ADMIN-02    | integration | `cd apps/api && python -m pytest tests/admin/test_hijack.py -x -q`                                                                                          | ✅          | ✅ green |
+| 30-02-02 | 02   | 0    | ADMIN-02    | unit        | `cd apps/api && python -m pytest tests/admin/test_hijack.py::test_signal_start_writes_event tests/admin/test_hijack.py::test_signal_end_writes_event -x -q` | ✅          | ✅ green |
+| 30-02-03 | 02   | 0    | ADMIN-02    | unit        | `cd apps/api && python -m pytest tests/admin/test_hijack.py::test_impersonator_context_injected_during_hijack -x -q`                                        | ✅          | ✅ green |
+| 30-02-04 | 02   | 1    | ADMIN-02    | integration | `cd apps/api && python -m pytest tests/audit/test_controllers.py -x -q`                                                                                     | ✅          | ✅ green |
 
 _Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky_
 
@@ -51,13 +52,13 @@ _Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky_
 
 ## Wave 0 Requirements
 
-- [ ] `tests/admin/__init__.py` — create tests/admin package
-- [ ] `tests/admin/conftest.py` — staff_user, regular_user, superuser fixtures + admin client
-- [ ] `tests/admin/test_admin_smoke.py` — ADMIN-01: ModelAdmin subclass inheritance checks (UnfoldModelAdmin)
-- [ ] `tests/admin/test_unfold_config.py` — ADMIN-01: UNFOLD settings structure validation (sidebar sections)
-- [ ] `tests/admin/test_hijack.py` — ADMIN-02: permission tests (staff→regular ✓, staff→staff ✗, staff→superuser ✗) + signal tests (start/end events)
+- [x] `tests/admin/__init__.py` — create tests/admin package
+- [x] `tests/admin/conftest.py` — staff_user, regular_user, superuser fixtures + admin client
+- [x] `tests/admin/test_admin_smoke.py` — ADMIN-01: ModelAdmin subclass inheritance checks (UnfoldModelAdmin)
+- [x] `tests/admin/test_unfold_config.py` — ADMIN-01: UNFOLD settings structure validation (sidebar sections)
+- [x] `tests/admin/test_hijack.py` — ADMIN-02: permission tests (staff→regular ✓, staff→staff ✗, staff→superuser ✗) + signal tests (start/end events)
 
-_All Wave 0 files must be created BEFORE plan execution begins._
+_All Wave 0 files created and passing._
 
 ---
 
@@ -72,11 +73,22 @@ _All Wave 0 files must be created BEFORE plan execution begins._
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 30s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references
+- [x] No watch-mode flags
+- [x] Feedback latency < 30s
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** 2026-03-13
+
+---
+
+## Validation Audit 2026-03-13
+
+| Metric        | Count                                                                                   |
+| ------------- | --------------------------------------------------------------------------------------- |
+| Gaps found    | 1 (stale test reference for 30-02-03)                                                   |
+| Resolved      | 1 (test exists as `test_impersonator_context_injected_during_hijack` in test_hijack.py) |
+| Escalated     | 0                                                                                       |
+| Tests passing | 29                                                                                      |
