@@ -551,6 +551,11 @@ UNFOLD = {
                         "icon": "history",
                         "link": reverse_lazy("admin:audit_impersonationevent_changelist"),
                     },
+                    {
+                        "title": "Org Billing",
+                        "icon": "receipt",
+                        "link": reverse_lazy("admin:orgs_orgcustomer_changelist"),
+                    },
                 ],
             },
             # B2B_END

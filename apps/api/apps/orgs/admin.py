@@ -4,7 +4,7 @@
 from django.contrib import admin
 from unfold.admin import ModelAdmin
 
-from .models import Membership, Organization
+from .models import Membership, Organization, OrgCustomer
 
 
 @admin.register(Organization)
@@ -21,6 +21,13 @@ class MembershipAdmin(ModelAdmin):
     list_filter = ("role",)
     search_fields = ("user__email", "org__name", "org__slug")
     readonly_fields = ("created_at",)
+
+
+@admin.register(OrgCustomer)
+class OrgCustomerAdmin(ModelAdmin):
+    list_display = ("org", "stripe_customer_id", "created_at")
+    search_fields = ("org__name", "org__slug", "stripe_customer_id")
+    readonly_fields = ("created_at", "updated_at")
 
 
 # B2B_END
