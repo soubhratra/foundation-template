@@ -78,7 +78,7 @@ Full archive: `.planning/milestones/v1.3-ROADMAP.md`
 - [x] **Phase 30: Admin Backoffice** - django-unfold theme across all ModelAdmins, django-hijack impersonation wired to AuditLog (completed 2026-03-13)
 - [x] **Phase 31: CLI Scaffolder Integration** - `--with b2b` flag, B2B_START/B2B_END markers throughout, clean removal, `manage.py check` verified (completed 2026-03-13)
 - [x] **Phase 32: Webhook Wiring + Invitation URL Fix** - Wire `fire_webhook_event()` to production callers; fix `InvitationService` hardcoded URL (gap closure: HOOK-01, ORG-02) (completed 2026-03-13)
-- [ ] **Phase 33: ApiKeyAuth Example Endpoint** - Add demonstrator endpoint with `ApiKeyAuth` + `RequireScope` so auth chain activates in production (gap closure: AKEY-01, AKEY-02, AKEY-03)
+- [x] **Phase 33: ApiKeyAuth Example Endpoint** - Add demonstrator endpoint with `ApiKeyAuth` + `RequireScope` so auth chain activates in production (gap closure: AKEY-01, AKEY-02, AKEY-03) (completed 2026-03-14)
 - [ ] **Phase 34: Admin + Audit Context Fixes** - Register `OrgCustomerAdmin`; fix APIKey audit context injection (gap closure: BILL-01, AUDIT-01)
 
 ## Phase Details
@@ -429,5 +429,5 @@ Plans:
 | 30. Admin Backoffice               | 3/3       | Complete       | 2026-03-13 | -          |
 | 31. CLI Scaffolder Integration     | 3/3       | Complete       | 2026-03-13 | -          |
 | 32. Webhook Wiring + Invite URL    | 2/2       | Complete       | 2026-03-13 | -          |
-| 33. ApiKeyAuth Example Endpoint    | 1/2       | In Progress    |            | -          |
+| 33. ApiKeyAuth Example Endpoint    | 2/2       | Complete       | 2026-03-14 | -          |
 | 34. Admin + Audit Context Fixes    | v1.4      | 0/2            | Pending    | -          |
