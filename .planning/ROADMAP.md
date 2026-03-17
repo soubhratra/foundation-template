@@ -7,6 +7,7 @@
 - ✅ **v1.2 Observability & DevEx Hardening** — Phases 13–18 (shipped 2026-03-12)
 - ✅ **v1.3 SaaS Functional Baseline** — Phases 19–25 (shipped 2026-03-13)
 - ✅ **v1.4 B2B Module** — Phases 26–34 (shipped 2026-03-14)
+- 🚧 **v1.5 Automated Testing & Claude Automation** — Phases 35–38 (in progress)
 
 ## Phases
 
@@ -83,6 +84,15 @@ Full archive: `.planning/milestones/v1.3-ROADMAP.md`
 Full archive: `.planning/milestones/v1.4-ROADMAP.md`
 
 </details>
+
+### 🚧 v1.5 Automated Testing & Claude Automation (In Progress)
+
+**Milestone Goal:** Every feature in the template has automated API + E2E coverage runnable by Claude in two modes — a dev loop where Claude auto-fixes failures, and a CI mode that runs headlessly and produces structured reports tied to OpenSpec requirement IDs.
+
+- [ ] **Phase 35: Automation Scripts + Spec Traceability** — Shell runners, orchestrator, `check-req-coverage.py`, and `@pytest.mark.req()` markers retrofitted across all existing tests
+- [ ] **Phase 36: Web E2E — Core Flows** — Playwright tests for auth, settings (GDPR export button closes v1.3 audit gap), billing, and health probes; self-seeding fixtures
+- [ ] **Phase 37: Web E2E — B2B & Social Flows** — Playwright tests for social auth redirects, RBAC access control, org management, API key management, webhook management, and audit log
+- [ ] **Phase 38: CI Integration + Claude Automation Docs** — Nightly scheduled E2E GitHub Actions workflow, PR smoke job, FAILURES.md artifact upload, root + app-level CLAUDE.md documentation
 
 ## Phase Details
 
@@ -216,41 +226,105 @@ Plans:
 
 > Phase details for v1.4 (Phases 26–34) archived to `.planning/milestones/v1.4-ROADMAP.md`
 
+### Phase 35: Automation Scripts + Spec Traceability
+
+**Goal**: A developer (or Claude) can run one script to execute all tests and get a structured failure report, and `check-req-coverage.py` shows exactly which OpenSpec requirements have no test coverage across both pytest and Playwright suites
+**Depends on**: Phase 34 (v1.4 complete)
+**Requirements**: AUTO-01, AUTO-02, AUTO-03, AUTO-04, TRACE-01, TRACE-03
+**Success Criteria** (what must be TRUE):
+
+1. Running `scripts/run-api-tests.sh` executes the full pytest suite and writes a `test-results/FAILURES.md` containing every failed test name, the assertion that failed, and the `@pytest.mark.req()` IDs from each failing test
+2. Running `scripts/run-e2e-tests.sh` executes the Playwright suite against any target URL passed as an environment variable — the same script works unchanged in local dev and CI without conditional branches
+3. Running `scripts/run-all-tests.sh --mode=dev` produces `test-results/FAILURES.md` with a structured format that Claude can parse to identify which tests to fix and which requirements they cover
+4. Running `scripts/check-req-coverage.py` produces a table listing every v1.1–v1.4 requirement ID with status (covered / partial / uncovered) based on `@pytest.mark.req()` markers found across all test files
+5. Every existing pytest test function that exercises a specific feature has a `@pytest.mark.req("REQ-ID")` marker — `check-req-coverage.py` shows zero uncovered requirements for implemented features
+
+**Plans**: TBD
+
+### Phase 36: Web E2E — Core Flows
+
+**Goal**: Claude can run Playwright tests that exercise auth, settings (including the GDPR data export button that has no existing UI test), billing, and health probes against a running web app — tests create their own data and do not depend on pre-existing database state
+**Depends on**: Phase 35
+**Requirements**: E2E-01, E2E-02, E2E-03, E2E-04, TRACE-02
+**Success Criteria** (what must be TRUE):
+
+1. Running the E2E auth suite produces passing tests for: signup → dashboard redirect, login with valid credentials, login with invalid credentials showing an inline error, and logout clearing the session and redirecting to the login page
+2. Running the E2E settings suite produces a passing test that clicks the "Download my data" button and receives a JSON file download — this closes the v1.3 audit gap where `GET /api/v1/account/export` existed but had no frontend trigger
+3. Running the E2E billing suite produces passing tests that verify: plan cards render on the billing page, the upgrade CTA is present and links to Stripe, and the current plan badge is visible in the settings sidebar
+4. Running the E2E health probe suite produces passing tests that assert `GET /api/health/live`, `/api/health/ready`, and `/api/health/startup` each return HTTP 200 via direct API assertions (not browser navigation)
+5. Every Playwright test that covers a specific requirement has a `// @spec: REQ-ID` comment, and `check-req-coverage.py` counts these comments as coverage evidence
+
+**Plans**: TBD
+
+### Phase 37: Web E2E — B2B & Social Flows
+
+**Goal**: E2E tests exercise all B2B flows — org management, API keys, webhooks, and audit log — plus social auth redirect behavior, so that every v1.3 and v1.4 UI-facing feature has at least one browser-level test
+**Depends on**: Phase 36
+**Requirements**: E2E-05, E2E-06, E2E-07, E2E-08, E2E-09, E2E-10
+**Success Criteria** (what must be TRUE):
+
+1. Running the E2E social auth suite produces passing tests that verify: the Google OAuth button and GitHub OAuth button are present on the login page, and clicking either button triggers a redirect to the respective OAuth provider URL (no live credentials required)
+2. Running the E2E RBAC suite produces passing tests that verify: a regular user accessing an admin-only route receives a 403 response, and a user with the admin role can access that same route successfully
+3. Running the E2E org management suite produces passing tests that verify: creating an organization succeeds and the org appears in the user's org list, and the invite flow sends an invitation visible in the org member list as pending
+4. Running the E2E API key suite produces passing tests that verify: creating a key displays the raw key value exactly once on the screen, the key appears masked in the key list on refresh, and deleting a key removes it from the list
+5. Running the E2E webhook + audit log suite produces passing tests that verify: a registered webhook endpoint appears in the endpoint list, deleting it removes it, and an admin can view audit log entries that show actor identity, action type, and timestamp
+
+**Plans**: TBD
+
+### Phase 38: CI Integration + Claude Automation Docs
+
+**Goal**: Nightly GitHub Actions runs the full E2E suite unattended and creates a GitHub issue on failure; PR CI runs a smoke test on every pull request; CLAUDE.md in root and every app documents the two-mode testing pattern so every future project scaffolded from this template inherits the automation conventions automatically
+**Depends on**: Phase 37
+**Requirements**: CI-01, CI-02, CI-03, DOCS-01, DOCS-02, DOCS-03
+**Success Criteria** (what must be TRUE):
+
+1. A nightly GitHub Actions workflow at 2am UTC spins up Docker Compose, runs migrations, seeds test users, executes the full Playwright suite, tears down, and — on failure — automatically opens a GitHub issue with a link to the FAILURES.md artifact
+2. The existing `ci.yml` PR workflow includes an E2E smoke job that runs the auth flow and health probe tests against a Docker Compose environment and blocks merge on failure
+3. CI E2E failures produce a `FAILURES.md` artifact uploaded to GitHub Actions that contains structured failure information Claude can retrieve and act on to fix failures locally
+4. The root `CLAUDE.md` documents the dev auto-fix loop (`run-all-tests.sh --mode=dev` → Claude reads FAILURES.md → Claude fixes → repeat) and the CI report mode, with explicit instructions that all new feature tests must include `@pytest.mark.req()` or `// @spec:` markers before a phase can be marked complete
+5. `apps/api/CLAUDE.md` and `apps/web/CLAUDE.md` each document how to add tests for new features — including which fixture patterns to follow and the requirement that spec traceability markers are added before submitting work for verification
+
+**Plans**: TBD
+
 ## Progress
 
-| Phase                              | Milestone | Plans Complete | Status   | Completed  |
-| ---------------------------------- | --------- | -------------- | -------- | ---------- |
-| 1. Monorepo Foundation             | v1.0      | 4/4            | Complete | 2026-02-17 |
-| 2. API Core + Auth Backend         | v1.0      | 5/5            | Complete | 2026-02-17 |
-| 3. Shared Packages + Types         | v1.0      | 6/6            | Complete | 2026-02-17 |
-| 4. Web Application                 | v1.0      | 5/5            | Complete | 2026-02-17 |
-| 5. Mobile Application              | v1.0      | 4/4            | Complete | 2026-02-17 |
-| 6. AI Module                       | v1.0      | 5/5            | Complete | 2026-02-17 |
-| 7. DevEx + CI/CD                   | v1.0      | 4/4            | Complete | 2026-02-17 |
-| 8. CLI Scaffolder                  | v1.0      | 3/3            | Complete | 2026-02-17 |
-| 9. Billing Scaffold                | v1.1      | 3/3            | Complete | 2026-03-07 |
-| 10. Webhook Infra + Service        | v1.1      | 3/3            | Complete | 2026-03-08 |
-| 11. API Endpoints + Frontend       | v1.1      | 8/8            | Complete | 2026-03-10 |
-| 12. Invoice PDF + CLI              | v1.1      | 3/3            | Complete | 2026-03-11 |
-| 13. Structured Logging + Tracing   | v1.2      | 3/3            | Complete | 2026-03-11 |
-| 14. ObservabilityAdapter           | v1.2      | 4/4            | Complete | 2026-03-11 |
-| 15. Health Probes + Celery Infra   | v1.2      | 3/3            | Complete | 2026-03-11 |
-| 16. Security Hardening             | v1.2      | 3/3            | Complete | 2026-03-11 |
-| 17. Dev-Time Security Gates        | v1.2      | 3/3            | Complete | 2026-03-11 |
-| 18. Dev-Time Quality Gates         | v1.2      | 3/3            | Complete | 2026-03-11 |
-| 19. Transactional Email            | v1.3      | 4/4            | Complete | 2026-03-12 |
-| 20. Social Auth                    | v1.3      | 6/6            | Complete | 2026-03-12 |
-| 21. GDPR Baseline                  | v1.3      | 4/4            | Complete | 2026-03-12 |
-| 22. RBAC                           | v1.3      | 3/3            | Complete | 2026-03-12 |
-| 23. Feature Entitlements           | v1.3      | 3/3            | Complete | 2026-03-12 |
-| 24. Social Auth OAuth Callback     | v1.3      | 2/2            | Complete | 2026-03-12 |
-| 25. GDPR Export plan_id Accuracy   | v1.3      | 1/1            | Complete | 2026-03-12 |
-| 26. Organization + Per-Org Billing | v1.4      | 6/6            | Complete | 2026-03-13 |
-| 27. Outbound Webhooks              | v1.4      | 4/4            | Complete | 2026-03-13 |
-| 28. API Key Authentication         | v1.4      | 4/4            | Complete | 2026-03-13 |
-| 29. Audit Logging                  | v1.4      | 3/3            | Complete | 2026-03-13 |
-| 30. Admin Backoffice               | v1.4      | 3/3            | Complete | 2026-03-13 |
-| 31. CLI Scaffolder Integration     | v1.4      | 3/3            | Complete | 2026-03-13 |
-| 32. Webhook Wiring + Invite URL    | v1.4      | 2/2            | Complete | 2026-03-13 |
-| 33. ApiKeyAuth Example Endpoint    | v1.4      | 2/2            | Complete | 2026-03-14 |
-| 34. Admin + Audit Context Fixes    | v1.4      | 2/2            | Complete | 2026-03-14 |
+| Phase                              | Milestone | Plans Complete | Status      | Completed  |
+| ---------------------------------- | --------- | -------------- | ----------- | ---------- |
+| 1. Monorepo Foundation             | v1.0      | 4/4            | Complete    | 2026-02-17 |
+| 2. API Core + Auth Backend         | v1.0      | 5/5            | Complete    | 2026-02-17 |
+| 3. Shared Packages + Types         | v1.0      | 6/6            | Complete    | 2026-02-17 |
+| 4. Web Application                 | v1.0      | 5/5            | Complete    | 2026-02-17 |
+| 5. Mobile Application              | v1.0      | 4/4            | Complete    | 2026-02-17 |
+| 6. AI Module                       | v1.0      | 5/5            | Complete    | 2026-02-17 |
+| 7. DevEx + CI/CD                   | v1.0      | 4/4            | Complete    | 2026-02-17 |
+| 8. CLI Scaffolder                  | v1.0      | 3/3            | Complete    | 2026-02-17 |
+| 9. Billing Scaffold                | v1.1      | 3/3            | Complete    | 2026-03-07 |
+| 10. Webhook Infra + Service        | v1.1      | 3/3            | Complete    | 2026-03-08 |
+| 11. API Endpoints + Frontend       | v1.1      | 8/8            | Complete    | 2026-03-10 |
+| 12. Invoice PDF + CLI              | v1.1      | 3/3            | Complete    | 2026-03-11 |
+| 13. Structured Logging + Tracing   | v1.2      | 3/3            | Complete    | 2026-03-11 |
+| 14. ObservabilityAdapter           | v1.2      | 4/4            | Complete    | 2026-03-11 |
+| 15. Health Probes + Celery Infra   | v1.2      | 3/3            | Complete    | 2026-03-11 |
+| 16. Security Hardening             | v1.2      | 3/3            | Complete    | 2026-03-11 |
+| 17. Dev-Time Security Gates        | v1.2      | 3/3            | Complete    | 2026-03-11 |
+| 18. Dev-Time Quality Gates         | v1.2      | 3/3            | Complete    | 2026-03-11 |
+| 19. Transactional Email            | v1.3      | 4/4            | Complete    | 2026-03-12 |
+| 20. Social Auth                    | v1.3      | 6/6            | Complete    | 2026-03-12 |
+| 21. GDPR Baseline                  | v1.3      | 4/4            | Complete    | 2026-03-12 |
+| 22. RBAC                           | v1.3      | 3/3            | Complete    | 2026-03-12 |
+| 23. Feature Entitlements           | v1.3      | 3/3            | Complete    | 2026-03-12 |
+| 24. Social Auth OAuth Callback     | v1.3      | 2/2            | Complete    | 2026-03-12 |
+| 25. GDPR Export plan_id Accuracy   | v1.3      | 1/1            | Complete    | 2026-03-12 |
+| 26. Organization + Per-Org Billing | v1.4      | 6/6            | Complete    | 2026-03-13 |
+| 27. Outbound Webhooks              | v1.4      | 4/4            | Complete    | 2026-03-13 |
+| 28. API Key Authentication         | v1.4      | 4/4            | Complete    | 2026-03-13 |
+| 29. Audit Logging                  | v1.4      | 3/3            | Complete    | 2026-03-13 |
+| 30. Admin Backoffice               | v1.4      | 3/3            | Complete    | 2026-03-13 |
+| 31. CLI Scaffolder Integration     | v1.4      | 3/3            | Complete    | 2026-03-13 |
+| 32. Webhook Wiring + Invite URL    | v1.4      | 2/2            | Complete    | 2026-03-13 |
+| 33. ApiKeyAuth Example Endpoint    | v1.4      | 2/2            | Complete    | 2026-03-14 |
+| 34. Admin + Audit Context Fixes    | v1.4      | 2/2            | Complete    | 2026-03-14 |
+| 35. Automation Scripts + Tracing   | v1.5      | 0/TBD          | Not started | -          |
+| 36. Web E2E — Core Flows           | v1.5      | 0/TBD          | Not started | -          |
+| 37. Web E2E — B2B & Social Flows   | v1.5      | 0/TBD          | Not started | -          |
+| 38. CI Integration + Claude Docs   | v1.5      | 0/TBD          | Not started | -          |

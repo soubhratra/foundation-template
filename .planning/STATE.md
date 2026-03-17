@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Automated Testing & Claude Automation
-status: defining_requirements
-stopped_at: requirements defined, roadmap pending
+status: roadmap_ready
+stopped_at: roadmap written, ready to plan Phase 35
 last_updated: "2026-03-17T00:00:00.000Z"
-last_activity: "2026-03-17 - Started milestone v1.5 — 23 requirements defined across 4 phases (35–38)"
+last_activity: "2026-03-17 - Roadmap created for v1.5 — 4 phases (35–38), 23 requirements mapped, 100% coverage"
 progress:
   total_phases: 4
   completed_phases: 0
@@ -25,18 +25,18 @@ See: .planning/PROJECT.md (updated 2026-03-17)
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 35 (not started)
 Plan: —
-Status: Defining requirements → roadmap next
-Last activity: 2026-03-17 - Milestone v1.5 started — 23 requirements defined
+Status: Roadmap written — ready to plan Phase 35
+Last activity: 2026-03-17 - Roadmap created for v1.5
 
-Progress: [██████████] 100% (v1.4 SHIPPED)
+Progress: [----------] 0% (v1.5 in progress)
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed (v1.4): 0
+- Total plans completed (v1.5): 0
 - Average duration: — min
 - Total execution time: — hours
 
@@ -170,12 +170,12 @@ None yet.
 
 ### Blockers/Concerns
 
-- Phase 30 (Admin Backoffice): Verify Django version in `apps/api/pyproject.toml` at plan time — `django-hijack` 3.7.6 lists Django 5.2 as supported; if on 5.0/5.1 plan a Django 5.2 upgrade as Phase 30 prerequisite
-- Phase 30 (Admin Backoffice): Run unfold + hijack smoke test early — impersonate a user, verify banner renders inside unfold-themed admin and AuditLog.impersonator is populated; fall back to standalone hijack banner if incompatibility found
-- Phase 28 (API Keys): Decide WebhookEndpoint.secret storage approach at plan time — plaintext write-only serializer (acceptable for MVP) vs. HMAC-hashed secret (more secure but prevents future UI display)
+- Phase 35: E2E framework choice — confirm Playwright is already in `apps/web/package.json` as a devDependency before planning; if absent, add as first task
+- Phase 36: GDPR export button — `GET /api/v1/account/export` exists but has no frontend trigger (documented v1.3 tech debt); Phase 36 E2E-02 test will add the button as a prerequisite before the test can pass
+- Phase 37: Social auth E2E — real OAuth credentials are out of scope; tests assert redirect URL matches provider domain, not that login completes
 
 ## Session Continuity
 
-Last session: 2026-03-14T01:31:52.497Z
-Stopped at: Completed 34-02-PLAN.md
+Last session: 2026-03-17T00:00:00.000Z
+Stopped at: Roadmap written for v1.5 — ready to plan Phase 35
 Resume file: None
