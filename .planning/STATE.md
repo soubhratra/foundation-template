@@ -1,16 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.4
-milestone_name: B2B Module
-status: milestone_complete
-stopped_at: v1.4 milestone archived
-last_updated: "2026-03-14T12:11:36.458Z"
-last_activity: "2026-03-14 - Completed v1.4 B2B Module milestone — 9 phases, 29 plans, 236/236 verification truths"
+milestone: v1.5
+milestone_name: Automated Testing & Claude Automation
+status: defining_requirements
+stopped_at: requirements defined, roadmap pending
+last_updated: "2026-03-17T00:00:00.000Z"
+last_activity: "2026-03-17 - Started milestone v1.5 — 23 requirements defined across 4 phases (35–38)"
 progress:
-  total_phases: 15
-  completed_phases: 15
-  total_plans: 48
-  completed_plans: 48
+  total_phases: 4
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
   percent: 0
 ---
 
@@ -18,16 +18,17 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-03-14)
+See: .planning/PROJECT.md (updated 2026-03-17)
 
 **Core value:** A new SaaS product goes from zero to running full-stack app (web + mobile + API + auth) in under 5 minutes with one command.
-**Current focus:** Planning next milestone (v1.5) — run `/gsd:new-milestone`
+**Current focus:** Milestone v1.5 — Automated Testing & Claude Automation (phases 35–38)
 
 ## Current Position
 
-Phase: v1.4 COMPLETE (34 phases shipped across 4 milestones)
-Status: Milestone archived — ready for v1.5 planning
-Last activity: 2026-03-14 - Archived v1.4 B2B Module milestone
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements → roadmap next
+Last activity: 2026-03-17 - Milestone v1.5 started — 23 requirements defined
 
 Progress: [██████████] 100% (v1.4 SHIPPED)
 

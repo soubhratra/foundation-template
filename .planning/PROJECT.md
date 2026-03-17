@@ -83,6 +83,24 @@ A new SaaS product goes from zero to running full-stack app (web + mobile + API 
 
 ### Active (v1.5)
 
+- [ ] Automation scripts layer: `scripts/run-api-tests.sh`, `run-e2e-tests.sh`, `run-all-tests.sh`, `check-req-coverage.py` — v1.5
+- [ ] `@pytest.mark.req("ID")` markers retrofitted to all existing tests + `// @spec: ID` convention in Playwright — v1.5
+- [ ] Full web E2E coverage: auth, settings, billing, health probes, social auth, RBAC, orgs, API keys, webhooks, audit log — v1.5
+- [ ] Nightly scheduled E2E in GitHub Actions + PR smoke job + FAILURES.md artifact for Claude review — v1.5
+- [ ] Root + app-level CLAUDE.md updated with testing automation instructions inherited by all scaffolded projects — v1.5
+
+## Current Milestone: v1.5 Automated Testing & Claude Automation
+
+**Goal:** Every feature in the template has automated API + E2E coverage runnable by Claude in two modes — a dev loop where Claude auto-fixes failures, and a CI mode that runs headlessly and produces structured reports tied to OpenSpec requirement IDs.
+
+**Target features:**
+
+- Automation scripts layer (pytest runner, Playwright runner, orchestrator, req-coverage report)
+- Spec traceability markers: `@pytest.mark.req()` in pytest, `// @spec:` in Playwright
+- Full web E2E test suite covering all milestones v1.0–v1.4 features
+- CI integration: scheduled nightly E2E + PR smoke job + FAILURES.md artifact
+- CLAUDE.md testing automation documentation for every future project
+
 ### Out of Scope
 
 - Billing/payments as product-specific logic — the v1.1 module provides infrastructure and adapter pattern; each project configures plans, pricing, and provider credentials
@@ -170,4 +188,4 @@ A new SaaS product goes from zero to running full-stack app (web + mobile + API 
 
 ---
 
-_Last updated: 2026-03-14 after v1.4 milestone_
+_Last updated: 2026-03-17 after v1.5 milestone start_

@@ -1,106 +1,107 @@
 # Requirements: Foundation Template
 
-**Defined:** 2026-03-13
+**Defined:** 2026-03-17
 **Core Value:** A new SaaS product goes from zero to running full-stack app (web + mobile + API + auth) in under 5 minutes with one command.
 
-## v1.4 Requirements
+## v1.5 Requirements — Automated Testing & Claude Automation
 
-Requirements for the B2B Module milestone. Each maps to a roadmap phase.
+Requirements for v1.5. Each maps to roadmap phases starting at phase 35.
 
-### Organizations & Membership
+### Automation Scripts
 
-- [x] **ORG-01**: User can create an organization with a name and slug; becomes owner automatically
-- [x] **ORG-02**: Org owner can invite members by email (72h token expiry); accepted via new signup or existing login using existing EmailAdapter
-- [x] **ORG-03**: Org members have owner/admin/member roles; `IsOrgAdmin`/`IsOrgMember` Ninja permission classes enforce access
-- [x] **ORG-04**: Org owner can transfer ownership to another member via dedicated endpoint
-- [x] **ORG-05**: All service methods validate org membership before any ORM access; cross-org resource access returns 403
+- [ ] **AUTO-01**: Developer can run `scripts/run-api-tests.sh` to execute the full pytest suite with environment setup and produce a structured failure report
+- [ ] **AUTO-02**: Developer can run `scripts/run-e2e-tests.sh` to execute Playwright E2E tests against local or CI environment using the same script with no env-specific branches
+- [ ] **AUTO-03**: Developer can run `scripts/run-all-tests.sh --mode=dev` to produce `test-results/FAILURES.md` in a structured format Claude can parse and act on for the auto-fix loop
+- [ ] **AUTO-04**: Developer can run `scripts/check-req-coverage.py` to get a tabular gap report mapping OpenSpec requirement IDs to test coverage across pytest and Playwright
 
-### Per-Org Billing
+### Spec Traceability
 
-- [x] **BILL-01**: System creates `OrgCustomer` (linked to `Organization`) for per-org Stripe billing, parallel to existing user `Customer` model
-- [x] **BILL-02**: `_resolve_plan_id` checks org plan before personal plan; entitlement cache invalidated for all org members on subscription update; `has_org_feature()` utility available
+- [ ] **TRACE-01**: Every existing pytest test function covering a specific requirement has a `@pytest.mark.req("REQ-ID")` marker so coverage can be automatically extracted by `check-req-coverage.py`
+- [ ] **TRACE-02**: Every Playwright test covering a specific requirement has a `// @spec: REQ-ID` comment so coverage can be automatically extracted by `check-req-coverage.py`
+- [ ] **TRACE-03**: `scripts/check-req-coverage.py` produces a per-requirement coverage status (✅ covered / ⚠️ partial / ❌ uncovered) for all v1.1–v1.4 milestone requirements across both test suites
 
-### Outbound Webhooks
+### Web E2E — Core Flows
 
-- [x] **HOOK-01**: Org admin can register webhook endpoints; deliveries are sent via Celery with exponential backoff (7 retries), HMAC-SHA256 signed, payload versioned
-- [x] **HOOK-02**: User can view paginated delivery history for a webhook endpoint (`GET /api/v1/webhooks/endpoints/{id}/deliveries`)
-- [x] **HOOK-03**: User can manually retry a failed delivery (`POST /api/v1/webhooks/deliveries/{id}/retry`)
-- [x] **HOOK-04**: System auto-disables endpoint after N consecutive failures and notifies org admin by email
+- [ ] **E2E-01**: Playwright tests cover the full auth flow — signup creates account and redirects to dashboard, login with valid credentials, login with invalid credentials shows error, logout clears session and redirects to login
+- [ ] **E2E-02**: Playwright tests cover settings flows — profile update persists on refresh, GDPR data export button is visible and triggers download (closes v1.3 audit gap), account deletion confirmation flow completes
+- [ ] **E2E-03**: Playwright tests cover billing flow — plan selection page renders with plan cards, upgrade CTA redirects to Stripe checkout, current plan badge visible in settings
+- [ ] **E2E-04**: Playwright tests cover health probes — `GET /api/health/live`, `/api/health/ready`, `/api/health/startup` all return HTTP 200 via direct API assertions
 
-### API Keys
+### Web E2E — B2B & Social Flows
 
-- [x] **AKEY-01**: User can create/revoke API keys with scopes; raw key shown once at creation; prefix + SHA-256 hash stored only; `RequireScope` permission class enforces scope per endpoint
-- [x] **AKEY-02**: API key requests are rate-limited per key via `django-ratelimit`; `X-RateLimit-*` response headers returned
-- [x] **AKEY-03**: System tracks `last_used_at` and `usage_count` on each API key, updated on every authenticated request
+- [ ] **E2E-05**: Playwright tests cover social auth — Google and GitHub OAuth buttons are visible on login page, clicking triggers redirect to the respective OAuth provider
+- [ ] **E2E-06**: Playwright tests cover RBAC — an admin-only page returns 403 for a regular user and is accessible for an admin user
+- [ ] **E2E-07**: Playwright tests cover org management — create org succeeds, invite member sends invite, org appears in the user's org list
+- [ ] **E2E-08**: Playwright tests cover API key management — create key displays the raw key once, key appears masked in the list, deleting removes it from the list
+- [ ] **E2E-09**: Playwright tests cover webhook management — register an endpoint, it appears in the list, deleting removes it
+- [ ] **E2E-10**: Playwright tests cover audit log — admin can view log entries that show actor identity, action type, and timestamp
 
-### Audit Logging
+### CI Integration
 
-- [x] **AUDIT-01**: System records changes to `Organization`, `Membership`, `APIKey`, `WebhookEndpoint` via pghistory triggers; `AuditContextMiddleware` attaches user and org context automatically
-- [x] **AUDIT-02**: Org owner and admins can query paginated audit log filtered by actor/date/action (`GET /api/v1/org/{slug}/audit-log`); impersonation entries not exposed to org admins
+- [ ] **CI-01**: `.github/workflows/scheduled-e2e.yml` runs the full E2E suite nightly at 2am UTC — spins up Docker Compose, runs migrations, seeds test users, runs Playwright, then tears down; failure creates a GitHub issue
+- [ ] **CI-02**: `ci.yml` includes an E2E smoke job on PRs running the critical path (auth flow + health probes) against a Docker Compose environment
+- [ ] **CI-03**: CI E2E failures produce a structured `FAILURES.md` artifact uploaded to GitHub Actions that Claude can retrieve and act on to fix failures locally
 
-### Admin Backoffice
+### Claude Automation Documentation
 
-- [x] **ADMIN-01**: Django admin themed with `django-unfold` across all domain `ModelAdmin` registrations; navigation sidebar configured
-- [x] **ADMIN-02**: Staff users can impersonate any non-staff user via `django-hijack`; persistent banner shown; impersonation events written to audit log with `impersonator` FK
-
-### CLI Scaffolder
-
-- [x] **SCAFF-01**: `--with b2b` flag in `create-foundation-app`; all B2B code uses `# B2B_START`/`# B2B_END` markers; `--without b2b` removes module cleanly; `manage.py check` passes post-removal
+- [ ] **DOCS-01**: Root `CLAUDE.md` documents the two-mode testing pattern (dev auto-fix loop vs CI report mode), all script commands, and when to use each — inherited verbatim by every project scaffolded from this template
+- [ ] **DOCS-02**: Root `CLAUDE.md` documents the `@pytest.mark.req()` and `// @spec:` traceability conventions with the explicit rule that all new feature tests must include markers before a phase can be marked complete
+- [ ] **DOCS-03**: `apps/api/CLAUDE.md` and `apps/web/CLAUDE.md` each document how to add tests for new features following established fixture patterns and spec traceability conventions
 
 ## Future Requirements
 
-### v2+ Considerations
+### v1.6 — Mobile E2E & Advanced Automation
 
-- **ORG-F01**: Custom org roles beyond owner/admin/member — extend `Membership.role` choices per product for enterprise use cases
-- **ORG-F02**: Hierarchical orgs (sub-orgs/departments) — `parent_org` FK; only for large-enterprise products
-- **SSO-F01**: Per-org SSO/SAML enforcement — requires allauth SAML support; product-specific
-- **AUDIT-F01**: Audit log external shipping (Splunk, Datadog Logs) — template provides the foundation; products add exporters
-- **HOOK-F01**: Webhook event catalog UI — browsable event types with example payloads
+- **MOB-E2E-01**: Detox E2E tests cover mobile auth flow (signup, login, logout) on iOS simulator
+- **MOB-E2E-02**: Detox E2E tests cover mobile billing and settings flows
+- **AUTO-05**: `scripts/run-all-tests.sh --mode=ci` posts failure summary to a Slack webhook
+- **AUTO-06**: Claude Code hooks auto-run relevant tests after file edits (PostToolUse hook)
 
 ## Out of Scope
 
-| Feature                                                     | Reason                                                                                    |
-| ----------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| Row-level multi-tenancy (automatic query rewriting)         | Breaks Django admin, hard to audit; ship Organization FK and let each product add scoping |
-| Webhook secret auto-rotation updating existing integrations | Impossible without breaking integrations silently                                         |
-| Per-org SSO enforcement                                     | Requires SSO infrastructure as prerequisite                                               |
-| Custom org roles (beyond owner/admin/member)                | Product-specific; extend Membership.role choices per product                              |
-| Google Sign In on mobile (org flow)                         | Already out of scope from v1.3                                                            |
+| Feature                                            | Reason                                                                        |
+| -------------------------------------------------- | ----------------------------------------------------------------------------- |
+| Detox mobile E2E tests                             | Requires macOS runner + iOS simulator — high CI cost; defer to v1.6           |
+| Visual regression testing (Chromatic, Percy)       | Product-specific; template provides functional coverage only                  |
+| Load/performance testing (k6, Locust)              | Product-specific; beyond template scope                                       |
+| Real OAuth credential testing in CI                | Requires live provider secrets; redirect assertion is sufficient for template |
+| Synthetic monitoring (Checkly, Datadog Synthetics) | Hosted solution; product-specific configuration                               |
 
 ## Traceability
 
-Which phases cover which requirements. Updated during roadmap creation.
-
-| Requirement | Phase    | Status   |
-| ----------- | -------- | -------- |
-| ORG-01      | Phase 26 | Complete |
-| ORG-02      | Phase 32 | Complete |
-| ORG-03      | Phase 26 | Complete |
-| ORG-04      | Phase 26 | Complete |
-| ORG-05      | Phase 26 | Complete |
-| BILL-01     | Phase 34 | Complete |
-| BILL-02     | Phase 26 | Complete |
-| HOOK-01     | Phase 32 | Complete |
-| HOOK-02     | Phase 27 | Complete |
-| HOOK-03     | Phase 27 | Complete |
-| HOOK-04     | Phase 27 | Complete |
-| AKEY-01     | Phase 33 | Complete |
-| AKEY-02     | Phase 33 | Complete |
-| AKEY-03     | Phase 33 | Complete |
-| AUDIT-01    | Phase 34 | Complete |
-| AUDIT-02    | Phase 29 | Complete |
-| ADMIN-01    | Phase 30 | Complete |
-| ADMIN-02    | Phase 30 | Complete |
-| SCAFF-01    | Phase 31 | Complete |
+| Requirement | Phase | Status  |
+| ----------- | ----- | ------- |
+| AUTO-01     | 35    | Pending |
+| AUTO-02     | 35    | Pending |
+| AUTO-03     | 35    | Pending |
+| AUTO-04     | 35    | Pending |
+| TRACE-01    | 35    | Pending |
+| TRACE-02    | 36    | Pending |
+| TRACE-03    | 35    | Pending |
+| E2E-01      | 36    | Pending |
+| E2E-02      | 36    | Pending |
+| E2E-03      | 36    | Pending |
+| E2E-04      | 36    | Pending |
+| E2E-05      | 37    | Pending |
+| E2E-06      | 37    | Pending |
+| E2E-07      | 37    | Pending |
+| E2E-08      | 37    | Pending |
+| E2E-09      | 37    | Pending |
+| E2E-10      | 37    | Pending |
+| CI-01       | 38    | Pending |
+| CI-02       | 38    | Pending |
+| CI-03       | 38    | Pending |
+| DOCS-01     | 38    | Pending |
+| DOCS-02     | 38    | Pending |
+| DOCS-03     | 38    | Pending |
 
 **Coverage:**
 
-- v1.4 requirements: 19 total
-- Mapped to phases: 19 (100% coverage)
-- Unmapped: 0
-- Pending (gap closure): 7 (ORG-02, BILL-01, HOOK-01, AKEY-01, AKEY-02, AKEY-03, AUDIT-01)
+- v1.5 requirements: 23 total
+- Mapped to phases: 23
+- Unmapped: 0 ✓
 
 ---
 
-_Requirements defined: 2026-03-13_
-_Last updated: 2026-03-13 after roadmap creation_
+_Requirements defined: 2026-03-17_
+_Last updated: 2026-03-17 — initial definition_
