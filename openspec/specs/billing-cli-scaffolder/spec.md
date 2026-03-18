@@ -1,4 +1,4 @@
-## ADDED Requirements
+## Requirements
 
 ### Requirement: removeBillingModule uses dash-delimited block markers
 

@@ -1,6 +1,6 @@
 # Docker Infrastructure
 
-## ADDED Requirements
+## Requirements
 
 ### Requirement: Hybrid Development Model
 

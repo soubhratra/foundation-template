@@ -1,4 +1,4 @@
-## ADDED Requirements
+## Requirements
 
 ### Requirement: Dual Authentication Strategy with Secure Storage
 

@@ -1,132 +1,17 @@
-## ADDED Requirements
+# Authentication Extensions
 
-### Requirement: Django Allauth Headless Mode Configuration
+> Extends the base authentication specification with billing fields and social auth infrastructure. For the core dual-auth strategy (session cookies, JWT, all auth flows, CSRF), see `openspec/specs/foundation/auth.md`.
 
-The authentication system SHALL use Django Allauth in headless mode to provide API-driven authentication for both web and mobile platforms.
+## Overview
 
-#### Scenario: Django Allauth installed and configured
+`foundation/auth.md` defines the complete authentication architecture for the template: Django Allauth in headless mode, session cookies for web, JWT for mobile, all signup/login/logout/password-reset flows, token refresh, and CSRF handling. That spec is the source of truth and should be read first.
 
-- **WHEN** the Django application starts
-- **THEN** Django Allauth headless mode MUST be enabled with `HEADLESS_ONLY = True`
-- **AND** the account middleware MUST be installed in the middleware stack
-- **AND** email-based authentication MUST be configured as the primary authentication method
-- **AND** mandatory email verification MUST be enabled in production
+This spec adds two sets of extensions introduced in later milestones:
 
-#### Scenario: Frontend redirect URLs configured
+1. **Billing fields** — `stripe_customer_id` and `subscription_status` on the User model, surfaced in auth and current-user responses so frontends can gate UI without a separate billing API call.
+2. **Social auth base infrastructure** — `allauth.socialaccount` must be installed unconditionally (it owns the social account data model), with providers registered conditionally via `_configure_social_providers()`. The `FoundationSocialAccountAdapter` enforces email auto-merge. Provider-specific flows (Google, GitHub, Apple OAuth) are in `openspec/specs/social-auth/spec.md`.
 
-- **WHEN** Allauth sends verification or password reset emails
-- **THEN** the email links MUST point to frontend URLs defined in `HEADLESS_FRONTEND_URLS`
-- **AND** email confirmation links MUST redirect to `{FRONTEND_URL}/auth/verify-email/{key}`
-- **AND** password reset links MUST redirect to `{FRONTEND_URL}/auth/reset-password/{key}`
-
-### Requirement: Dual Authentication Strategy
-
-The system SHALL support dual authentication strategies: session cookies for web browsers and JWT tokens for mobile applications.
-
-#### Scenario: Web client authenticates with session cookies
-
-- **WHEN** a Next.js web client submits login credentials
-- **THEN** Django MUST create a server-side session
-- **AND** an httpOnly session cookie MUST be set in the response
-- **AND** subsequent requests MUST include the session cookie automatically
-- **AND** CSRF tokens MUST be validated for all mutation requests
-
-#### Scenario: Mobile client authenticates with JWT tokens
-
-- **WHEN** an Expo mobile client submits login credentials
-- **THEN** Django MUST issue both access and refresh JWT tokens
-- **AND** the tokens MUST be stored in expo-secure-store (Keychain/Keystore)
-- **AND** API requests MUST include the access token in the `Authorization: Bearer` header
-- **AND** CSRF validation MUST NOT apply to JWT-authenticated requests
-
-#### Scenario: Next.js middleware enforces authentication
-
-- **WHEN** a user navigates to a protected page on the web app
-- **THEN** Next.js middleware MUST read the session cookie from the request
-- **AND** unauthenticated users MUST be redirected to `/auth/login`
-- **AND** the original URL MUST be preserved as a `redirect` query parameter
-
-### Requirement: User Signup with Email Verification
-
-The system SHALL implement user signup with mandatory email verification before granting access to authenticated endpoints.
-
-#### Scenario: User completes signup form
-
-- **WHEN** a user submits the signup form with email, password, first_name, and last_name
-- **THEN** Django Allauth MUST create a new user account
-- **AND** a verification email MUST be sent with a confirmation link
-- **AND** the API MUST return 200 with user data and authentication credentials
-- **AND** the user MUST be shown a "check your email" message
-
-#### Scenario: User clicks email verification link
-
-- **WHEN** a user clicks the verification link from the email
-- **THEN** the frontend MUST send the verification key to `/api/v1/auth/verify-email`
-- **AND** Django Allauth MUST mark the email as verified
-- **AND** the user MUST be redirected to the dashboard
-
-#### Scenario: Unverified user attempts to access protected endpoints
-
-- **WHEN** a user with unverified email attempts to access authenticated endpoints in production
-- **THEN** the API MUST return 403 with error code `email_not_verified`
-- **AND** the frontend MUST display a message prompting email verification
-
-### Requirement: Password Reset Flow
-
-The system SHALL provide a secure password reset flow that sends reset links via email.
-
-#### Scenario: User requests password reset
-
-- **WHEN** a user submits their email address on the password reset page
-- **THEN** Django Allauth MUST send a password reset email with a unique key
-- **AND** the reset link MUST point to `{FRONTEND_URL}/auth/reset-password/{key}`
-- **AND** the user MUST see a "check your email" confirmation message
-
-#### Scenario: User submits new password with reset key
-
-- **WHEN** a user submits a new password via the reset link
-- **THEN** the frontend MUST send the key and new password to `/api/v1/auth/password/reset/confirm`
-- **AND** Django Allauth MUST validate the key and update the password
-- **AND** the user MUST be redirected to the login page
-
-### Requirement: JWT Token Refresh Flow
-
-The mobile application SHALL implement transparent token refresh to maintain user sessions without manual re-authentication.
-
-#### Scenario: API request with expired access token
-
-- **WHEN** a mobile client makes an API request with an expired access token
-- **THEN** the API MUST return 401 Unauthorized
-- **AND** the API client interceptor MUST catch the 401 response
-- **AND** the interceptor MUST send the refresh token to `/api/v1/auth/token/refresh`
-- **AND** Django MUST return a new access token
-- **AND** the new token MUST be stored in expo-secure-store
-- **AND** the original request MUST be retried with the new access token
-
-#### Scenario: Refresh token is expired or invalid
-
-- **WHEN** the token refresh request returns 401
-- **THEN** the API client MUST clear all tokens from expo-secure-store
-- **AND** the user MUST be navigated to the login screen
-- **AND** the original request MUST fail with an authentication error
-
-### Requirement: CSRF Protection for Session-Based Authentication
-
-The web application SHALL implement CSRF protection for all mutation requests using session-based authentication.
-
-#### Scenario: Web client sends POST request with CSRF token
-
-- **WHEN** a web client sends a POST, PATCH, or DELETE request to the Django API
-- **THEN** the client MUST read the CSRF token from the `csrftoken` cookie
-- **AND** the token MUST be included in the `X-CSRFToken` request header
-- **AND** Django MUST validate the token before processing the request
-- **AND** requests with invalid or missing CSRF tokens MUST be rejected with 403
-
-#### Scenario: Mobile client sends POST request without CSRF token
-
-- **WHEN** a mobile client sends a POST request using JWT Bearer token authentication
-- **THEN** CSRF validation MUST NOT apply to the request
-- **AND** the request MUST proceed if the JWT is valid
+## Requirements
 
 ### Requirement: User model billing fields
 
@@ -146,8 +31,6 @@ Both fields MUST be added via a Django migration (`accounts/migrations/0002_user
 
 - **WHEN** two users are assigned the same `stripe_customer_id`
 - **THEN** a database integrity error is raised
-
----
 
 ### Requirement: subscription_status included in auth responses
 
@@ -201,3 +84,21 @@ The system SHALL use a custom `FoundationSocialAccountAdapter` that extends alla
 
 - **WHEN** `can_authenticate_by_email()` is called on the adapter
 - **THEN** the return value SHALL be wrapped in `bool()` to normalize allauth's raw settings value (which may be a non-boolean in test environments)
+
+## Implementation Decisions
+
+### Why billing fields on User (not on a separate Profile model)
+
+`stripe_customer_id` and `subscription_status` are read on every authenticated request (surfaced in auth responses). An additional JOIN to a Profile model on every session/token response would add unnecessary query cost. Denormalized fields on the User model are appropriate given their high read frequency and low write frequency (only updated by Stripe webhook handler).
+
+### Why subscription_status is denormalized (not live from Stripe)
+
+Live Stripe API calls during auth responses would add ~200–400ms latency and create a hard dependency on Stripe availability for every login. The denormalized `subscription_status` field is updated asynchronously by the webhook handler; a stale value window (time between webhook delivery and next login) is acceptable for the template's use case.
+
+### Why allauth.socialaccount is always installed (not gated by SOCIAL_AUTH_MODULE)
+
+`allauth.socialaccount` owns the `SocialAccount` and `SocialToken` database models. These models must exist even when no providers are active — removing them via scaffolder would require dropping tables that may have existing data in a production database. The app is safe to install with zero providers configured. Provider apps (`providers.google`, etc.) are the things that are conditionally installed.
+
+### Why \_configure_social_providers() is a pure function
+
+Pure function (accepts an env dict, returns settings) makes the social provider registration logic unit-testable without triggering Django settings imports. Tests can call it with arbitrary dicts without mocking `os.environ` or touching `settings`.
