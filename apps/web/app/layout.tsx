@@ -25,7 +25,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         suppressHydrationWarning
       >
         <ThemeProvider>
-          <AppProviders baseUrl={apiBaseUrl}>{children}</AppProviders>
+          <AppProviders baseUrl={apiBaseUrl} redirectBase="/">
+            {children}
+          </AppProviders>
           <CookieConsentBanner />
         </ThemeProvider>
       </body>

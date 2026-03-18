@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useMemo } from "react";
 import { Bell, ChevronRight } from "lucide-react";
 
@@ -23,6 +23,7 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 
 export function DashboardHeader() {
   const pathname = usePathname();
+  const router = useRouter();
   const { user, logout } = useAuth();
 
   const activeItem = useMemo(() => {
@@ -88,7 +89,7 @@ export function DashboardHeader() {
             <DropdownMenuItem
               onSelect={(event) => {
                 event.preventDefault();
-                logout.mutate();
+                logout.mutate(undefined, { onSettled: () => router.replace("/") });
               }}
             >
               Sign out

@@ -4,6 +4,12 @@ import type { NextConfig } from "next";
 
 const isDev = process.env.NODE_ENV === "development";
 
+// In development the web app (localhost:3000) calls the Django API on a different
+// port (localhost:8000). Production runs both behind the same origin/reverse proxy,
+// so 'self' is sufficient there. We read NEXT_PUBLIC_API_URL so the CSP always
+// matches whatever API URL is configured in .env.local.
+const devApiUrl = isDev ? (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000") : null;
+
 // Security headers applied to all Next.js routes.
 // CSP here is a STATIC policy (no nonces) — Next.js App Router generates
 // inline hydration scripts that require 'unsafe-inline' when nonces are not
@@ -12,6 +18,14 @@ const isDev = process.env.NODE_ENV === "development";
 //
 // isDev adds 'unsafe-eval' for Next.js hot-module reload in development.
 // HSTS is intentionally omitted — CDN/reverse proxy handles HTTPS upgrade in prod.
+const connectSrc = [
+  "'self'",
+  "https://eu.i.posthog.com",
+  "https://us.i.posthog.com",
+  "https://hooks.stripe.com",
+  ...(devApiUrl ? [devApiUrl] : []),
+].join(" ");
+
 const cspDirectives = [
   "default-src 'self'",
   isDev
@@ -20,7 +34,7 @@ const cspDirectives = [
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob:",
   "font-src 'self'",
-  "connect-src 'self' https://eu.i.posthog.com https://us.i.posthog.com https://hooks.stripe.com",
+  `connect-src ${connectSrc}`,
   "frame-src https://js.stripe.com",
   "object-src 'none'",
   "base-uri 'self'",

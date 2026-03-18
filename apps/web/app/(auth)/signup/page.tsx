@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -12,7 +13,7 @@ import { FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/comp
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "@/components/ui/sonner";
-import { postJson } from "@/lib/request";
+import { useAuth } from "@repo/business-logic";
 import type { SignupInput } from "@repo/validation";
 import { signupSchema } from "@repo/validation";
 
@@ -25,6 +26,8 @@ const defaultValues: SignupInput = {
 };
 
 export default function SignupPage() {
+  const router = useRouter();
+  const { signup } = useAuth();
   const form = useForm<SignupInput>({
     resolver: zodResolver(signupSchema),
     defaultValues,
@@ -34,14 +37,24 @@ export default function SignupPage() {
   const handleSubmit = async (values: SignupInput) => {
     setStatus(null);
     try {
-      await postJson("/api/v1/auth/account/", values);
-      toast.success("Check your inbox to verify your account.");
-      setStatus({
-        variant: "success",
-        title: "Verify your email",
-        description: "We sent instructions to your inbox. Enter your key once it arrives.",
+      const result = await signup.mutateAsync({
+        email: values.email,
+        password1: values.password,
+        password2: values.confirmPassword,
+        name: values.name,
       });
-      form.reset({ ...defaultValues, email: values.email });
+      if (result?.meta?.is_authenticated) {
+        toast.success("Account created. Welcome!");
+        router.replace("/dashboard");
+      } else {
+        toast.success("Check your inbox to verify your account.");
+        setStatus({
+          variant: "success",
+          title: "Verify your email",
+          description: "We sent instructions to your inbox. Enter your key once it arrives.",
+        });
+        form.reset({ ...defaultValues, email: values.email });
+      }
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Unable to create your account right now.";
