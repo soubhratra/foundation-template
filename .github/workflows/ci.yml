@@ -246,3 +246,111 @@ jobs:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/foundation_schemathesis # pragma: allowlist secret
           SECRET_KEY: test-secret-key-for-ci
           DEBUG: "True"
+
+  e2e-smoke:
+    name: E2E Smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # Flake handling: Playwright retries each test up to 2 times in CI (playwright.config.ts).
+    # GitHub Actions has no native timeout-based job retry; workflow-level retry is handled
+    # by re-running failed jobs manually via the Actions UI or gh CLI.
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Start Docker Compose
+        run: docker compose up -d
+
+      - name: Wait for API to be ready
+        run: |
+          echo "Waiting for API to be ready..."
+          timeout 60 bash -c 'until curl -sf http://localhost:8000/api/health/ready; do sleep 2; done'
+          echo "API ready."
+
+      - name: Install Python dependencies
+        run: |
+          cd apps/api
+          pip install uv
+          uv sync
+
+      - name: Run migrations
+        run: |
+          cd apps/api
+          python manage.py migrate --noinput
+        env:
+          DJANGO_SETTINGS_MODULE: config.settings.development
+
+      - name: Seed test users
+        run: |
+          cd apps/api
+          python manage.py shell -c "
+          from django.contrib.auth import get_user_model
+          from allauth.account.models import EmailAddress
+          User = get_user_model()
+          if not User.objects.filter(email='e2e@example.com').exists():
+              user = User.objects.create_user(email='e2e@example.com', password='E2EPassword123!')
+              EmailAddress.objects.create(user=user, email='e2e@example.com', primary=True, verified=True)
+          if not User.objects.filter(email='e2e-admin@example.com').exists():
+              admin = User.objects.create_user(email='e2e-admin@example.com', password='E2EPassword123!', is_staff=True)
+              EmailAddress.objects.create(user=admin, email='e2e-admin@example.com', primary=True, verified=True)
+          print('Test users seeded.')
+          "
+        env:
+          DJANGO_SETTINGS_MODULE: config.settings.development
+
+      - name: Install web dependencies
+        run: pnpm install --filter web
+
+      - name: Install Playwright browsers
+        run: pnpm --filter web exec playwright install chromium
+
+      - name: Start web app
+        run: |
+          pnpm --filter web build
+          pnpm --filter web start &
+          timeout 30 bash -c 'until curl -sf http://localhost:3000; do sleep 2; done'
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:8000
+
+      - name: Run smoke tests
+        run: pnpm --filter web exec playwright test tests/e2e/auth.spec.ts tests/e2e/health.spec.ts
+        env:
+          BASE_URL: http://localhost:3000
+          E2E_USER_EMAIL: e2e@example.com
+          E2E_USER_PASSWORD: E2EPassword123! # pragma: allowlist secret
+
+      - name: Write passing FAILURES.md
+        if: success()
+        run: |
+          mkdir -p test-results
+          printf "## Failed Tests — %s\n\n| Test | File | Assertion | Requirements | Status |\n|------|------|-----------|--------------|--------|\n\n_All smoke tests passed._\n" \
+            "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > test-results/FAILURES.md
+
+      - name: Upload FAILURES.md artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-smoke-failures
+          path: test-results/FAILURES.md
+          retention-days: 7
+          if-no-files-found: ignore
+
+      - name: Tear down Docker Compose
+        if: always()
+        run: docker compose down -v

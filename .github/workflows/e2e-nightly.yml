@@ -1,0 +1,143 @@
+name: E2E Nightly
+
+on:
+  schedule:
+    - cron: "0 2 * * *"
+  workflow_dispatch:
+
+jobs:
+  e2e-nightly:
+    name: Full E2E Suite
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Start Docker Compose
+        run: docker compose up -d
+
+      - name: Wait for services to be ready
+        run: |
+          echo "Waiting for API to be ready..."
+          timeout 60 bash -c 'until curl -sf http://localhost:8000/api/health/ready; do sleep 2; done'
+          echo "Services ready."
+
+      - name: Install Python dependencies
+        run: |
+          cd apps/api
+          pip install uv
+          uv sync
+
+      - name: Run migrations
+        run: |
+          cd apps/api
+          python manage.py migrate --noinput
+        env:
+          DJANGO_SETTINGS_MODULE: config.settings.development
+
+      - name: Seed test users
+        run: |
+          cd apps/api
+          python manage.py shell -c "
+          from django.contrib.auth import get_user_model
+          from allauth.account.models import EmailAddress
+          User = get_user_model()
+          if not User.objects.filter(email='e2e@example.com').exists():
+              user = User.objects.create_user(email='e2e@example.com', password='E2EPassword123!')
+              EmailAddress.objects.create(user=user, email='e2e@example.com', primary=True, verified=True)
+          if not User.objects.filter(email='e2e-admin@example.com').exists():
+              admin = User.objects.create_user(email='e2e-admin@example.com', password='E2EPassword123!', is_staff=True)
+              EmailAddress.objects.create(user=admin, email='e2e-admin@example.com', primary=True, verified=True)
+          print('Test users seeded.')
+          "
+        env:
+          DJANGO_SETTINGS_MODULE: config.settings.development
+
+      - name: Install web dependencies
+        run: pnpm install
+
+      - name: Install Playwright browsers
+        run: pnpm --filter web exec playwright install chromium firefox
+
+      - name: Start web app
+        run: |
+          pnpm --filter web build
+          pnpm --filter web start &
+          timeout 30 bash -c 'until curl -sf http://localhost:3000; do sleep 2; done'
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:8000
+
+      - name: Run E2E suite
+        run: bash scripts/run-e2e-tests.sh
+        env:
+          BASE_URL: http://localhost:3000
+          E2E_USER_EMAIL: e2e@example.com
+          E2E_USER_PASSWORD: E2EPassword123! # pragma: allowlist secret
+          E2E_ADMIN_EMAIL: e2e-admin@example.com
+          E2E_ADMIN_PASSWORD: E2EPassword123! # pragma: allowlist secret
+
+      - name: Upload FAILURES.md artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-failures
+          path: test-results/FAILURES.md
+          retention-days: 7
+          if-no-files-found: ignore
+
+      - name: Check for existing failure issue
+        if: failure()
+        id: check-issue
+        run: |
+          OPEN_ISSUE=$(gh issue list --label "e2e-failure" --state open --limit 1 --json number --jq '.[0].number // empty')
+          echo "open_issue=$OPEN_ISSUE" >> $GITHUB_OUTPUT
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create failure issue
+        if: failure() && steps.check-issue.outputs.open_issue == ''
+        run: |
+          ARTIFACT_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          gh issue create \
+            --title "E2E Nightly Failure — $(date -u +%Y-%m-%d)" \
+            --body "## E2E Nightly Suite Failed
+
+          **Run:** ${ARTIFACT_URL}
+          **Date:** $(date -u +%Y-%m-%dT%H:%M:%SZ)
+
+          Download the \`e2e-failures\` artifact from the run link above to see \`FAILURES.md\` with structured failure details.
+
+          To fix: run \`scripts/run-all-tests.sh --mode=dev\`, read \`test-results/FAILURES.md\`, apply fixes, repeat." \
+            --label "e2e-failure,automated"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Comment on existing failure issue
+        if: failure() && steps.check-issue.outputs.open_issue != ''
+        run: |
+          ARTIFACT_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          gh issue comment ${{ steps.check-issue.outputs.open_issue }} \
+            --body "Still failing — $(date -u +%Y-%m-%dT%H:%M:%SZ). [Run]($ARTIFACT_URL)"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Tear down Docker Compose
+        if: always()
+        run: docker compose down -v
