@@ -2,7 +2,10 @@
 
 from unittest.mock import MagicMock
 
+import pytest
 
+
+@pytest.mark.req("AUDIT-02")
 def test_middleware_adds_org_id():
     """get_context() includes org_id as string when request.org is set."""
     from apps.audit.middleware import AuditContextMiddleware
@@ -23,6 +26,7 @@ def test_middleware_adds_org_id():
     assert ctx["org_id"] == "99"
 
 
+@pytest.mark.req("AUDIT-02")
 def test_middleware_null_org_id():
     """get_context() omits org_id when request has no .org attribute."""
     from apps.audit.middleware import AuditContextMiddleware

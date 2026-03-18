@@ -14,6 +14,7 @@ from apps.orgs.services import InvitationService, MembershipService, OrgService
 User = get_user_model()
 
 
+@pytest.mark.req("ORG-01")
 @pytest.mark.django_db
 def test_create_org_creates_owner_membership(db):
     """ORG-01: OrgService.create_org() creates org and membership with role='owner'."""
@@ -32,6 +33,7 @@ def test_create_org_creates_owner_membership(db):
     )
 
 
+@pytest.mark.req("ORG-02")
 @pytest.mark.django_db
 def test_invite_sends_email(db, org, org_owner, mailoutbox, on_commit_immediately):
     """ORG-02: InvitationService.invite() sends an email containing the invitation token."""
@@ -49,6 +51,7 @@ def test_invite_sends_email(db, org, org_owner, mailoutbox, on_commit_immediatel
     )
 
 
+@pytest.mark.req("ORG-02")
 @pytest.mark.django_db
 def test_invite_token_expiry(db, org, org_owner):
     """ORG-02: Invitation.is_valid() returns False after 72 hours."""
@@ -68,6 +71,7 @@ def test_invite_token_expiry(db, org, org_owner):
     assert invitation.is_valid() is False, "Invitation should be invalid after 72-hour expiry"
 
 
+@pytest.mark.req("ORG-02")
 @pytest.mark.django_db
 def test_invite_accept_email_mismatch(db, org, org_owner):
     """ORG-02: Accepting an invitation with wrong email raises ServiceError with HTTP 400."""
@@ -91,6 +95,7 @@ def test_invite_accept_email_mismatch(db, org, org_owner):
     assert exc_info.value.status_code == 400
 
 
+@pytest.mark.req("ORG-02")
 @pytest.mark.django_db
 def test_invite_accept_new_user_session_flow(db, org, org_owner):
     """ORG-02: Accepting when not logged in stores token in session for post-login pickup."""
@@ -115,6 +120,7 @@ def test_invite_accept_new_user_session_flow(db, org, org_owner):
     assert mock_request.session["pending_invite_token"] == str(invitation.token)
 
 
+@pytest.mark.req("ORG-04")
 @pytest.mark.django_db
 def test_transfer_ownership(db, org, org_owner, org_membership):
     """ORG-04: transfer_ownership() promotes new owner, demotes old owner to admin."""
@@ -141,6 +147,7 @@ def test_transfer_ownership(db, org, org_owner, org_membership):
 # ---------------------------------------------------------------------------- #
 
 
+@pytest.mark.req("HOOK-01")
 @pytest.mark.django_db
 def test_add_member_fires_user_created_for_first_org(db, org, org_owner):
     """HOOK-01: add_member() fires user.created webhook when this is the user's first org."""
@@ -161,6 +168,7 @@ def test_add_member_fires_user_created_for_first_org(db, org, org_owner):
     )
 
 
+@pytest.mark.req("HOOK-01")
 @pytest.mark.django_db
 def test_add_member_fires_org_member_added(db, org, org_owner):
     """HOOK-01: add_member() fires org.member_added webhook on every add."""
@@ -181,6 +189,7 @@ def test_add_member_fires_org_member_added(db, org, org_owner):
     )
 
 
+@pytest.mark.req("HOOK-01")
 @pytest.mark.django_db
 def test_add_member_no_user_created_for_second_org(db, org, org_owner):
     """HOOK-01: add_member() does NOT fire user.created when user already has a membership."""
@@ -211,6 +220,7 @@ def test_add_member_no_user_created_for_second_org(db, org, org_owner):
     )
 
 
+@pytest.mark.req("ORG-02")
 @pytest.mark.django_db
 def test_invite_accept_url_uses_frontend_url(db, org, org_owner, on_commit_immediately):
     """ORG-02: InvitationService.invite() uses FRONTEND_URL setting for accept_url."""

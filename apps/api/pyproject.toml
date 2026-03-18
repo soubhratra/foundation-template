@@ -72,6 +72,9 @@ billing = [
 DJANGO_SETTINGS_MODULE = "config.settings.development"
 python_files = ["test_*.py"]
 python_paths = ["."]
+markers = [
+    "req: Mark test with one or more OpenSpec requirement IDs (e.g. @pytest.mark.req('OBS-01'))",
+]
 
 [tool.mypy]
 plugins = ["mypy_django_plugin.main"]

@@ -15,13 +15,16 @@ StripeAdapter = adapters.StripeAdapter
 class TestPaymentAdapterContract:
     """ADPTR-01: PaymentAdapter is an ABC with domain-centric method signatures."""
 
+    @pytest.mark.req("BILL-01")
     def test_payment_adapter_is_abstract(self):
         assert abc.ABC in PaymentAdapter.__mro__, "PaymentAdapter must be an ABC"
 
+    @pytest.mark.req("BILL-01")
     def test_cannot_instantiate_abstract_adapter(self):
         with pytest.raises(TypeError):
             PaymentAdapter()  # type: ignore[abstract]
 
+    @pytest.mark.req("BILL-01")
     def test_abstract_methods_defined(self):
         expected = {
             "create_customer",
@@ -43,6 +46,7 @@ class TestPaymentAdapterContract:
             f"Abstract methods mismatch.\nExpected: {expected}\nGot: {abstract_methods}"
         )
 
+    @pytest.mark.req("BILL-01")
     def test_no_stripe_in_abstract_signatures(self):
         """ADPTR-01: The word 'stripe' must not appear in abstract method signatures."""
         import inspect
@@ -65,14 +69,17 @@ class TestPaymentAdapterContract:
 class TestStripeAdapterImplementation:
     """ADPTR-02: StripeAdapter concretely implements PaymentAdapter."""
 
+    @pytest.mark.req("BILL-01")
     def test_stripe_adapter_inherits_payment_adapter(self):
         assert issubclass(StripeAdapter, PaymentAdapter)
 
+    @pytest.mark.req("BILL-01")
     def test_stripe_adapter_is_concrete(self):
         """StripeAdapter must have no abstract methods remaining."""
         abstract = getattr(StripeAdapter, "__abstractmethods__", set())
         assert not abstract, f"StripeAdapter has unimplemented abstract methods: {abstract}"
 
+    @pytest.mark.req("BILL-01")
     def test_stripe_adapter_instantiates(self):
         """StripeAdapter can be constructed (uses STRIPE_SECRET_KEY from settings)."""
         from django.conf import settings
@@ -86,6 +93,7 @@ class TestStripeAdapterImplementation:
 class TestPaymentAdapterAbstractMethods:
     """HOOK-05: PaymentAdapter defines abstract methods needed for Plan 10-02."""
 
+    @pytest.mark.req("BILL-01")
     def test_abstract_preview_proration_exists(self):
         """PaymentAdapter must declare preview_proration as an abstract method."""
         import inspect
@@ -97,6 +105,7 @@ class TestPaymentAdapterAbstractMethods:
         assert method is not None
         assert inspect.isfunction(method) or callable(method)
 
+    @pytest.mark.req("BILL-01")
     def test_abstract_get_usage_summary_exists(self):
         """PaymentAdapter must declare get_usage_summary as an abstract method."""
         import inspect
@@ -112,6 +121,7 @@ class TestPaymentAdapterAbstractMethods:
 class TestAdapterResolution:
     """ADPTR-03: Adapter resolved via BILLING_ADAPTER setting."""
 
+    @pytest.mark.req("BILL-01")
     def test_billing_adapter_setting_exists(self):
         from django.conf import settings
 
@@ -119,6 +129,7 @@ class TestAdapterResolution:
             pytest.skip("BILLING_ADAPTER not configured in settings — Wave 1 adds it")
         assert settings.BILLING_ADAPTER, "BILLING_ADAPTER must not be empty"
 
+    @pytest.mark.req("BILL-01")
     def test_billing_adapter_resolves_to_stripe_adapter(self):
         from django.conf import settings
         from django.utils.module_loading import import_string

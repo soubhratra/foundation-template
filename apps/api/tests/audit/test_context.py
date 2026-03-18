@@ -2,7 +2,10 @@
 
 from unittest.mock import patch
 
+import pytest
 
+
+@pytest.mark.req("AUDIT-02")
 def test_audit_context_noop():
     """audit_context() runs as no-op context manager when pghistory not installed."""
     from apps.audit.context import audit_context

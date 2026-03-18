@@ -16,6 +16,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent.parent
 # --- DEV-04: nplusone ---
 
 
+@pytest.mark.req("DEV-04")
 def test_nplusone_fixture_registered():
     """nplusone autouse fixture is registered in conftest.py."""
     conftest = Path(__file__).resolve().parent.parent.parent / "conftest.py"
@@ -25,6 +26,7 @@ def test_nplusone_fixture_registered():
     )
 
 
+@pytest.mark.req("DEV-04")
 def test_nplusone_raises_on_n_plus_one(db):
     """NPlusOneError is raised immediately when a related attribute is accessed in a loop."""
     from django.contrib.auth import get_user_model
@@ -53,6 +55,7 @@ from nplusone.ext.pytest import allow_lazy_load  # noqa: E402
 
 
 @allow_lazy_load
+@pytest.mark.req("DEV-04")
 def test_nplusone_allow_annotation_suppresses_error(db):
     """@allow_lazy_load decorator suppresses NPlusOneError for annotated tests."""
     from django.contrib.auth import get_user_model
@@ -70,6 +73,7 @@ def test_nplusone_allow_annotation_suppresses_error(db):
 # --- DEV-07: commitlint ---
 
 
+@pytest.mark.req("DEV-07")
 def test_commitlint_hook_present():
     """`conventional-pre-commit` appears in .pre-commit-config.yaml with commit-msg stage."""
     config = REPO_ROOT / ".pre-commit-config.yaml"
@@ -83,6 +87,7 @@ def test_commitlint_hook_present():
 # --- DEV-08: ruff McCabe ---
 
 
+@pytest.mark.req("DEV-08")
 def test_ruff_mccabe_configured():
     """`[tool.ruff.lint.mccabe]` section exists in pyproject.toml."""
     pyproject = Path(__file__).resolve().parent.parent.parent / "pyproject.toml"
@@ -92,6 +97,7 @@ def test_ruff_mccabe_configured():
     )
 
 
+@pytest.mark.req("DEV-08")
 def test_ruff_mccabe_max_complexity():
     """`max-complexity` value in pyproject.toml is exactly 10."""
     pyproject = Path(__file__).resolve().parent.parent.parent / "pyproject.toml"

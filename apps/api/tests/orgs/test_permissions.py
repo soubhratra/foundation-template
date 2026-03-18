@@ -15,6 +15,7 @@ from apps.orgs.permissions import IsOrgAdmin, IsOrgMember
 User = get_user_model()
 
 
+@pytest.mark.req("ORG-03")
 @pytest.mark.django_db
 def test_non_member_gets_404(db, org):
     """ORG-03: IsOrgMember.has_permission() raises Http404 for a user not in the org."""
@@ -37,6 +38,7 @@ def test_non_member_gets_404(db, org):
         permission.has_permission(request=request, controller=None)
 
 
+@pytest.mark.req("ORG-03")
 @pytest.mark.django_db
 def test_member_role_admin_endpoint_gets_403(db, org, org_owner):
     """ORG-03: IsOrgAdmin.has_permission() raises PermissionDenied for member-role user."""

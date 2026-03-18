@@ -11,6 +11,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 
+@pytest.mark.req("OBS-03")
 def test_noop_adapter():
     """NoOpAdapter.capture_exception and capture_event return None silently."""
     from apps.core.observability import NoOpAdapter  # fails RED until Plan 02
@@ -23,6 +24,7 @@ def test_noop_adapter():
     assert result_event is None
 
 
+@pytest.mark.req("OBS-03")
 @pytest.mark.django_db
 def test_posthog_adapter_capture_exception(settings):
     """PostHogAdapter.capture_exception calls posthog client with correct args."""
@@ -48,6 +50,7 @@ def test_posthog_adapter_capture_exception(settings):
     )
 
 
+@pytest.mark.req("OBS-03")
 @pytest.mark.django_db
 def test_get_adapter_default(settings):
     """get_observability_adapter() returns NoOpAdapter when default setting used."""
@@ -61,6 +64,7 @@ def test_get_adapter_default(settings):
     assert isinstance(adapter, NoOpAdapter)
 
 
+@pytest.mark.req("OBS-03")
 @pytest.mark.django_db
 def test_middleware_process_exception(rf):
     """ObservabilityMiddleware.process_exception calls adapter and returns None."""
@@ -83,6 +87,7 @@ def test_middleware_process_exception(rf):
     assert result is None  # middleware must not return a response
 
 
+@pytest.mark.req("OBS-03")
 @pytest.mark.django_db
 def test_middleware_user_context(rf):
     """ObservabilityMiddleware includes user_id, path, method, exc_type in context."""
@@ -111,6 +116,7 @@ def test_middleware_user_context(rf):
     assert captured_context.get("exc_type") == "TypeError"
 
 
+@pytest.mark.req("OBS-03")
 def test_celery_signal_handler():
     """task_failure signal connected after CoreConfig.ready(); firing it calls capture_exception."""
     from celery.signals import task_failure

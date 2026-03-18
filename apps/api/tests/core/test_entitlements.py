@@ -7,6 +7,7 @@ import pytest
 class TestBillingOffFallback:
     """ENT-03: has_feature() returns True for all keys when billing is not installed."""
 
+    @pytest.mark.req("ENT-03")
     def test_returns_true_when_billing_absent(self, user):
         try:
             from apps.core.entitlements import has_feature  # noqa: F401
@@ -21,6 +22,7 @@ class TestBillingOffFallback:
 
         assert result is True
 
+    @pytest.mark.req("ENT-03")
     def test_no_import_error(self, user):
         try:
             from apps.core.entitlements import has_feature  # noqa: F401
@@ -39,6 +41,7 @@ class TestBillingOffFallback:
 # BILL-02: has_org_feature tests
 
 
+@pytest.mark.req("ENT-01", "ENT-02")
 def test_has_org_feature_org_plan_takes_precedence(db):
     """BILL-02: When org has active subscription, org plan result is returned (not personal)."""
     from apps.core.entitlements import has_org_feature
@@ -66,6 +69,7 @@ def test_has_org_feature_org_plan_takes_precedence(db):
     mock_resolve_personal.assert_not_called()
 
 
+@pytest.mark.req("ENT-01", "ENT-02")
 def test_has_org_feature_personal_fallback(db):
     """BILL-02: When org has no active subscription, falls back to personal plan."""
     from apps.core.entitlements import has_org_feature

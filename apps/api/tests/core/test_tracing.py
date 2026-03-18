@@ -2,10 +2,12 @@
 
 from unittest.mock import patch
 
+import pytest
 from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider
 
 
+@pytest.mark.req("OBS-02")
 def test_configure_otel_noop_when_no_env(monkeypatch):
     """configure_otel() is a no-op when OTEL_EXPORTER_OTLP_ENDPOINT is not set."""
     from apps.core.tracing import configure_otel
@@ -25,6 +27,7 @@ def test_configure_otel_noop_when_no_env(monkeypatch):
     )
 
 
+@pytest.mark.req("OBS-02")
 def test_configure_otel_active_when_env_set(monkeypatch):
     """configure_otel() creates a real TracerProvider when endpoint is set."""
     from apps.core.tracing import configure_otel

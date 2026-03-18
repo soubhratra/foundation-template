@@ -17,6 +17,7 @@ from django.test import Client
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.req("HOOK-01")
 @pytest.mark.django_db
 def test_create_endpoint_returns_secret_once(org, org_admin, client):
     """POST /endpoints returns the raw secret in the response body (shown once only)."""
@@ -51,6 +52,7 @@ def test_create_endpoint_returns_secret_once(org, org_admin, client):
     assert "secret" not in found, "EndpointOut must NOT include secret field"
 
 
+@pytest.mark.req("HOOK-01")
 @pytest.mark.django_db
 def test_create_endpoint_http_url_rejected(org, org_admin, client):
     """POST /endpoints with an http:// URL returns HTTP 422."""
@@ -70,6 +72,7 @@ def test_create_endpoint_http_url_rejected(org, org_admin, client):
     assert response.status_code == 422, response.content
 
 
+@pytest.mark.req("HOOK-01")
 @pytest.mark.django_db
 def test_list_endpoints(org, org_admin, endpoint, client):
     """GET /endpoints returns a list of endpoints for the org."""
@@ -88,6 +91,7 @@ def test_list_endpoints(org, org_admin, endpoint, client):
     assert str(endpoint.id) in ids
 
 
+@pytest.mark.req("HOOK-01")
 @pytest.mark.django_db
 def test_update_endpoint_patch(org, org_admin, endpoint, client):
     """PATCH /endpoints/{id} updates allowed fields (name, event_types, is_active)."""
@@ -106,6 +110,7 @@ def test_update_endpoint_patch(org, org_admin, endpoint, client):
     assert data["event_types"] == ["user.updated"]
 
 
+@pytest.mark.req("HOOK-01")
 @pytest.mark.django_db
 def test_delete_endpoint(org, org_admin, endpoint, client):
     """DELETE /endpoints/{id} removes the endpoint and returns HTTP 204."""
@@ -121,6 +126,7 @@ def test_delete_endpoint(org, org_admin, endpoint, client):
     assert not WebhookEndpoint.objects.filter(id=endpoint.id).exists()
 
 
+@pytest.mark.req("HOOK-01")
 @pytest.mark.django_db
 def test_rotate_secret_returns_new_secret(org, org_admin, endpoint, client):
     """POST /endpoints/{id}/rotate-secret returns a new raw secret."""
@@ -153,6 +159,7 @@ def test_rotate_secret_returns_new_secret(org, org_admin, endpoint, client):
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.req("HOOK-02")
 @pytest.mark.django_db
 def test_list_deliveries_paginated(org, org_admin, delivery, client):
     """GET /endpoints/{id}/deliveries returns paginated delivery records."""
@@ -175,6 +182,7 @@ def test_list_deliveries_paginated(org, org_admin, delivery, client):
         assert "attempt_count" in item
 
 
+@pytest.mark.req("HOOK-02")
 @pytest.mark.django_db
 def test_delivery_detail_includes_attempts(org, org_admin, delivery, client):
     """GET /deliveries/{delivery_id} includes attempt list."""
@@ -208,6 +216,7 @@ def test_delivery_detail_includes_attempts(org, org_admin, delivery, client):
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.req("HOOK-03")
 @pytest.mark.django_db
 def test_retry_delivery_enqueues_task(org, org_admin, delivery, client):
     """POST /deliveries/{delivery_id}/retry enqueues deliver_webhook task."""
@@ -225,6 +234,7 @@ def test_retry_delivery_enqueues_task(org, org_admin, delivery, client):
     assert data.get("queued") is True
 
 
+@pytest.mark.req("HOOK-03")
 @pytest.mark.django_db
 def test_retry_delivery_not_found_404(org, org_admin, client):
     """POST /deliveries/{id}/retry returns 404 for unknown delivery."""
@@ -246,6 +256,7 @@ def test_retry_delivery_not_found_404(org, org_admin, client):
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.req("HOOK-04")
 @pytest.mark.django_db
 def test_reenable_endpoint_resets_counter(org, org_admin, endpoint, client):
     """PATCH /endpoints/{id} with is_active=true resets consecutive_failures to 0."""
@@ -277,6 +288,7 @@ def test_reenable_endpoint_resets_counter(org, org_admin, endpoint, client):
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.req("HOOK-01")
 @pytest.mark.django_db
 def test_list_endpoints_requires_org_admin(org, endpoint, client):
     """Write endpoints return 403 for a non-admin org member."""

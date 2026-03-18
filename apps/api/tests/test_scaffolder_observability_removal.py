@@ -35,6 +35,7 @@ class TestObservabilityRemovalViaCLI:
     packages/create-foundation-app/tests/remove-observability.test.ts (Plan 04).
     """
 
+    @pytest.mark.req("OBS-03", "SCAFF-01")
     def test_remove_observability_cleans_all_touch_points(self, tmp_path: Path) -> None:
         """OBS-03 integration test: compiled removeObservability() strips all
         observability artifacts from a copy of the template source files.

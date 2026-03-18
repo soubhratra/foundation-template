@@ -85,6 +85,7 @@ class TestRequireRole:
     - unauthenticated → HTTP 403
     """
 
+    @pytest.mark.req("RBAC-01")
     @pytest.mark.django_db
     def test_admin_user_passes(self) -> None:
         """Admin user with 'admin' group gets through RequireRole('admin') → 200."""
@@ -118,6 +119,7 @@ class TestRequireRole:
             "RequireRole('admin') must allow users who are members of the 'admin' group."
         )
 
+    @pytest.mark.req("RBAC-01")
     @pytest.mark.django_db
     def test_non_admin_gets_403(self) -> None:
         """Plain user without 'admin' group → 403 from RequireRole('admin')."""
@@ -149,6 +151,7 @@ class TestRequireRole:
             "RequireRole('admin') must deny users who are NOT in the 'admin' group."
         )
 
+    @pytest.mark.req("RBAC-01")
     @pytest.mark.django_db
     def test_unauthenticated_gets_403(self) -> None:
         """Unauthenticated request → 403 from RequireRole('admin')."""
@@ -195,6 +198,7 @@ class TestAdminController:
     - DELETE /{user_id}/roles/{role} → remove a role from a user
     """
 
+    @pytest.mark.req("RBAC-02")
     @pytest.mark.django_db
     def test_list_users_admin(self) -> None:
         """Admin user calls GET /admin/users → 200."""
@@ -219,6 +223,7 @@ class TestAdminController:
             "GET /admin/users must return 200 for admin users."
         )
 
+    @pytest.mark.req("RBAC-02")
     @pytest.mark.django_db
     def test_list_users_non_admin(self) -> None:
         """Member user (non-admin) calls GET /admin/users → 403."""
@@ -242,6 +247,7 @@ class TestAdminController:
             "GET /admin/users must return 403 for non-admin users."
         )
 
+    @pytest.mark.req("RBAC-02")
     @pytest.mark.django_db
     def test_assign_role(self) -> None:
         """Admin assigns 'member' role to another user via POST /{user_id}/roles → 200."""
@@ -266,6 +272,7 @@ class TestAdminController:
             "POST /admin/users/{user_id}/roles must return 200 when role assignment succeeds."
         )
 
+    @pytest.mark.req("RBAC-02")
     @pytest.mark.django_db
     def test_assign_unknown_role(self) -> None:
         """Admin assigns an unknown role → 400."""
@@ -290,6 +297,7 @@ class TestAdminController:
             "POST /admin/users/{user_id}/roles must return 400 for unrecognised role names."
         )
 
+    @pytest.mark.req("RBAC-02")
     @pytest.mark.django_db
     def test_assign_role_to_self(self) -> None:
         """Admin calls POST with own user_id → 400 (cannot modify own roles)."""
@@ -313,6 +321,7 @@ class TestAdminController:
             "POST /admin/users/{user_id}/roles must return 400 when user_id == request.user.id."
         )
 
+    @pytest.mark.req("RBAC-02")
     @pytest.mark.django_db
     def test_remove_role(self) -> None:
         """Admin removes 'member' role from user via DELETE /{user_id}/roles/member → 200."""
@@ -337,6 +346,7 @@ class TestAdminController:
             "DELETE /admin/users/{user_id}/roles/{role} must return 200 when removal succeeds."
         )
 
+    @pytest.mark.req("RBAC-02")
     @pytest.mark.django_db
     def test_remove_role_non_admin(self) -> None:
         """Member user (non-admin) calls DELETE /{user_id}/roles/{role} → 403."""
@@ -361,6 +371,7 @@ class TestAdminController:
             "DELETE /admin/users/{user_id}/roles/{role} must return 403 for non-admin users."
         )
 
+    @pytest.mark.req("RBAC-02")
     @pytest.mark.django_db
     def test_get_user_roles(self) -> None:
         """Admin calls GET /{user_id}/roles → 200 with list of role names."""
@@ -403,7 +414,9 @@ class TestSeedRolesMigration:
     The seed function must be callable directly for idempotency tests.
     """
 
+    @pytest.mark.req("RBAC-02")
     @pytest.mark.django_db
+    @pytest.mark.req("RBAC-03")
     def test_admin_group_exists(self) -> None:
         """After applying migrations, Group named 'admin' exists."""
         from django.contrib.auth.models import Group
@@ -414,6 +427,7 @@ class TestSeedRolesMigration:
             "Group.objects.get_or_create(name='admin')."
         )
 
+    @pytest.mark.req("RBAC-02")
     @pytest.mark.django_db
     def test_member_group_exists(self) -> None:
         """After applying migrations, Group named 'member' exists."""
@@ -425,6 +439,7 @@ class TestSeedRolesMigration:
             "Group.objects.get_or_create(name='member')."
         )
 
+    @pytest.mark.req("RBAC-02")
     @pytest.mark.django_db
     def test_migration_idempotent(self) -> None:
         """Calling seed_roles() twice does not raise and produces exactly 2 groups."""

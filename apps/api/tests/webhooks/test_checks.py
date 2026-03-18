@@ -3,10 +3,12 @@
 HOOK-01: manage.py check validates the WEBHOOK_EVENTS setting at startup.
 """
 
+import pytest
 from django.core.management import call_command
 from django.test import override_settings
 
 
+@pytest.mark.req("HOOK-04")
 def test_webhook_events_check_valid():
     """System check passes when WEBHOOK_EVENTS is a correctly shaped dict."""
     valid_events = {
@@ -24,6 +26,7 @@ def test_webhook_events_check_valid():
         call_command("check", "--deploy", stdout=out, stderr=out, fail_level="ERROR")
 
 
+@pytest.mark.req("HOOK-04")
 def test_webhook_events_check_missing_key():
     """System check raises a warning when WEBHOOK_EVENTS entry is missing 'description'."""
     from apps.webhooks.checks import check_webhook_events
@@ -41,6 +44,7 @@ def test_webhook_events_check_missing_key():
     assert "webhooks.W002" in warning_ids
 
 
+@pytest.mark.req("HOOK-04")
 def test_webhook_events_check_invalid_type():
     """System check returns a warning when WEBHOOK_EVENTS is not a dict."""
     from apps.webhooks.checks import check_webhook_events

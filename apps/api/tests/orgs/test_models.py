@@ -15,6 +15,7 @@ from django.utils import timezone
 from apps.orgs.models import Invitation, Organization, OrgCustomer
 
 
+@pytest.mark.req("ORG-01")
 @pytest.mark.django_db
 def test_org_slug_unique(db):
     """ORG-01: Two organizations with the same slug raise IntegrityError."""
@@ -32,6 +33,7 @@ def test_org_slug_unique(db):
         Organization.objects.create(name="Second Corp", slug="acme", owner=owner)
 
 
+@pytest.mark.req("ORG-01")
 @pytest.mark.django_db
 def test_org_customer_auto_created(db):
     """BILL-01: Creating an Organization automatically creates an OrgCustomer row."""
@@ -53,6 +55,7 @@ def test_org_customer_auto_created(db):
     )
 
 
+@pytest.mark.req("ORG-02")
 @pytest.mark.django_db
 def test_invitation_is_valid_false_after_expiry(db):
     """ORG-02: Invitation.is_valid() returns False when expires_at is in the past."""

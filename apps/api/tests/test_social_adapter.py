@@ -40,6 +40,7 @@ def _get_adapter():
 class TestRelayEmailAutoConnect:
     """SOCIAL-04: Apple relay addresses bypass email-based account auto-connect."""
 
+    @pytest.mark.req("SOCIAL-01")
     def test_relay_email_not_auto_connected(self) -> None:
         """can_authenticate_by_email returns False for @privaterelay.appleid.com addresses."""
         FoundationSocialAccountAdapter = _get_adapter()
@@ -52,6 +53,7 @@ class TestRelayEmailAutoConnect:
             "a real email and should not trigger account merging"
         )
 
+    @pytest.mark.req("SOCIAL-01")
     def test_real_email_can_auto_connect(self) -> None:
         """can_authenticate_by_email returns True for real email addresses."""
         FoundationSocialAccountAdapter = _get_adapter()
@@ -64,6 +66,7 @@ class TestRelayEmailAutoConnect:
             "to existing password accounts"
         )
 
+    @pytest.mark.req("SOCIAL-01")
     def test_another_relay_address_not_auto_connected(self) -> None:
         """Any @privaterelay.appleid.com address is blocked."""
         FoundationSocialAccountAdapter = _get_adapter()
@@ -73,6 +76,7 @@ class TestRelayEmailAutoConnect:
         result = adapter.can_authenticate_by_email(sociallogin, relay_email)
         assert result is False
 
+    @pytest.mark.req("SOCIAL-01")
     def test_corporate_email_can_auto_connect(self) -> None:
         """Non-relay corporate email addresses can auto-connect."""
         FoundationSocialAccountAdapter = _get_adapter()

@@ -64,6 +64,7 @@ def export_user_with_billing(db, export_user):
 class TestExportEndpoint:
     """GDPR-02 endpoint tests: GET /api/v1/account/export"""
 
+    @pytest.mark.req("GDPR-02")
     def test_export_returns_200(self, db, export_user) -> None:
         """Authenticated GET /api/v1/account/export returns HTTP 200."""
         try:
@@ -86,6 +87,7 @@ class TestExportEndpoint:
             "GET /api/v1/account/export must return 200 for authenticated users."
         )
 
+    @pytest.mark.req("GDPR-02")
     def test_export_schema(self, db, export_user) -> None:
         """Response JSON has top-level keys: profile, social_accounts, billing, exported_at."""
         try:
@@ -110,6 +112,7 @@ class TestExportEndpoint:
             f"Export response missing required top-level keys: {missing}. Got: {list(data.keys())}"
         )
 
+    @pytest.mark.req("GDPR-02")
     def test_export_profile_fields(self, db, export_user) -> None:
         """Profile section contains email, first_name, last_name, date_joined, last_login."""
         try:
@@ -133,6 +136,7 @@ class TestExportEndpoint:
             f"Profile section missing required fields: {missing}. Got: {list(profile.keys())}"
         )
 
+    @pytest.mark.req("GDPR-02")
     def test_export_download_header(self, db, export_user) -> None:
         """Response has Content-Disposition header with 'attachment' and 'my-data.json'."""
         try:
@@ -157,6 +161,7 @@ class TestExportEndpoint:
             f"Content-Disposition must include 'my-data.json'. Got: '{content_disposition}'"
         )
 
+    @pytest.mark.req("GDPR-02")
     def test_export_billing_no_customer(self, db, export_user) -> None:
         """For user with no billing Customer row, billing fields are all null/empty."""
         try:
@@ -187,6 +192,7 @@ class TestExportEndpoint:
             f"Got: {billing.get('payments')!r}"
         )
 
+    @pytest.mark.req("GDPR-02")
     def test_export_unauthenticated_returns_401(self, db) -> None:
         """Unauthenticated GET /api/v1/account/export returns HTTP 401."""
         try:
@@ -208,6 +214,7 @@ class TestExportEndpoint:
             "GET /api/v1/account/export must return 401 for unauthenticated requests."
         )
 
+    @pytest.mark.req("GDPR-02")
     def test_export_excludes_stripe_ids(self, db, export_user_with_billing) -> None:
         """Response JSON must not contain Stripe customer/subscription IDs (cus_/sub_ prefixes)."""
         try:
@@ -234,6 +241,7 @@ class TestExportEndpoint:
             "stripe_subscription_id must be excluded from the export payload."
         )
 
+    @pytest.mark.req("GDPR-02")
     def test_export_billing_plan_id_round_trip(self, db, export_user_with_plan) -> None:
         """billing.plan_id matches the value stored on Subscription.plan_id (GDPR-02)."""
         from ninja.testing import TestClient

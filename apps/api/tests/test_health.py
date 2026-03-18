@@ -7,6 +7,7 @@ These tests now cover the new probe paths at /api/health/.
 import pytest
 
 
+@pytest.mark.req("OBS-04")
 @pytest.mark.django_db
 def test_live_probe_returns_200(api_client):
     """Liveness probe returns 200 OK with status=alive."""
@@ -16,6 +17,7 @@ def test_live_probe_returns_200(api_client):
     assert data["status"] == "alive"
 
 
+@pytest.mark.req("OBS-05")
 @pytest.mark.django_db
 def test_ready_probe_includes_all_checks(api_client):
     """Readiness probe response includes postgres, redis, and celery check keys."""

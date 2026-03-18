@@ -3,6 +3,7 @@
 import pytest
 
 
+@pytest.mark.req("AUDIT-01")
 @pytest.mark.django_db(transaction=True)
 def test_org_insert_event(org):
     """Creating an Organization writes an org.created event row."""
@@ -15,6 +16,7 @@ def test_org_insert_event(org):
     ).exists(), "Expected org.created event row after Organization creation"
 
 
+@pytest.mark.req("AUDIT-01")
 @pytest.mark.django_db(transaction=True)
 def test_org_delete_event(org):
     """Deleting an Organization writes an org.deleted event row."""
@@ -29,6 +31,7 @@ def test_org_delete_event(org):
     ).exists(), "Expected org.deleted event row after Organization deletion"
 
 
+@pytest.mark.req("AUDIT-01")
 @pytest.mark.django_db(transaction=True)
 def test_membership_update_event(org, org_member):
     """Updating Membership role writes a membership.updated event row."""
@@ -44,6 +47,7 @@ def test_membership_update_event(org, org_member):
     ).exists(), "Expected membership.updated event row after role change"
 
 
+@pytest.mark.req("AUDIT-01")
 @pytest.mark.django_db(transaction=True)
 def test_apikey_insert_event(api_key_instance):
     """Creating an APIKey writes an api_key.created event row."""
@@ -55,6 +59,7 @@ def test_apikey_insert_event(api_key_instance):
     ).exists(), "Expected api_key.created event row after APIKey creation"
 
 
+@pytest.mark.req("AUDIT-01")
 @pytest.mark.django_db(transaction=True)
 def test_webhook_endpoint_insert_event(webhook_endpoint_instance):
     """Creating a WebhookEndpoint writes a webhook_endpoint.created event row."""

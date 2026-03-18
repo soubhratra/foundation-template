@@ -2,7 +2,10 @@
 
 from unittest.mock import MagicMock, patch
 
+import pytest
 
+
+@pytest.mark.req("OBS-01")
 def test_otel_processor_injects_when_span_active():
     """add_otel_context injects trace_id + span_id when a span is recording."""
     from apps.core.logging import add_otel_context
@@ -27,6 +30,7 @@ def test_otel_processor_injects_when_span_active():
     assert result["span_id"] == format(mock_ctx.span_id, "016x")
 
 
+@pytest.mark.req("OBS-01")
 def test_otel_processor_omits_when_no_span():
     """add_otel_context omits trace_id + span_id (not null) when no span is active."""
     from opentelemetry.trace import INVALID_SPAN_CONTEXT, NonRecordingSpan
@@ -43,6 +47,7 @@ def test_otel_processor_omits_when_no_span():
     assert "span_id" not in result
 
 
+@pytest.mark.req("OBS-01")
 def test_renderer_selection_dev(settings):
     """ConsoleRenderer is active in dev (DEBUG=True)."""
     import structlog
@@ -55,6 +60,7 @@ def test_renderer_selection_dev(settings):
     assert structlog.is_configured()
 
 
+@pytest.mark.req("OBS-01")
 def test_renderer_selection_prod(settings):
     """JSONRenderer is active in prod (DEBUG=False)."""
     import structlog

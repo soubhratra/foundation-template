@@ -41,18 +41,21 @@ def _make_request(user):
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.req("BILL-02")
 def test_active_user_passes(db, user, active_subscription):
     """User with ACTIVE subscription must reach the view (HTTP 200)."""
     response = _protected_view(_make_request(user))
     assert response.status_code == 200
 
 
+@pytest.mark.req("BILL-02")
 def test_trialing_user_passes(db, user, trialing_subscription):
     """User with TRIALING subscription must reach the view (HTTP 200)."""
     response = _protected_view(_make_request(user))
     assert response.status_code == 200
 
 
+@pytest.mark.req("BILL-02")
 def test_cancel_at_period_end_passes(db, user, cancel_at_period_end_subscription):
     """User with ACTIVE + cancel_at_period_end=True is paid through the period — must pass."""
     response = _protected_view(_make_request(user))
@@ -64,36 +67,42 @@ def test_cancel_at_period_end_passes(db, user, cancel_at_period_end_subscription
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.req("BILL-02")
 def test_past_due_user_blocked(db, user, past_due_subscription):
     """User with PAST_DUE subscription must be blocked (PermissionDenied)."""
     with pytest.raises(PermissionDenied):
         _protected_view(_make_request(user))
 
 
+@pytest.mark.req("BILL-02")
 def test_unpaid_user_blocked(db, user, unpaid_subscription):
     """User with UNPAID subscription must be blocked (PermissionDenied)."""
     with pytest.raises(PermissionDenied):
         _protected_view(_make_request(user))
 
 
+@pytest.mark.req("BILL-02")
 def test_canceled_user_blocked(db, user, canceled_subscription):
     """User with CANCELED subscription must be blocked (PermissionDenied)."""
     with pytest.raises(PermissionDenied):
         _protected_view(_make_request(user))
 
 
+@pytest.mark.req("BILL-02")
 def test_incomplete_user_blocked(db, user, incomplete_subscription):
     """User with INCOMPLETE subscription must be blocked (PermissionDenied)."""
     with pytest.raises(PermissionDenied):
         _protected_view(_make_request(user))
 
 
+@pytest.mark.req("BILL-02")
 def test_no_customer_blocked(db, user):
     """User with no Customer record at all must be blocked (PermissionDenied)."""
     with pytest.raises(PermissionDenied):
         _protected_view(_make_request(user))
 
 
+@pytest.mark.req("BILL-02")
 def test_no_subscription_blocked(db, customer):
     """Customer exists but has no Subscription record — must be blocked (PermissionDenied)."""
     # customer fixture creates the Customer but no Subscription.

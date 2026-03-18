@@ -32,6 +32,7 @@ class TestBillingRemovalViaCLI:
     packages/create-foundation-app/tests/remove-billing.test.ts (Plan 12-02).
     """
 
+    @pytest.mark.req("BILL-04")
     def test_billing_removal_via_cli(self, tmp_path: Path) -> None:
         """SCAFF-04 integration test: compiled removeBillingModule() strips all
         billing artifacts from a copy of the template source files.

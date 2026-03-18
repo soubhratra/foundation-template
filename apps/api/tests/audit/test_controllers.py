@@ -5,6 +5,7 @@ import pytest
 from django.test import Client
 
 
+@pytest.mark.req("AUDIT-03")
 @pytest.mark.django_db(transaction=True)
 def test_audit_log_admin_200(org, org_admin):
     """GET /api/v1/org/{slug}/audit-log returns 200 for org admin."""
@@ -18,6 +19,7 @@ def test_audit_log_admin_200(org, org_admin):
     assert "page_size" in data
 
 
+@pytest.mark.req("AUDIT-03")
 @pytest.mark.django_db(transaction=True)
 def test_audit_log_member_403(org, org_member):
     """GET /api/v1/org/{slug}/audit-log returns 403 for plain org member."""
@@ -27,6 +29,7 @@ def test_audit_log_member_403(org, org_member):
     assert response.status_code == 403
 
 
+@pytest.mark.req("AUDIT-03")
 @pytest.mark.django_db(transaction=True)
 def test_filter_actor_id(org, org_admin):
     """?actor_id= filter returns only entries for that actor."""
@@ -47,6 +50,7 @@ def test_filter_actor_id(org, org_admin):
         assert item.actor_id == str(org_admin.pk)
 
 
+@pytest.mark.req("AUDIT-03")
 @pytest.mark.django_db(transaction=True)
 def test_filter_action(org, org_admin):
     """?action=org.updated returns only org update events."""
@@ -63,6 +67,7 @@ def test_filter_action(org, org_admin):
         assert item.action == "org.updated"
 
 
+@pytest.mark.req("AUDIT-03")
 @pytest.mark.django_db(transaction=True)
 def test_cursor_pagination(org, org_admin):
     """Cursor pagination: next_cursor present; second page is non-overlapping."""
@@ -85,6 +90,7 @@ def test_cursor_pagination(org, org_admin):
     assert page1_ids.isdisjoint(page2_ids), "Pages must be non-overlapping"
 
 
+@pytest.mark.req("AUDIT-03", "AKEY-01")
 @pytest.mark.django_db(transaction=True)
 def test_apikey_events_in_audit_log(org, org_admin):
     """APIKey create events appear in the org audit log (uses across(), not references())."""
@@ -107,6 +113,7 @@ def test_apikey_events_in_audit_log(org, org_admin):
     assert "api_key.created" in actions, f"Expected api_key.created in {actions}"
 
 
+@pytest.mark.req("AUDIT-03")
 @pytest.mark.django_db(transaction=True)
 def test_impersonator_not_exposed(org, org_admin):
     """AuditEntryOut response body does NOT contain an impersonator field."""

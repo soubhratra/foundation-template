@@ -37,6 +37,7 @@ def authenticated_client(db, subscription):
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.req("BILL-01", "BILL-02")
 @pytest.mark.django_db
 def test_get_status(authenticated_client, subscription):
     """GET /api/v1/billing/status returns 200 with status, cancel_at_period_end, period_end."""
@@ -53,6 +54,7 @@ def test_get_status(authenticated_client, subscription):
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.req("BILL-01", "BILL-02")
 @pytest.mark.django_db
 def test_get_subscription(authenticated_client, subscription):
     """GET /api/v1/billing/subscription returns 200 with full subscription detail."""
@@ -70,6 +72,7 @@ def test_get_subscription(authenticated_client, subscription):
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.req("BILL-02")
 @pytest.mark.django_db
 def test_list_invoices(authenticated_client, subscription):
     """GET /api/v1/billing/invoices returns 200 with {invoices, total}."""
@@ -81,6 +84,7 @@ def test_list_invoices(authenticated_client, subscription):
     assert isinstance(data["invoices"], list)
 
 
+@pytest.mark.req("BILL-02")
 @pytest.mark.django_db
 def test_list_invoices_fields(authenticated_client, subscription):
     """Invoice items in the list include all required fields."""
@@ -104,6 +108,7 @@ def test_list_invoices_fields(authenticated_client, subscription):
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.req("BILL-02")
 @pytest.mark.django_db
 def test_change_plan(authenticated_client, subscription):
     """POST /api/v1/billing/subscription/change with {plan_id, billing_period} returns 200."""
@@ -121,6 +126,7 @@ def test_change_plan(authenticated_client, subscription):
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.req("BILL-02")
 @pytest.mark.django_db
 def test_cancel_subscription(authenticated_client, subscription):
     """POST /api/v1/billing/subscription/cancel returns 200 with cancel_at_period_end=True."""
@@ -135,6 +141,7 @@ def test_cancel_subscription(authenticated_client, subscription):
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.req("BILL-02")
 @pytest.mark.django_db
 def test_portal_session(authenticated_client, subscription):
     """POST /api/v1/billing/portal-session returns 200 with {portal_url}."""
@@ -150,6 +157,7 @@ def test_portal_session(authenticated_client, subscription):
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.req("BILL-02")
 @pytest.mark.django_db
 def test_proration_preview(authenticated_client, subscription):
     """POST /api/v1/billing/proration-preview returns 200 with proration amounts."""

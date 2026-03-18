@@ -6,11 +6,13 @@ SEC-02: Security headers (Django + Next.js) — turned GREEN by Plan 16-03
 SEC-03: Redis cache + session backend
 """
 
+import pytest
 from django.test import override_settings
 
 # --- SEC-01: Rate Limiting ---
 
 
+@pytest.mark.req("SEC-01")
 def test_rate_limit_returns_429(client):
     """Auth endpoints return HTTP 429 after exceeding the configured rate limit."""
     # Enable rate limiting for this test (autouse fixture disables it globally).
@@ -31,6 +33,7 @@ def test_rate_limit_returns_429(client):
     assert response.status_code == 429
 
 
+@pytest.mark.req("SEC-01")
 def test_rate_limit_retry_after_header(client):
     """HTTP 429 response includes a Retry-After header."""
     with override_settings(RATELIMIT_ENABLE=True, RATELIMIT_AUTH_LOGIN="1/m"):
@@ -48,6 +51,7 @@ def test_rate_limit_retry_after_header(client):
     assert response.get("Retry-After") == "60"
 
 
+@pytest.mark.req("SEC-01", "SEC-03")
 def test_rate_limit_uses_redis_cache():
     """Rate limiting uses the 'default' Redis cache backend (not LocMemCache)."""
     # Import base settings directly (bypass test isolation fixture override).
@@ -60,6 +64,7 @@ def test_rate_limit_uses_redis_cache():
 # --- SEC-02: Security Headers (turned GREEN by Plan 16-03) ---
 
 
+@pytest.mark.req("SEC-02")
 def test_csp_header_present(client):
     """Every Django response includes a Content-Security-Policy header."""
     response = client.get("/api/health/live")  # health endpoint — no auth needed
@@ -69,6 +74,7 @@ def test_csp_header_present(client):
     assert "default-src" in response["Content-Security-Policy"]
 
 
+@pytest.mark.req("SEC-02")
 def test_hsts_header_production(client):
     """Production settings include Strict-Transport-Security header."""
     # HSTS is in production.py only. Simulate production by overriding settings.
@@ -89,6 +95,7 @@ def test_hsts_header_production(client):
     assert "includeSubDomains" in response["Strict-Transport-Security"]
 
 
+@pytest.mark.req("SEC-02")
 def test_x_frame_options_header(client):
     """Every Django response includes X-Frame-Options: DENY."""
     response = client.get("/api/health/live")
@@ -97,6 +104,7 @@ def test_x_frame_options_header(client):
     )
 
 
+@pytest.mark.req("SEC-02")
 def test_referrer_policy_header(client):
     """Every Django response includes Referrer-Policy: strict-origin-when-cross-origin."""
     response = client.get("/api/health/live")
@@ -108,6 +116,7 @@ def test_referrer_policy_header(client):
 # --- SEC-03: Redis Cache + Session Backend ---
 
 
+@pytest.mark.req("SEC-03")
 def test_default_cache_is_redis():
     """Default cache backend is RedisCache (not LocMemCache) in non-test environments."""
     import config.settings.base as base_settings
@@ -118,6 +127,7 @@ def test_default_cache_is_redis():
     )
 
 
+@pytest.mark.req("SEC-03")
 def test_session_cache_is_redis():
     """Session engine uses cache backend pointing at Redis sessions alias."""
     import config.settings.base as base_settings

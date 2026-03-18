@@ -18,6 +18,7 @@ WEBHOOK_EVENTS_SETTINGS = {
 }
 
 
+@pytest.mark.req("HOOK-02")
 @pytest.mark.django_db
 @override_settings(WEBHOOK_EVENTS=WEBHOOK_EVENTS_SETTINGS)
 def test_fire_unknown_event_raises(org):
@@ -28,6 +29,7 @@ def test_fire_unknown_event_raises(org):
         fire_webhook_event(org, "bad.event", {})
 
 
+@pytest.mark.req("HOOK-02")
 @pytest.mark.django_db(transaction=True)
 @override_settings(WEBHOOK_EVENTS=WEBHOOK_EVENTS_SETTINGS)
 def test_fire_valid_event_enqueues_per_endpoint(org, endpoint):
@@ -40,6 +42,7 @@ def test_fire_valid_event_enqueues_per_endpoint(org, endpoint):
     mock_delay.assert_called_once()
 
 
+@pytest.mark.req("HOOK-01")
 @pytest.mark.django_db
 def test_fire_http_only_url_raises(org):
     """WebhookEndpoint creation rejects non-HTTPS URLs via model clean()."""
@@ -57,6 +60,7 @@ def test_fire_http_only_url_raises(org):
         endpoint.full_clean()
 
 
+@pytest.mark.req("HOOK-02")
 @pytest.mark.django_db(transaction=True)
 @override_settings(WEBHOOK_EVENTS=WEBHOOK_EVENTS_SETTINGS)
 def test_no_dispatch_on_rollback(org, endpoint):
@@ -76,6 +80,7 @@ def test_no_dispatch_on_rollback(org, endpoint):
     mock_delay.assert_not_called()
 
 
+@pytest.mark.req("HOOK-02")
 @pytest.mark.django_db(transaction=True)
 @override_settings(WEBHOOK_EVENTS=WEBHOOK_EVENTS_SETTINGS)
 def test_fire_skips_inactive_endpoint(org, endpoint):
@@ -91,6 +96,7 @@ def test_fire_skips_inactive_endpoint(org, endpoint):
     mock_delay.assert_not_called()
 
 
+@pytest.mark.req("HOOK-02")
 @pytest.mark.django_db(transaction=True)
 def test_fire_skips_unsubscribed_endpoint(org, endpoint):
     """fire_webhook_event does not enqueue tasks for endpoints not subscribed to the event."""

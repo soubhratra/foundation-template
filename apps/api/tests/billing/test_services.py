@@ -15,6 +15,7 @@ BillingService = pytest.importorskip("apps.billing.services").BillingService
 class TestCreateCheckoutSession:
     """SUB-01: create_checkout_session resolves plan_id → price_id via PlanProviderMapping."""
 
+    @pytest.mark.req("BILL-02")
     def test_create_checkout_session(self, billing_service, subscription, plan_mapping):
         user = subscription.customer.user
         result = billing_service.create_checkout_session(
@@ -31,6 +32,7 @@ class TestCreateCheckoutSession:
         assert result["price_id"] == "price_stub_monthly"
         assert result["mode"] == "subscription"
 
+    @pytest.mark.req("BILL-02")
     def test_missing_price_mapping_raises(self, billing_service, user):
         """User with no PlanProviderMapping raises ServiceError.
 
@@ -56,6 +58,7 @@ class TestCreateCheckoutSession:
 class TestUpgradeSubscription:
     """SUB-02: upgrade_subscription calls modify_subscription with create_prorations."""
 
+    @pytest.mark.req("BILL-02")
     def test_upgrade_subscription(self, billing_service, subscription, plan_mapping):
         user = subscription.customer.user
         result = billing_service.upgrade_subscription(
@@ -71,6 +74,7 @@ class TestUpgradeSubscription:
 class TestDowngradeSubscription:
     """SUB-03: downgrade_subscription calls modify_subscription with always_invoice."""
 
+    @pytest.mark.req("BILL-02")
     def test_downgrade_subscription(self, billing_service, subscription, plan_mapping):
         user = subscription.customer.user
         result = billing_service.downgrade_subscription(
@@ -85,6 +89,7 @@ class TestDowngradeSubscription:
 class TestCancelSubscription:
     """SUB-04: cancel_subscription sets cancel_at_period_end on both adapter and DB."""
 
+    @pytest.mark.req("BILL-02")
     def test_cancel_subscription(self, billing_service, subscription):
         user = subscription.customer.user
         result = billing_service.cancel_subscription(user=user)
@@ -98,6 +103,7 @@ class TestCancelSubscription:
 class TestReactivateSubscription:
     """SUB-05: reactivate_subscription undoes cancel_at_period_end (no plan change)."""
 
+    @pytest.mark.req("BILL-02")
     def test_reactivate_subscription(self, billing_service, subscription):
         from apps.billing.models import SubscriptionStatus
 
@@ -119,6 +125,7 @@ class TestReactivateSubscription:
 class TestOneTimePayment:
     """PAY-01: create_one_time_payment creates checkout session in 'payment' mode."""
 
+    @pytest.mark.req("BILL-02")
     def test_one_time_payment(self, billing_service, subscription):
         user = subscription.customer.user
         result = billing_service.create_one_time_payment(
@@ -135,6 +142,7 @@ class TestOneTimePayment:
 class TestRecordUsage:
     """USAGE-01: record_usage delegates to adapter with customer's stripe_customer_id."""
 
+    @pytest.mark.req("BILL-02")
     def test_record_usage(self, billing_service, subscription):
         user = subscription.customer.user
         result = billing_service.record_usage(
@@ -148,6 +156,7 @@ class TestRecordUsage:
 class TestGetUsageSummary:
     """USAGE-02: get_usage_summary delegates to adapter."""
 
+    @pytest.mark.req("BILL-02")
     def test_get_usage_summary(self, billing_service, subscription):
         user = subscription.customer.user
         result = billing_service.get_usage_summary(
@@ -162,6 +171,7 @@ class TestGetUsageSummary:
 class TestPreviewProration:
     """SUB-02 extended: preview_proration returns proration amounts."""
 
+    @pytest.mark.req("BILL-02")
     def test_preview_proration(self, billing_service, subscription, plan_mapping):
         user = subscription.customer.user
         result = billing_service.preview_proration(

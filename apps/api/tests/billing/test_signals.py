@@ -21,6 +21,7 @@ Customer = billing_models.Customer
 User = get_user_model()
 
 
+@pytest.mark.req("BILL-01")
 @pytest.mark.django_db
 def test_customer_auto_created_on_user_creation():
     """CUST-02: Creating a User automatically creates a linked Customer record."""
@@ -34,6 +35,7 @@ def test_customer_auto_created_on_user_creation():
     )
 
 
+@pytest.mark.req("BILL-01")
 @pytest.mark.django_db
 def test_customer_not_duplicated_on_user_save():
     """CUST-02: Saving an existing User does not create a second Customer."""

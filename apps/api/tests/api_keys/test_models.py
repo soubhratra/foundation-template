@@ -12,17 +12,20 @@ from apps.api_keys.models import APIKey
 
 @pytest.mark.django_db
 class TestAPIKeyGeneration:
+    @pytest.mark.req("AKEY-01")
     def test_generate_key_returns_three_tuple(self):
         raw_key, prefix, key_hash = APIKey.generate_key()
         assert isinstance(raw_key, str)
         assert isinstance(prefix, str)
         assert isinstance(key_hash, str)
 
+    @pytest.mark.req("AKEY-01")
     def test_raw_key_starts_with_prefix_setting(self, settings):
         settings.API_KEY_PREFIX = "ft_"  # pragma: allowlist secret
         raw_key, prefix, key_hash = APIKey.generate_key()
         assert raw_key.startswith("ft_")
 
+    @pytest.mark.req("AKEY-01")
     def test_stored_prefix_is_prefix_plus_8_chars(self, settings):
         settings.API_KEY_PREFIX = "ft_"  # pragma: allowlist secret
         raw_key, stored_prefix, key_hash = APIKey.generate_key()
@@ -30,11 +33,13 @@ class TestAPIKeyGeneration:
         assert stored_prefix.startswith("ft_")
         assert len(stored_prefix) == len("ft_") + 8
 
+    @pytest.mark.req("AKEY-01")
     def test_key_hash_is_sha256_of_raw_key(self):
         raw_key, prefix, key_hash = APIKey.generate_key()
         expected_hash = hashlib.sha256(raw_key.encode()).hexdigest()
         assert key_hash == expected_hash
 
+    @pytest.mark.req("AKEY-01")
     def test_raw_key_not_stored_in_db(self, api_user):
         raw_key, stored_prefix, key_hash = APIKey.generate_key()
         key = APIKey.objects.create(
@@ -50,6 +55,7 @@ class TestAPIKeyGeneration:
         # key_hash stored as SHA-256 hex (64 chars)
         assert len(key.key_hash) == 64
 
+    @pytest.mark.req("AKEY-01")
     def test_two_generated_keys_have_different_prefixes(self):
         _, prefix1, _ = APIKey.generate_key()
         _, prefix2, _ = APIKey.generate_key()

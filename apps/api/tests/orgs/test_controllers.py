@@ -11,6 +11,7 @@ from django.test import Client
 User = get_user_model()
 
 
+@pytest.mark.req("ORG-05")
 @pytest.mark.django_db
 def test_cross_org_access_forbidden(db, org, org_owner):
     """ORG-05: GET /api/v1/org/{slug}/members/ returns 404 for a non-member user."""

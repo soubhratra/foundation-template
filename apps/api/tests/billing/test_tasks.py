@@ -67,6 +67,7 @@ def subscription(customer):
 class TestIdempotencyGuard:
     """HOOK-03: Duplicate events are silently ignored."""
 
+    @pytest.mark.req("BILL-02")
     @pytest.mark.django_db
     def test_idempotency_guard(self, customer, subscription):
         """If ProcessedWebhookEvent already exists for (provider, event_id), task returns early."""
@@ -113,6 +114,7 @@ class TestIdempotencyGuard:
 class TestCheckoutSessionCompleted:
     """HOOK-04: checkout.session.completed creates/updates Subscription with ACTIVE status."""
 
+    @pytest.mark.req("BILL-02")
     @pytest.mark.django_db
     def test_checkout_session_completed(self, customer):
         """checkout.session.completed → Subscription created/updated with status ACTIVE."""
@@ -141,6 +143,7 @@ class TestCheckoutSessionCompleted:
 class TestSubscriptionCreated:
     """HOOK-04: customer.subscription.created sets subscription fields."""
 
+    @pytest.mark.req("BILL-02")
     @pytest.mark.django_db
     def test_subscription_created(self, customer):
         """customer.subscription.created → Subscription updated with sub ID and period dates."""
@@ -173,6 +176,7 @@ class TestSubscriptionCreated:
 class TestSubscriptionUpdated:
     """HOOK-04: customer.subscription.updated updates status and cancel_at_period_end."""
 
+    @pytest.mark.req("BILL-02")
     @pytest.mark.django_db
     def test_subscription_updated(self, customer, subscription):
         """customer.subscription.updated → status updated; cancel_at_period_end updated."""
@@ -203,6 +207,7 @@ class TestSubscriptionUpdated:
 class TestSubscriptionDeleted:
     """HOOK-04: customer.subscription.deleted sets status to CANCELED."""
 
+    @pytest.mark.req("BILL-02")
     @pytest.mark.django_db
     def test_subscription_deleted(self, customer, subscription):
         """customer.subscription.deleted → Subscription.status set to CANCELED."""
@@ -229,6 +234,7 @@ class TestSubscriptionDeleted:
 class TestInvoicePaymentSucceeded:
     """HOOK-04: invoice.payment_succeeded creates Payment with status 'succeeded'."""
 
+    @pytest.mark.req("BILL-02")
     @pytest.mark.django_db
     def test_invoice_payment_succeeded(self, customer):
         """invoice.payment_succeeded → Payment row created with status 'succeeded'."""
@@ -262,6 +268,7 @@ class TestInvoicePaymentSucceeded:
 class TestInvoicePaymentFailed:
     """HOOK-04: invoice.payment_failed sets Subscription to PAST_DUE and creates Payment."""
 
+    @pytest.mark.req("BILL-02")
     @pytest.mark.django_db
     def test_invoice_payment_failed(self, customer, subscription):
         """invoice.payment_failed → Subscription.status = PAST_DUE; Payment row created."""
@@ -297,6 +304,7 @@ class TestInvoicePaymentFailed:
 class TestUnknownEventType:
     """HOOK-04: Unrecognized events are silently acknowledged."""
 
+    @pytest.mark.req("BILL-02")
     @pytest.mark.django_db
     def test_unknown_event_type(self, customer):
         """Unknown event_type → returns without error, no DB writes except idempotency record."""
@@ -322,6 +330,7 @@ class TestUnknownEventType:
 # BILL-02: org cache invalidation
 
 
+@pytest.mark.req("BILL-02")
 @pytest.mark.django_db
 def test_subscription_updated_invalidates_org_caches(db):
     """BILL-02: Org member entitlement caches are cleared when org subscription updates."""
@@ -379,6 +388,7 @@ def test_subscription_updated_invalidates_org_caches(db):
 # ---------------------------------------------------------------------------- #
 
 
+@pytest.mark.req("BILL-02")
 @pytest.mark.django_db(transaction=True)
 def test_subscription_updated_fires_webhook_for_member_orgs(user):
     """HOOK-01: _handle_subscription_updated fires subscription.updated webhook for member orgs."""

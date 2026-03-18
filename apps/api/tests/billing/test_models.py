@@ -26,17 +26,21 @@ SubscriptionStatus = billing_models.SubscriptionStatus
 class TestCustomerModel:
     """CUST-01: Customer model with OneToOne User link."""
 
+    @pytest.mark.req("BILL-01")
     def test_customer_created_with_user(self, customer, user):
         assert customer.user == user
 
+    @pytest.mark.req("BILL-01")
     def test_customer_stripe_customer_id_blank_by_default(self, customer):
         """stripe_customer_id is populated lazily — blank on creation is valid."""
         assert customer.stripe_customer_id == "" or customer.stripe_customer_id is None
 
+    @pytest.mark.req("BILL-01")
     def test_customer_has_timestamps(self, customer):
         assert customer.created_at is not None
         assert customer.updated_at is not None
 
+    @pytest.mark.req("BILL-01")
     def test_customer_str(self, customer, user):
         assert str(user.email) in str(customer)
 
@@ -44,6 +48,7 @@ class TestCustomerModel:
 class TestSubscriptionStatus:
     """SUB-06: SubscriptionStatus is a Django TextChoices enum with full Stripe-matching values."""
 
+    @pytest.mark.req("BILL-01")
     def test_required_statuses_exist(self):
         required = {
             "active",
@@ -59,6 +64,7 @@ class TestSubscriptionStatus:
             f"SubscriptionStatus values mismatch.\nExpected: {required}\nGot: {actual}"
         )
 
+    @pytest.mark.req("BILL-01")
     def test_is_text_choices(self):
         from django.db.models import TextChoices
 
@@ -68,15 +74,18 @@ class TestSubscriptionStatus:
 class TestSubscriptionModel:
     """SUB-06: Subscription model audit fields and cancel_at_period_end."""
 
+    @pytest.mark.req("BILL-01")
     def test_subscription_has_cancel_at_period_end(self):
         field_names = [f.name for f in Subscription._meta.get_fields()]
         assert "cancel_at_period_end" in field_names
 
+    @pytest.mark.req("BILL-01")
     def test_subscription_has_period_timestamps(self):
         field_names = [f.name for f in Subscription._meta.get_fields()]
         assert "current_period_start" in field_names
         assert "current_period_end" in field_names
 
+    @pytest.mark.req("BILL-01")
     def test_subscription_status_uses_enum(self):
         status_field = Subscription._meta.get_field("status")
         assert status_field.choices, "status field must have choices from SubscriptionStatus"
@@ -85,12 +94,14 @@ class TestSubscriptionModel:
 class TestPaymentModel:
     """PAY-02: Payment model records one-time payment with amount and status."""
 
+    @pytest.mark.req("BILL-01")
     def test_payment_has_amount_field(self):
         from django.db.models import DecimalField
 
         amount_field = Payment._meta.get_field("amount")
         assert isinstance(amount_field, DecimalField)
 
+    @pytest.mark.req("BILL-01")
     def test_payment_has_required_fields(self):
         field_names = [f.name for f in Payment._meta.get_fields()]
         for required in ["stripe_payment_intent_id", "amount", "currency", "status"]:
@@ -100,6 +111,7 @@ class TestPaymentModel:
 class TestProcessedWebhookEvent:
     """HOOK-03 prerequisite: ProcessedWebhookEvent unique_together constraint."""
 
+    @pytest.mark.req("BILL-01")
     def test_unique_together_provider_event_id(self):
         unique_together = ProcessedWebhookEvent._meta.unique_together
         # Check either unique_together or UniqueConstraint covers (provider, event_id)

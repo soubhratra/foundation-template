@@ -95,6 +95,7 @@ def _make_apple_jwks_mock(private_key_pem: bytes) -> MagicMock:
 class TestVerifyAppleIdentityToken:
     """SOCIAL-03: Unit tests for Apple identity token JWT verification."""
 
+    @pytest.mark.req("SOCIAL-02")
     def test_verify_identity_token_rejects_invalid(self) -> None:
         """verify_apple_identity_token raises an error on a structurally invalid token."""
         try:
@@ -111,6 +112,7 @@ class TestVerifyAppleIdentityToken:
         with pytest.raises((jwt.PyJWTError, ValueError)):
             verify_apple_identity_token("bad.token.value", "com.test.app")
 
+    @pytest.mark.req("SOCIAL-02")
     def test_verify_identity_token_rejects_wrong_audience(self) -> None:
         """verify_apple_identity_token raises InvalidAudienceError when aud doesn't match."""
         try:
@@ -147,6 +149,7 @@ class TestVerifyAppleIdentityToken:
             with pytest.raises(jwt.exceptions.InvalidAudienceError):
                 verify_apple_identity_token(token, "com.correct.app")
 
+    @pytest.mark.req("SOCIAL-02")
     def test_verify_identity_token_accepts_valid_token(self) -> None:
         """verify_apple_identity_token returns decoded payload for a valid token."""
         try:
@@ -188,6 +191,7 @@ class TestVerifyAppleIdentityToken:
 class TestAppleNamePersistence:
     """SOCIAL-03: Apple name is persisted on first login and never overwritten on return login."""
 
+    @pytest.mark.req("SOCIAL-02")
     def test_name_persisted_first_login(self, db: Any) -> None:
         """User's name from Apple is saved to first_name on first sign-in."""
         try:
@@ -209,6 +213,7 @@ class TestAppleNamePersistence:
             "first_name should be 'Alice' after first Apple Sign In with full_name='Alice Smith'"
         )
 
+    @pytest.mark.req("SOCIAL-02")
     def test_name_not_overwritten_on_return_login(self, db: Any) -> None:
         """User's name is NOT overwritten on subsequent Apple Sign In (Apple sends no name)."""
         try:

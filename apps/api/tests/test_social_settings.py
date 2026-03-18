@@ -26,6 +26,7 @@ def _get_configure_social_providers():
 class TestGoogleProviderRegistration:
     """SOCIAL-01: Google OAuth conditional registration."""
 
+    @pytest.mark.req("SOCIAL-01")
     def test_google_provider_registered(self) -> None:
         """Google provider added when credentials present."""
         _configure_social_providers = _get_configure_social_providers()
@@ -40,6 +41,7 @@ class TestGoogleProviderRegistration:
         )
         assert "google" in result["providers"], "Expected 'google' key in providers dict"
 
+    @pytest.mark.req("SOCIAL-01")
     def test_github_provider_registered(self) -> None:
         """GitHub provider added when credentials present."""
         _configure_social_providers = _get_configure_social_providers()
@@ -54,6 +56,7 @@ class TestGoogleProviderRegistration:
         )
         assert "github" in result["providers"], "Expected 'github' key in providers dict"
 
+    @pytest.mark.req("SOCIAL-01")
     def test_google_provider_absent_without_credentials(self) -> None:
         """Google provider NOT added when credentials are absent."""
         _configure_social_providers = _get_configure_social_providers()
@@ -63,6 +66,7 @@ class TestGoogleProviderRegistration:
             "when GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET are absent"
         )
 
+    @pytest.mark.req("SOCIAL-01")
     def test_google_provider_absent_when_only_client_id_set(self) -> None:
         """Google provider NOT added when only one credential is present."""
         _configure_social_providers = _get_configure_social_providers()
@@ -71,6 +75,7 @@ class TestGoogleProviderRegistration:
         )
         assert "allauth.socialaccount.providers.google" not in result["extra_installed_apps"]
 
+    @pytest.mark.req("SOCIAL-01")
     def test_github_provider_absent_without_credentials(self) -> None:
         """GitHub provider NOT added when credentials are absent."""
         _configure_social_providers = _get_configure_social_providers()
@@ -81,6 +86,7 @@ class TestGoogleProviderRegistration:
 class TestAppleProviderRegistration:
     """SOCIAL-01 + SOCIAL-03: Apple Sign In conditional registration and settings."""
 
+    @pytest.mark.req("SOCIAL-01", "SOCIAL-02")
     def test_apple_settings_hidden(self) -> None:
         """Apple APPS[0].settings.hidden == True to suppress Apple button on web UI."""
         _configure_social_providers = _get_configure_social_providers()
@@ -99,6 +105,7 @@ class TestAppleProviderRegistration:
             "Apple provider APPS[0].settings.hidden must be True to hide the button on web"
         )
 
+    @pytest.mark.req("SOCIAL-01", "SOCIAL-02")
     def test_apple_provider_registered_with_credentials(self) -> None:
         """Apple provider added when all Apple credentials are present."""
         _configure_social_providers = _get_configure_social_providers()
@@ -122,6 +129,7 @@ class TestAppleProviderRegistration:
 class TestSocialAccountAutoConnect:
     """SOCIAL-02: Email auto-merge settings."""
 
+    @pytest.mark.req("SOCIAL-01", "SOCIAL-03")
     def test_socialaccount_auto_connect_enabled(self) -> None:
         """auto_connect == True so Google/GitHub accounts merge with existing accounts."""
         _configure_social_providers = _get_configure_social_providers()
@@ -131,6 +139,7 @@ class TestSocialAccountAutoConnect:
             "should be enabled for Google and GitHub"
         )
 
+    @pytest.mark.req("SOCIAL-01", "SOCIAL-04")
     def test_both_providers_registered_simultaneously(self) -> None:
         """Both Google and GitHub can be registered at the same time."""
         _configure_social_providers = _get_configure_social_providers()

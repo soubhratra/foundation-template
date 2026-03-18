@@ -12,6 +12,7 @@ from django.test import RequestFactory
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.req("ADMIN-02")
 @pytest.mark.django_db
 def test_staff_can_hijack_regular_user(staff_user, regular_user):
     """Custom permission function must allow staff to impersonate regular users."""
@@ -20,6 +21,7 @@ def test_staff_can_hijack_regular_user(staff_user, regular_user):
     assert staff_can_hijack_regular_users(hijacker=staff_user, hijacked=regular_user) is True
 
 
+@pytest.mark.req("ADMIN-02")
 @pytest.mark.django_db
 def test_cannot_hijack_staff(staff_user):
     """Custom permission function must deny impersonation of staff accounts."""
@@ -34,6 +36,7 @@ def test_cannot_hijack_staff(staff_user):
     assert staff_can_hijack_regular_users(hijacker=staff_user, hijacked=other_staff) is False
 
 
+@pytest.mark.req("ADMIN-02")
 @pytest.mark.django_db
 def test_cannot_hijack_superuser(staff_user, superuser):
     """Custom permission function must deny impersonation of superuser accounts."""
@@ -42,6 +45,7 @@ def test_cannot_hijack_superuser(staff_user, superuser):
     assert staff_can_hijack_regular_users(hijacker=staff_user, hijacked=superuser) is False
 
 
+@pytest.mark.req("ADMIN-02")
 @pytest.mark.django_db
 def test_cannot_hijack_inactive_user(staff_user, regular_user):
     """Custom permission function must deny impersonation of inactive accounts."""
@@ -57,6 +61,7 @@ def test_cannot_hijack_inactive_user(staff_user, regular_user):
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.req("ADMIN-02")
 @pytest.mark.django_db
 def test_signal_start_writes_event(staff_user, regular_user):
     """hijack_started signal must create an ImpersonationEvent with action='start'."""
@@ -81,6 +86,7 @@ def test_signal_start_writes_event(staff_user, regular_user):
     assert event.hijacked_id == regular_user.pk
 
 
+@pytest.mark.req("ADMIN-02")
 @pytest.mark.django_db
 def test_signal_end_writes_event(staff_user, regular_user):
     """hijack_ended signal must create an ImpersonationEvent with action='end'."""
@@ -109,6 +115,7 @@ def test_signal_end_writes_event(staff_user, regular_user):
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.req("ADMIN-02")
 @pytest.mark.django_db
 def test_impersonator_context_injected_during_hijack(staff_user, regular_user):
     """AuditContextMiddleware must add impersonator_id to context when hijack_history present."""

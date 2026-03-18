@@ -35,6 +35,8 @@ class TestEmailRemovalViaCLI:
     packages/create-foundation-app/tests/remove-email.test.ts (Plan 19-04).
     """
 
+    @pytest.mark.req("EMAIL-03")
+    @pytest.mark.req("EMAIL-05", "TRACE-01", "TRACE-02", "TRACE-03")
     def test_email_removal_via_cli(self, tmp_path: Path) -> None:
         """EMAIL-05 integration test: compiled removeEmailModule() strips all
         email artifacts from a copy of the template source files.

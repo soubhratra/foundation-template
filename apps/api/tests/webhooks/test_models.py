@@ -9,6 +9,7 @@ HOOK-01: endpoint registration fields, delivery cascade behaviour, attempt trunc
 import pytest
 
 
+@pytest.mark.req("HOOK-01")
 @pytest.mark.django_db
 def test_endpoint_fields(endpoint):
     """WebhookEndpoint has expected default field values after creation."""
@@ -18,12 +19,14 @@ def test_endpoint_fields(endpoint):
     assert endpoint.secret_hash != ""
 
 
+@pytest.mark.req("HOOK-01")
 @pytest.mark.django_db
 def test_endpoint_event_types_stored(endpoint):
     """WebhookEndpoint.event_types persists the list of event type strings."""
     assert endpoint.event_types == ["user.created"]
 
 
+@pytest.mark.req("HOOK-01")
 @pytest.mark.django_db
 def test_delivery_cascade_delete(delivery, endpoint):
     """Deleting an endpoint cascades to its deliveries and attempts."""
@@ -38,6 +41,7 @@ def test_delivery_cascade_delete(delivery, endpoint):
     assert not WebhookDelivery.objects.filter(id=delivery_id).exists()
 
 
+@pytest.mark.req("HOOK-01")
 @pytest.mark.django_db
 def test_attempt_response_body_truncated(delivery):
     """WebhookDeliveryAttempt.response_body is truncated to 10 KB."""
@@ -59,6 +63,7 @@ def test_attempt_response_body_truncated(delivery):
     assert len(stored.response_body) <= 10_240
 
 
+@pytest.mark.req("HOOK-01")
 @pytest.mark.django_db
 def test_delivery_status_transitions(delivery):
     """WebhookDelivery.status can be updated through the defined states."""

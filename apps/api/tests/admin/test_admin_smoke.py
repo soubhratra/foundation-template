@@ -7,6 +7,8 @@ the admin.py files for each domain.
 import pytest
 
 
+@pytest.mark.req("ADMIN-01")
+@pytest.mark.req("DOCS-03")
 @pytest.mark.django_db
 def test_user_admin_inherits_unfold():
     """accounts.UserAdmin must inherit from unfold.admin.ModelAdmin."""
@@ -19,6 +21,7 @@ def test_user_admin_inherits_unfold():
     )
 
 
+@pytest.mark.req("ADMIN-01")
 @pytest.mark.django_db
 def test_billing_admins_inherit_unfold():
     """All billing ModelAdmins must inherit from unfold.admin.ModelAdmin."""
@@ -42,6 +45,7 @@ def test_billing_admins_inherit_unfold():
         assert issubclass(cls, UnfoldModelAdmin), f"{cls.__name__} must inherit UnfoldModelAdmin"
 
 
+@pytest.mark.req("ADMIN-01")
 @pytest.mark.django_db
 def test_org_admins_inherit_unfold():
     """All orgs ModelAdmins must inherit from unfold.admin.ModelAdmin."""
@@ -53,6 +57,7 @@ def test_org_admins_inherit_unfold():
         assert issubclass(cls, UnfoldModelAdmin), f"{cls.__name__} must inherit UnfoldModelAdmin"
 
 
+@pytest.mark.req("ADMIN-01")
 @pytest.mark.django_db
 def test_api_key_admin_inherits_unfold():
     """api_keys.APIKeyAdmin must inherit from unfold.admin.ModelAdmin."""
@@ -63,6 +68,7 @@ def test_api_key_admin_inherits_unfold():
     assert issubclass(APIKeyAdmin, UnfoldModelAdmin)
 
 
+@pytest.mark.req("ADMIN-01")
 @pytest.mark.django_db
 def test_webhook_admins_inherit_unfold():
     """webhooks ModelAdmins must inherit from unfold.admin.ModelAdmin."""
@@ -74,6 +80,7 @@ def test_webhook_admins_inherit_unfold():
         assert issubclass(cls, UnfoldModelAdmin), f"{cls.__name__} must inherit UnfoldModelAdmin"
 
 
+@pytest.mark.req("ADMIN-01")
 @pytest.mark.django_db
 def test_impersonation_event_admin_inherits_unfold():
     """audit.ImpersonationEventAdmin must inherit from unfold.admin.ModelAdmin."""
@@ -84,6 +91,7 @@ def test_impersonation_event_admin_inherits_unfold():
     assert issubclass(ImpersonationEventAdmin, UnfoldModelAdmin)
 
 
+@pytest.mark.req("ADMIN-01")
 @pytest.mark.django_db
 def test_impersonation_event_admin_is_readonly():
     """ImpersonationEventAdmin must block all add/change/delete permissions."""
@@ -100,6 +108,7 @@ def test_impersonation_event_admin_is_readonly():
     assert admin_instance.has_delete_permission(mock_request) is False
 
 
+@pytest.mark.req("ADMIN-01")
 @pytest.mark.django_db
 def test_org_customer_admin_inherits_unfold():
     """orgs.OrgCustomerAdmin must inherit from unfold.admin.ModelAdmin (BILL-01)."""
@@ -112,6 +121,7 @@ def test_org_customer_admin_inherits_unfold():
     )
 
 
+@pytest.mark.req("ADMIN-01")
 @pytest.mark.django_db
 def test_org_customer_admin_list_display():
     """OrgCustomerAdmin must display org, stripe_customer_id, created_at columns (BILL-01)."""

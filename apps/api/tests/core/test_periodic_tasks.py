@@ -14,6 +14,7 @@ import unittest.mock
 import pytest
 
 
+@pytest.mark.req("OBS-06")
 @pytest.mark.django_db
 def test_example_task_succeeds_and_returns_result():
     """Task completes successfully when _do_work runs without error."""
@@ -23,6 +24,7 @@ def test_example_task_succeeds_and_returns_result():
     assert result.successful()
 
 
+@pytest.mark.req("OBS-06")
 @pytest.mark.django_db
 def test_example_task_retries_on_transient_error():
     """Task raises Retry when _do_work raises a transient error."""

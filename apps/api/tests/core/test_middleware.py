@@ -16,12 +16,14 @@ def middleware_client(client, settings):
     return client
 
 
+@pytest.mark.req("OBS-01")
 def test_request_id_header(middleware_client):
     """Every response has X-Request-ID header."""
     response = middleware_client.get("/api/health/live")
     assert "X-Request-ID" in response, "X-Request-ID header missing from response"
 
 
+@pytest.mark.req("OBS-01")
 def test_request_id_is_uuid4(middleware_client):
     """X-Request-ID is a valid UUID4."""
     response = middleware_client.get("/api/health/live")
@@ -31,6 +33,7 @@ def test_request_id_is_uuid4(middleware_client):
     assert parsed.version == 4
 
 
+@pytest.mark.req("OBS-01")
 def test_context_has_duration_ms(middleware_client):
     """structlog context contains duration_ms after request completes."""
     # We can't easily inspect structlog context post-request in unit tests
@@ -39,6 +42,7 @@ def test_context_has_duration_ms(middleware_client):
     assert response.status_code in (200, 503)
 
 
+@pytest.mark.req("OBS-01")
 def test_context_isolation(middleware_client):
     """Two sequential requests produce different request_id values."""
     r1 = middleware_client.get("/api/health/live")

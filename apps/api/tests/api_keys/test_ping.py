@@ -17,6 +17,7 @@ from apps.api_keys.models import APIKey
 class TestApiKeyPingEndpoint:
     URL = "/api/v1/me/api-keys/ping/"
 
+    @pytest.mark.req("AKEY-01", "AKEY-02")
     def test_valid_key_with_read_scope_returns_200(self, client, api_key):
         # AKEY-01: valid key with correct scope succeeds
         response = client.get(
@@ -26,6 +27,7 @@ class TestApiKeyPingEndpoint:
         assert response.status_code == 200
         assert response.json() == {"status": "ok"}
 
+    @pytest.mark.req("AKEY-03")
     def test_valid_key_updates_usage_tracking(self, client, api_key):
         # AKEY-03: last_used_at and usage_count updated on authenticated request
         assert api_key.usage_count == 0
@@ -34,6 +36,7 @@ class TestApiKeyPingEndpoint:
         assert api_key.last_used_at is not None
         assert api_key.usage_count == 1
 
+    @pytest.mark.req("AKEY-01")
     def test_wrong_scope_returns_403(self, client, api_user):
         # AKEY-01: RequireScope("read") must reject a key with only "write" scope
         from django.contrib.auth import get_user_model
@@ -55,6 +58,7 @@ class TestApiKeyPingEndpoint:
         assert response.status_code == 403
 
     @override_settings(RATELIMIT_ENABLE=True)
+    @pytest.mark.req("AKEY-02")
     def test_rate_limit_headers_on_success(self, client, api_key):
         # AKEY-02: X-RateLimit-* headers injected by ApiKeyRateLimitMiddleware
         response = client.get(
@@ -67,6 +71,7 @@ class TestApiKeyPingEndpoint:
         assert "X-RateLimit-Reset" in response
 
     @override_settings(RATELIMIT_ENABLE=True)
+    @pytest.mark.req("AKEY-02")
     def test_rate_limit_exceeded_returns_429(self, client, api_key, settings):
         # AKEY-02: per-key rate limit enforcement
         settings.API_KEY_RATE_LIMIT = "1/m"  # pragma: allowlist secret
@@ -80,12 +85,14 @@ class TestApiKeyPingEndpoint:
         assert "X-RateLimit-Remaining" in response
         assert response["X-RateLimit-Remaining"] == "0"
 
+    @pytest.mark.req("AKEY-01")
     def test_session_auth_rejected(self, client, api_user):
         # AKEY-01 (success criterion 4): session-only auth must not pass key-only endpoint
         client.force_login(api_user)
         response = client.get(self.URL)
         assert response.status_code in (401, 403)
 
+    @pytest.mark.req("AKEY-02")
     def test_invalid_key_returns_401(self, client):
         # Auth failure: invalid Bearer token
         response = client.get(
@@ -94,6 +101,7 @@ class TestApiKeyPingEndpoint:
         )
         assert response.status_code == 401
 
+    @pytest.mark.req("AKEY-02")
     def test_no_auth_returns_401(self, client):
         # Auth failure: no Authorization header at all
         response = client.get(self.URL)

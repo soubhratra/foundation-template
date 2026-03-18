@@ -15,6 +15,7 @@ class TestAPIKeyController:
     def _login(self, client: Client, user) -> None:
         client.force_login(user)
 
+    @pytest.mark.req("AKEY-01")
     def test_create_key_returns_raw_key_once(self, client, api_user):
         """POST /api/v1/me/api-keys/ returns raw key in response body."""
         self._login(client, api_user)
@@ -32,6 +33,7 @@ class TestAPIKeyController:
         assert "prefix" in data
         assert data["prefix"] != data["key"]
 
+    @pytest.mark.req("AKEY-01")
     def test_list_keys_does_not_include_raw_key(self, client, api_user, api_key):
         """GET /api/v1/me/api-keys/ does not expose raw key field."""
         self._login(client, api_user)
@@ -42,6 +44,7 @@ class TestAPIKeyController:
         for key_record in results:
             assert "key" not in key_record
 
+    @pytest.mark.req("AKEY-01")
     def test_revoke_key_sets_inactive(self, client, api_user, api_key):
         """DELETE /api/v1/me/api-keys/{id}/ sets is_active=False."""
 
@@ -51,6 +54,7 @@ class TestAPIKeyController:
         api_key.refresh_from_db()
         assert api_key.is_active is False
 
+    @pytest.mark.req("AKEY-01")
     def test_revoked_key_auth_returns_401(self, client, api_user, revoked_api_key):
         """Attempting to use a revoked key for authentication returns 401."""
         response = client.get(
@@ -59,6 +63,7 @@ class TestAPIKeyController:
         )
         assert response.status_code in (401, 403)
 
+    @pytest.mark.req("AKEY-01", "AKEY-03")
     def test_create_key_invalid_scope_returns_422(self, client, api_user):
         """POST with an unknown scope returns 422 validation error."""
         self._login(client, api_user)
@@ -69,6 +74,7 @@ class TestAPIKeyController:
         )
         assert response.status_code == 422
 
+    @pytest.mark.req("AKEY-01", "AKEY-03")
     def test_create_key_empty_scopes_returns_422(self, client, api_user):
         """POST with empty scopes list returns 422."""
         self._login(client, api_user)
@@ -79,6 +85,7 @@ class TestAPIKeyController:
         )
         assert response.status_code == 422
 
+    @pytest.mark.req("AKEY-03")
     def test_list_keys_shows_usage_count_and_last_used(self, client, api_user, api_key):
         """GET response includes usage_count and last_used_at fields."""
         self._login(client, api_user)
@@ -91,6 +98,7 @@ class TestAPIKeyController:
             assert "usage_count" in record
             assert "last_used_at" in record
 
+    @pytest.mark.req("AKEY-01", "AUDIT-01")
     def test_create_key_with_org_slug(self, client, api_user, org_for_apikey):
         """POST /me/api-keys/ with org_slug returns 201 with org_slug in response (AUDIT-01)."""
         self._login(client, api_user)
@@ -103,6 +111,7 @@ class TestAPIKeyController:
         data = response.json()
         assert data.get("org_slug") == org_for_apikey.slug
 
+    @pytest.mark.req("AKEY-01", "AUDIT-01")
     def test_create_key_event_in_audit_log(self, client, api_user, org_for_apikey):
         """APIKey create event appears in org audit log when org_slug provided (AUDIT-01)."""
         from apps.audit.selectors import get_audit_log_page
@@ -117,6 +126,7 @@ class TestAPIKeyController:
         actions = [item.action for item in items]
         assert "api_key.created" in actions, f"Expected api_key.created in audit log; got {actions}"
 
+    @pytest.mark.req("AKEY-01", "AUDIT-01")
     def test_revoke_key_event_in_audit_log(self, client, api_user, org_for_apikey):
         """APIKey revoke event appears in org audit log (AUDIT-01)."""
         # Create key directly with org association so org_id is in context
@@ -145,6 +155,7 @@ class TestAPIKeyController:
         actions = [item.action for item in items]
         assert "api_key.updated" in actions, f"Expected api_key.updated in audit log; got {actions}"
 
+    @pytest.mark.req("AKEY-01")
     def test_create_key_without_org_slug_still_works(self, client, api_user):
         """POST /me/api-keys/ without org_slug returns 201 with org_slug=null (AUDIT-01)."""
         self._login(client, api_user)

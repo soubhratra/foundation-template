@@ -5,6 +5,7 @@ from django.core.cache import cache
 class TestHasFeature:
     """ENT-01: has_feature() returns True/False based on billing plan feature_flags."""
 
+    @pytest.mark.req("ENT-01")
     def test_returns_true_for_enabled_flag(self, subscription):
         try:
             from apps.billing.entitlements import _has_feature  # noqa: F401
@@ -22,6 +23,7 @@ class TestHasFeature:
         result = _has_feature(user, "api_access")
         assert result is True
 
+    @pytest.mark.req("ENT-01")
     def test_returns_false_for_disabled_flag(self, subscription):
         try:
             from apps.billing.entitlements import _has_feature  # noqa: F401
@@ -39,6 +41,7 @@ class TestHasFeature:
         result = _has_feature(user, "white_label")
         assert result is False
 
+    @pytest.mark.req("ENT-01")
     def test_missing_key_returns_false(self, subscription):
         try:
             from apps.billing.entitlements import _has_feature  # noqa: F401
@@ -55,6 +58,7 @@ class TestHasFeature:
         result = _has_feature(user, "nonexistent_key")
         assert result is False
 
+    @pytest.mark.req("ENT-01")
     def test_no_subscription_uses_free_plan(self, user):
         try:
             from apps.billing.entitlements import _has_feature  # noqa: F401
@@ -68,6 +72,7 @@ class TestHasFeature:
         result = _has_feature(user, "api_access")
         assert result is False
 
+    @pytest.mark.req("ENT-01")
     def test_unknown_plan_id_falls_back_to_free(self, subscription):
         try:
             from apps.billing.entitlements import _has_feature  # noqa: F401
@@ -89,6 +94,7 @@ class TestHasFeature:
 class TestCaching:
     """ENT-02: Cache-aside — second call within TTL hits cache, not DB."""
 
+    @pytest.mark.req("ENT-02")
     def test_second_call_uses_cache(self, subscription):
         try:
             from apps.billing.entitlements import _has_feature  # noqa: F401
@@ -119,6 +125,7 @@ class TestCaching:
 class TestCacheInvalidation:
     """ENT-02: Cache deleted immediately when customer.subscription.updated fires."""
 
+    @pytest.mark.req("ENT-02")
     @pytest.mark.django_db
     def test_cache_invalidated_on_subscription_updated(self, subscription):
         from apps.billing.entitlements import _has_feature  # noqa: F401

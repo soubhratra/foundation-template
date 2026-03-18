@@ -41,6 +41,7 @@ def _make_mock_response(status_code: int, text: str = "") -> MagicMock:
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.req("HOOK-01")
 @pytest.mark.django_db(transaction=True)
 def test_deliver_webhook_success_2xx(delivery):
     """deliver_webhook marks delivery as success when endpoint returns HTTP 2xx."""
@@ -59,6 +60,7 @@ def test_deliver_webhook_success_2xx(delivery):
     assert delivery.status == DeliveryStatus.SUCCESS
 
 
+@pytest.mark.req("HOOK-01")
 @pytest.mark.django_db(transaction=True)
 def test_deliver_webhook_records_attempt(delivery):
     """deliver_webhook creates a WebhookDeliveryAttempt record for each HTTP call."""
@@ -79,6 +81,7 @@ def test_deliver_webhook_records_attempt(delivery):
     assert attempt.attempt_number == 1
 
 
+@pytest.mark.req("HOOK-02")
 @pytest.mark.django_db(transaction=True)
 def test_deliver_webhook_headers_present(delivery):
     """deliver_webhook sends X-Webhook-Id and X-Webhook-Timestamp headers."""
@@ -103,6 +106,7 @@ def test_deliver_webhook_headers_present(delivery):
     assert captured_headers["X-Webhook-Id"] == str(delivery.id)
 
 
+@pytest.mark.req("HOOK-02")
 @pytest.mark.django_db(transaction=True)
 def test_hmac_signature_header_present(delivery):
     """deliver_webhook sends X-Webhook-Signature header with sha256= prefix."""
@@ -126,6 +130,7 @@ def test_hmac_signature_header_present(delivery):
     assert captured_headers["X-Webhook-Signature"].startswith("sha256=")
 
 
+@pytest.mark.req("HOOK-02")
 @pytest.mark.django_db(transaction=True)
 def test_hmac_signature_verifiable(delivery):
     """A recipient using endpoint.signing_key can verify the HMAC signature."""
@@ -160,6 +165,7 @@ def test_hmac_signature_verifiable(delivery):
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.req("HOOK-01")
 @pytest.mark.django_db(transaction=True)
 def test_deliver_webhook_retries_on_failure(delivery):
     """Non-2xx response sets delivery status to 'retrying'."""
@@ -184,6 +190,7 @@ def test_deliver_webhook_retries_on_failure(delivery):
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.req("HOOK-04")
 @pytest.mark.django_db(transaction=True)
 def test_circuit_breaker_disables_after_5_failures(endpoint):
     """Endpoint is auto-disabled after 5 consecutive fully-exhausted delivery failures."""
@@ -206,6 +213,7 @@ def test_circuit_breaker_disables_after_5_failures(endpoint):
     assert endpoint.consecutive_failures >= 5
 
 
+@pytest.mark.req("HOOK-04")
 @pytest.mark.django_db(transaction=True)
 def test_circuit_breaker_sends_email(endpoint, org_admin):
     """Auto-disabling an endpoint sends an email notification to the org admin."""
@@ -239,6 +247,7 @@ def test_circuit_breaker_sends_email(endpoint, org_admin):
     assert template_arg == "webhooks/endpoint_disabled.html"
 
 
+@pytest.mark.req("HOOK-04")
 @pytest.mark.django_db(transaction=True)
 def test_circuit_breaker_resets_on_success(endpoint):
     """A successful delivery resets consecutive_failures to 0 on the endpoint."""
@@ -274,6 +283,7 @@ def test_circuit_breaker_resets_on_success(endpoint):
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.req("HOOK-03")
 @pytest.mark.django_db(transaction=True)
 def test_cleanup_task_removes_old_deliveries(delivery):
     """Cleanup task deletes WebhookDelivery records older than retention window."""

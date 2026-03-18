@@ -14,6 +14,7 @@ import unittest.mock
 import pytest
 
 
+@pytest.mark.req("OBS-04")
 @pytest.mark.django_db
 def test_live_returns_200(api_client):
     """Liveness probe returns 200 with status=alive when process is running."""
@@ -25,6 +26,7 @@ def test_live_returns_200(api_client):
     assert data["status"] == "alive"
 
 
+@pytest.mark.req("OBS-05")
 @pytest.mark.django_db
 def test_ready_returns_200_when_all_deps_ok(api_client):
     """Readiness probe returns 200 with all checks ok when all dependencies healthy."""
@@ -40,6 +42,7 @@ def test_ready_returns_200_when_all_deps_ok(api_client):
     assert data["checks"]["celery"] == "ok"
 
 
+@pytest.mark.req("OBS-05")
 @pytest.mark.django_db
 def test_ready_returns_503_when_postgres_failing(api_client):
     """Readiness probe returns 503 with degraded status when postgres check fails."""
@@ -59,6 +62,7 @@ def test_ready_returns_503_when_postgres_failing(api_client):
     assert data["checks"]["celery"] == "ok"
 
 
+@pytest.mark.req("OBS-06")
 @pytest.mark.django_db
 def test_startup_returns_200_when_no_pending_migrations(api_client):
     """Startup probe returns 200 when no pending migrations exist."""
@@ -73,6 +77,7 @@ def test_startup_returns_200_when_no_pending_migrations(api_client):
     assert data["pending_migrations"] == 0
 
 
+@pytest.mark.req("OBS-06")
 @pytest.mark.django_db
 def test_startup_returns_503_when_migrations_pending(api_client):
     """Startup probe returns 503 when pending migrations exist."""

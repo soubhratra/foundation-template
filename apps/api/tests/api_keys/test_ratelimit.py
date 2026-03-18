@@ -15,6 +15,7 @@ from django.test import RequestFactory, override_settings
 @pytest.mark.django_db
 class TestApiKeyRateLimitHeaders:
     @override_settings(RATELIMIT_ENABLE=True)
+    @pytest.mark.req("AKEY-02")
     def test_headers_on_normal_response(self, api_key):
         """Normal (non-rate-limited) responses include all three X-RateLimit-* headers."""
         from apps.api_keys.middleware import ApiKeyRateLimitMiddleware
@@ -35,6 +36,7 @@ class TestApiKeyRateLimitHeaders:
         assert response.status_code == 200
 
     @override_settings(RATELIMIT_ENABLE=True)
+    @pytest.mark.req("AKEY-02")
     def test_rate_limit_returns_429_with_headers(self, api_key, settings):
         """Requests exceeding the rate limit return 429 with X-RateLimit-* headers."""
         from django.core.cache import cache
@@ -69,6 +71,7 @@ class TestApiKeyRateLimitHeaders:
         assert response2["X-RateLimit-Remaining"] == "0"
 
     @override_settings(RATELIMIT_ENABLE=True)
+    @pytest.mark.req("AKEY-02")
     def test_no_headers_on_session_request(self):
         """Session-authenticated requests (no api_key) pass through without RL headers."""
         from apps.api_keys.middleware import ApiKeyRateLimitMiddleware

@@ -12,6 +12,7 @@ EMAIL-04: When RESEND_API_KEY is absent, EMAIL_BACKEND falls back to the
 import os
 from unittest.mock import patch
 
+import pytest
 from django.conf import settings
 from django.test import override_settings
 
@@ -19,6 +20,7 @@ from django.test import override_settings
 class TestEmailBackendSelection:
     """EMAIL-01: With RESEND_API_KEY present, anymail Resend backend is active."""
 
+    @pytest.mark.req("EMAIL-01")
     def test_email_backend_selection(self) -> None:
         """EMAIL_BACKEND must be the anymail Resend backend when RESEND_API_KEY is set.
 
@@ -45,6 +47,7 @@ class TestEmailBackendSelection:
                 f"got: {settings.EMAIL_BACKEND}"
             )
 
+    @pytest.mark.req("EMAIL-01")
     def test_email_backend_set_from_env(self) -> None:
         """EMAIL_BACKEND must be derived from RESEND_API_KEY env var in base.py.
 
@@ -71,6 +74,7 @@ class TestEmailBackendSelection:
 class TestNoApiKeyUsesConsole:
     """EMAIL-04: Without RESEND_API_KEY, EMAIL_BACKEND must be console backend."""
 
+    @pytest.mark.req("EMAIL-01")
     def test_no_api_key_uses_console(self) -> None:
         """EMAIL_BACKEND must fall back to console when RESEND_API_KEY is absent.
 

@@ -35,6 +35,7 @@ class TestSocialAuthRemovalViaCLI:
     packages/create-foundation-app/tests/remove-social-auth.test.ts (Plan 20-01).
     """
 
+    @pytest.mark.req("SOCIAL-01", "SOCIAL-05")
     def test_social_auth_removal_via_cli(self, tmp_path: Path) -> None:
         """SOCIAL-05 integration test: compiled removeSocialAuthModule() strips all
         social auth artifacts from a copy of the template source files.

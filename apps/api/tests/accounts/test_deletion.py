@@ -46,6 +46,7 @@ def test_user(db):
 class TestDeleteAccountEndpoint:
     """GDPR-01 endpoint tests: DELETE /api/v1/account/"""
 
+    @pytest.mark.req("GDPR-01", "GDPR-03")
     def test_delete_account_returns_202(self, db, test_user) -> None:
         """Authenticated DELETE with correct password returns HTTP 202 and confirmation message."""
         try:
@@ -73,6 +74,7 @@ class TestDeleteAccountEndpoint:
             f"Expected 'Account deletion initiated.', got '{data['message']}'"
         )
 
+    @pytest.mark.req("GDPR-01")
     def test_delete_wrong_password_returns_400(self, db, test_user) -> None:
         """Authenticated DELETE with wrong password returns HTTP 400."""
         try:
@@ -94,6 +96,7 @@ class TestDeleteAccountEndpoint:
             "DELETE /api/v1/account/ must return 400 when password is incorrect."
         )
 
+    @pytest.mark.req("GDPR-01")
     def test_delete_unauthenticated_returns_401(self, db) -> None:
         """Unauthenticated DELETE /api/v1/account/ returns HTTP 401."""
         try:
@@ -124,6 +127,7 @@ class TestDeleteAccountEndpoint:
 class TestDeletionTaskCascade:
     """GDPR-01 task tests: delete_user_account.run(user_pk) cascade verification."""
 
+    @pytest.mark.req("GDPR-01")
     def test_deletion_task_cascade(self, db, test_user) -> None:
         """delete_user_account.run(user.pk) calls cancel_subscription, delete_customer,
         delete_person, and user.delete() in that exact order."""
@@ -182,6 +186,7 @@ class TestDeletionTaskCascade:
             "user.delete() must be called — user should not exist after task runs"
         )
 
+    @pytest.mark.req("GDPR-01")
     def test_deletion_task_idempotent(self, db) -> None:
         """delete_user_account.run(non_existent_user_pk) returns None without raising."""
         try:
@@ -206,6 +211,7 @@ class TestDeletionTaskCascade:
             f"delete_user_account.run() must return None for non-existent user, got {result!r}"
         )
 
+    @pytest.mark.req("GDPR-01")
     def test_deletion_task_continues_on_stripe_failure(self, db, test_user) -> None:
         """If BillingService.cancel_subscription() raises, the task still calls user.delete()."""
         try:

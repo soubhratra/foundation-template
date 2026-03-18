@@ -6,6 +6,7 @@ EMAIL-03: Emails rendered from HTML templates must have CSS inlined as
           style="" attributes. No <style> blocks should remain in the output.
 """
 
+import pytest
 from django.test import override_settings
 
 # This import will raise ImportError until Plan 19-03 creates the module.
@@ -15,6 +16,7 @@ from apps.notifications.tasks import send_email_task
 class TestCssIsInlined:
     """EMAIL-03: send_email_task must produce emails with inlined CSS."""
 
+    @pytest.mark.req("EMAIL-02", "EMAIL-04")
     @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
     def test_css_is_inlined(self, tmp_path) -> None:
         """Rendered email body must contain style="" attributes, no <style> block.
@@ -61,6 +63,7 @@ class TestCssIsInlined:
             f"Got body: {body[:500]}"
         )
 
+    @pytest.mark.req("EMAIL-02")
     @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
     def test_plain_text_alternative_present(self) -> None:
         """Rendered email must include a plain-text alternative part.

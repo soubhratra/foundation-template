@@ -26,6 +26,7 @@ WEBHOOK_URL = "/api/v1/billing/webhooks/"
 class TestWebhookViewStructure:
     """HOOK-01: View exists and rejects requests without a valid signature."""
 
+    @pytest.mark.req("BILL-02")
     @pytest.mark.django_db
     def test_webhook_view_structure(self, client):
         """POST without Stripe-Signature header → 400 (view exists, rejects bad requests)."""
@@ -47,6 +48,7 @@ class TestWebhookViewStructure:
 class TestValidSignatureReturns200:
     """HOOK-01: Valid HMAC signature results in 200 and async dispatch."""
 
+    @pytest.mark.req("BILL-02")
     @pytest.mark.django_db
     def test_valid_signature_returns_200(self, client):
         """Mock adapter returns valid event dict, mock .delay — POST returns 200 immediately."""
@@ -93,6 +95,7 @@ class TestValidSignatureReturns200:
 class TestInvalidSignatureReturns400:
     """HOOK-01: Invalid HMAC results in 400."""
 
+    @pytest.mark.req("BILL-02")
     @pytest.mark.django_db
     def test_invalid_signature_returns_400(self, client):
         """Mock adapter raises ValueError → POST returns 400."""
@@ -116,6 +119,7 @@ class TestInvalidSignatureReturns400:
 class TestDispatchFailureReturns500:
     """HOOK-02: Celery dispatch failure → 500 so Stripe will retry."""
 
+    @pytest.mark.req("BILL-02")
     @pytest.mark.django_db
     def test_dispatch_failure_returns_500(self, client):
         """Mock adapter succeeds, mock .delay raises Exception → POST returns 500."""

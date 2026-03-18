@@ -32,12 +32,14 @@ SAMPLE_INVOICE_DATA = {
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.req("BILL-03")
 def test_render_invoice_pdf_returns_bytes():
     """render_invoice_pdf must return non-empty bytes."""
     result = render_invoice_pdf(SAMPLE_INVOICE_DATA)
     assert isinstance(result, bytes) and len(result) > 0
 
 
+@pytest.mark.req("BILL-03")
 def test_render_invoice_pdf_contains_pdf_header():
     """The returned bytes must start with the PDF magic bytes %PDF."""
     result = render_invoice_pdf(SAMPLE_INVOICE_DATA)
@@ -49,6 +51,7 @@ def test_render_invoice_pdf_contains_pdf_header():
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.req("BILL-03")
 def test_pdf_task_is_shared_task():
     """generate_invoice_pdf must be a registered Celery task with a .delay attribute."""
     from apps.billing.tasks import generate_invoice_pdf
@@ -84,6 +87,7 @@ def authenticated_client(db, subscription):
     return client
 
 
+@pytest.mark.req("BILL-03")
 @pytest.mark.django_db
 def test_request_invoice_pdf_returns_task_id(authenticated_client, payment, monkeypatch):
     """POST /billing/invoices/{payment_id}/pdf returns 200 with task_id and status=pending.
@@ -106,6 +110,7 @@ def test_request_invoice_pdf_returns_task_id(authenticated_client, payment, monk
     assert data["status"] == "pending"
 
 
+@pytest.mark.req("BILL-03")
 @pytest.mark.django_db
 def test_pdf_polling_pending(authenticated_client, monkeypatch):
     """GET /billing/invoices/pdf-status/{task_id} returns {status: pending} when task not done."""

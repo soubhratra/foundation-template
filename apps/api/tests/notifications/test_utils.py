@@ -19,6 +19,7 @@ from apps.notifications.utils import send_email
 class TestSendEmailQueuesTask:
     """EMAIL-01: send_email() must enqueue send_email_task.delay()."""
 
+    @pytest.mark.req("EMAIL-01")
     def test_send_email_queues_task(self) -> None:
         """Calling send_email() should enqueue send_email_task via .delay().
 
@@ -41,6 +42,7 @@ class TestSendEmailQueuesTask:
                 "send_email_task.delay must be called with template_name='welcome.html'"
             )
 
+    @pytest.mark.req("EMAIL-01")
     def test_send_email_with_optional_params(self) -> None:
         """send_email() should forward optional from_email and reply_to kwargs."""
         with patch("apps.notifications.tasks.send_email_task.delay") as mock_delay:
@@ -58,6 +60,7 @@ class TestSendEmailQueuesTask:
 class TestSendEmailOnCommitRollback:
     """EMAIL-02: send_email() inside a rolled-back transaction must NOT enqueue."""
 
+    @pytest.mark.req("EMAIL-01")
     @pytest.mark.django_db(transaction=True)
     def test_send_email_on_commit_rollback(self) -> None:
         """Task must NOT be enqueued when the wrapping transaction rolls back.
