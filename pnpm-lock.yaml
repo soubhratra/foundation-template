@@ -240,6 +240,9 @@ importers:
         specifier: ^3.23.8
         version: 3.25.76
     devDependencies:
+      '@playwright/test':
+        specifier: ^1.52.0
+        version: 1.58.2
       '@repo/config-eslint':
         specifier: workspace:*
         version: link:../../packages/config-eslint

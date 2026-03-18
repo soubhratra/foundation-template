@@ -59,6 +59,9 @@ coverage.xml
 # GSD / planning backups
 .planning/STATE.md.bak-*
 
+# Test artifacts
+test-results/
+
 # Local agent/tool folders
 .agent/
 .codex/

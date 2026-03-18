@@ -52,10 +52,10 @@ Requirements for v1.5. Each maps to roadmap phases starting at phase 35.
 
 ### v1.6 — Mobile E2E & Advanced Automation
 
-- **MOB-E2E-01**: Detox E2E tests cover mobile auth flow (signup, login, logout) on iOS simulator
-- **MOB-E2E-02**: Detox E2E tests cover mobile billing and settings flows
-- **AUTO-05**: `scripts/run-all-tests.sh --mode=ci` posts failure summary to a Slack webhook
-- **AUTO-06**: Claude Code hooks auto-run relevant tests after file edits (PostToolUse hook)
+- MOB-E2E-01: Detox E2E tests cover mobile auth flow (signup, login, logout) on iOS simulator
+- MOB-E2E-02: Detox E2E tests cover mobile billing and settings flows
+- AUTO-05: `scripts/run-all-tests.sh --mode=ci` posts failure summary to a Slack webhook
+- AUTO-06: Claude Code hooks auto-run relevant tests after file edits (PostToolUse hook)
 
 ## Out of Scope
 

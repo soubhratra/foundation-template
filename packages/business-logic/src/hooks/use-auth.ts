@@ -16,6 +16,7 @@ export const USER_QUERY_KEY = ["get", USER_QUERY_PATH] as const;
 const SESSION_LOGIN_PATH = "/api/v1/auth/browser/v1/auth/login" as const;
 const JWT_LOGIN_PATH = "/api/v1/auth/app/v1/auth/login" as const;
 const LOGOUT_PATH = "/api/v1/auth/browser/v1/auth/session" as const;
+const SIGNUP_PATH = "/api/v1/auth/browser/v1/auth/signup" as const;
 // Config endpoint: GET triggers get_token() on Django, which sets the csrftoken cookie
 const BROWSER_CONFIG_PATH = "/api/v1/auth/browser/v1/config" as const;
 
@@ -58,10 +59,28 @@ export interface UseAuthOptions {
   readonly tokenStorage?: TokenStorage;
 }
 
+export interface SignupVariables {
+  readonly email: string;
+  readonly password1: string;
+  readonly password2: string;
+  readonly name: string;
+}
+
+export interface SignupResponse {
+  readonly status?: number;
+  readonly data?: {
+    readonly user?: CurrentUser;
+  };
+  readonly meta?: {
+    readonly is_authenticated?: boolean;
+  };
+}
+
 interface MutationHooks {
   readonly login: UseMutationResult<SessionLoginResponse, Error, SessionLoginVariables>;
   readonly loginWithJwt: UseMutationResult<JwtLoginResponse, Error, JwtLoginVariables>;
   readonly logout: UseMutationResult<void, Error, void>;
+  readonly signup: UseMutationResult<SignupResponse, Error, SignupVariables>;
 }
 
 export interface UseAuthResult extends MutationHooks {
@@ -119,6 +138,26 @@ export function useAuth(options?: UseAuthOptions): UseAuthResult {
     onSuccess: () => invalidateUser(),
   });
 
+  const signup = useMutation<SignupResponse, Error, SignupVariables>({
+    mutationFn: async (credentials) => {
+      if (!getCsrfToken()) {
+        await fetch(buildUrl(context.baseUrl, BROWSER_CONFIG_PATH), { credentials: "include" });
+      }
+      // Allauth headless v1 expects `password` (not `password1`/`password2`).
+      // Client-side confirmation (password2) is validated by Zod before reaching here.
+      return requestJson<SignupResponse>(context.baseUrl, SIGNUP_PATH, {
+        method: "POST",
+        body: JSON.stringify({
+          email: credentials.email,
+          password: credentials.password1,
+          name: credentials.name,
+        }),
+        credentials: "include",
+      });
+    },
+    onSuccess: () => invalidateUser(),
+  });
+
   const logout = useMutation<void, Error, void>({
     mutationFn: async () => {
       await request(context.baseUrl, LOGOUT_PATH, {
@@ -140,6 +179,7 @@ export function useAuth(options?: UseAuthOptions): UseAuthResult {
     login,
     loginWithJwt,
     logout,
+    signup,
   };
 }
 
