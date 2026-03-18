@@ -59,7 +59,8 @@ in a product-specific section below.
 ### Testing
 
 - **Backend:** pytest + pytest-django + factory_boy
-- **Frontend Web:** Vitest + React Testing Library
+- **Frontend Web (unit):** Vitest + React Testing Library
+- **Frontend Web (E2E):** Playwright (`@playwright/test`) — config at `apps/web/playwright.config.ts`, tests under `apps/web/tests/e2e/`
 - **Mobile:** Jest + React Native Testing Library, Detox for E2E
 - **API Integration:** pytest with httpx async client
 
@@ -318,6 +319,95 @@ If 2 or fewer → proceed using established design tokens and existing component
 - Each task runs in a fresh subagent with clean 200k token context
 - **Full end-to-end workflow for adding any new feature:** see `ADDING_A_FEATURE.md` at the repo root
 
+## Testing & Automation
+
+### Two-Mode Testing Pattern
+
+Every feature in this template has automated coverage runnable in two modes:
+
+**Dev loop mode** (for Claude-assisted self-correction):
+
+```bash
+scripts/run-all-tests.sh --mode=dev
+```
+
+Claude reads `test-results/FAILURES.md`, identifies failures by requirement ID, applies fixes, and re-runs. Repeat until FAILURES.md shows zero failures.
+
+**CI report mode** (for GitHub Actions):
+
+```bash
+scripts/run-all-tests.sh --mode=ci
+```
+
+Runs both suites, writes `test-results/FAILURES.md`, exits non-zero on any failure. CI uploads FAILURES.md as an artifact.
+
+### Individual Test Runners
+
+| Script                          | What it runs                    | Output                     |
+| ------------------------------- | ------------------------------- | -------------------------- |
+| `scripts/run-api-tests.sh`      | Full pytest suite               | `test-results/FAILURES.md` |
+| `scripts/run-e2e-tests.sh`      | Playwright E2E suite            | `test-results/FAILURES.md` |
+| `scripts/check-req-coverage.py` | Requirement → test coverage map | Console table              |
+
+### Spec Traceability — REQUIRED Before Phase Completion
+
+Every new feature test MUST include a spec traceability marker before the phase it belongs to can be marked complete:
+
+**Backend (pytest):**
+
+```python
+@pytest.mark.req("REQ-ID")
+def test_my_feature():
+    ...
+```
+
+**Frontend E2E (Playwright):**
+
+```typescript
+test('my feature works', async ({ page }) => {
+  // @spec: REQ-ID
+  ...
+})
+```
+
+**Check coverage:**
+
+```bash
+scripts/check-req-coverage.py
+```
+
+This must show zero `uncovered` requirements for a phase before marking it complete.
+
+### E2E Testing (Playwright)
+
+**Invocation:**
+
+```bash
+pnpm --filter web test:e2e          # run full E2E suite
+scripts/run-e2e-tests.sh            # same, with FAILURES.md output
+BASE_URL=https://staging.example.com scripts/run-e2e-tests.sh  # remote target
+```
+
+**File locations:**
+
+- Config: `apps/web/playwright.config.ts`
+- Tests: `apps/web/tests/e2e/**/*.ts`
+- Each test file annotates requirement IDs: `// @spec: REQ-ID`
+
+**Browser matrix:**
+
+- PR smoke job: Chromium only
+- Nightly job: Chromium + Firefox
+
+**Self-seeding rule:** Every Playwright test suite MUST create its own test data (via API or Django management command) in `beforeAll` and delete it in `afterAll`. No pre-existing database state is assumed.
+
+**Test isolation:** Each test starts with a fresh browser context — no shared cookies or localStorage between tests.
+
+### CI Schedule
+
+- **PR smoke** (`ci.yml`): Runs auth + health probe E2E tests on every PR — blocks merge on failure
+- **Nightly** (`e2e-nightly.yml`): Runs full Playwright suite at 2am UTC — auto-opens GitHub issue on failure
+
 ## OpenSpec Rules
 
 ### When to Use Change Proposals vs Direct Edits
@@ -408,3 +498,8 @@ When you need context, read these files:
 | Current codebase state       | `.planning/codebase/` (if brownfield)            |
 | GSD research findings        | `.planning/research/` or `.planning/foundation/` |
 | How to add a new feature     | `ADDING_A_FEATURE.md`                            |
+| E2E test requirements        | `openspec/specs/web-e2e-core/spec.md`            |
+| E2E B2B test requirements    | `openspec/specs/web-e2e-b2b/spec.md`             |
+| CI E2E integration spec      | `openspec/specs/ci-e2e-integration/spec.md`      |
+| Test automation scripts spec | `openspec/specs/automation-scripts/spec.md`      |
+| Spec traceability rules      | `openspec/specs/spec-traceability/spec.md`       |
