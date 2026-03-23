@@ -1,11 +1,6 @@
 import dataclasses
 import uuid
-from typing import Any, Optional
-
-from django import forms
-from django.contrib.auth import get_user_model
-from django.db import models
-from django.http import HttpRequest
+from typing import Any
 
 from allauth.account import app_settings as account_settings
 from allauth.account.models import EmailAddress
@@ -13,11 +8,15 @@ from allauth.account.utils import user_display, user_username
 from allauth.core.internal.httpkit import get_authorization_credential
 from allauth.headless import app_settings as headless_settings
 from allauth.headless.adapter import DefaultHeadlessAdapter
+from django import forms
+from django.contrib.auth import get_user_model
+from django.db import models
+from django.http import HttpRequest
 
 
 def _resolve_user_name(user) -> str:
     if hasattr(user, "full_name"):
-        full_name = getattr(user, "full_name")
+        full_name = user.full_name
         if full_name:
             return str(full_name)
     try:
@@ -26,8 +25,8 @@ def _resolve_user_name(user) -> str:
         full_name = ""
     if full_name:
         return full_name
-    if hasattr(user, "first_name") and getattr(user, "first_name"):
-        return str(getattr(user, "first_name"))
+    if hasattr(user, "first_name") and user.first_name:
+        return str(user.first_name)
     return ""
 
 
@@ -40,10 +39,10 @@ class HeadlessSignupForm(forms.Form):
             return
         fields_to_update = []
         if hasattr(user, "full_name"):
-            setattr(user, "full_name", name)
+            user.full_name = name
             fields_to_update.append("full_name")
         elif hasattr(user, "first_name"):
-            setattr(user, "first_name", name)
+            user.first_name = name
             fields_to_update.append("first_name")
         if fields_to_update:
             user.save(update_fields=fields_to_update)
@@ -70,7 +69,7 @@ class SessionAwareJWTTokenStrategy:
         """Delegate all attribute access to the underlying strategy."""
         return getattr(self._strategy, name)
 
-    def create_access_token_payload(self, request: HttpRequest) -> Optional[dict]:
+    def create_access_token_payload(self, request: HttpRequest) -> dict | None:
         """
         Only create access token payload if request already has JWT auth.
 
@@ -148,13 +147,9 @@ class HeadlessAdapter(DefaultHeadlessAdapter):
 
         fields.extend(
             [
-                dc_field("id", Optional[id_type], "The user ID.", id_example),
-                dc_field(
-                    "display", str, "The display name for the user.", "Magic Wizard"
-                ),
-                dc_field(
-                    "email", Optional[str], "The email address.", "email@domain.org"
-                ),
+                dc_field("id", id_type | None, "The user ID.", id_example),
+                dc_field("display", str, "The display name for the user.", "Magic Wizard"),
+                dc_field("email", str | None, "The email address.", "email@domain.org"),
                 dc_field(
                     "has_usable_password",
                     bool,
@@ -163,7 +158,7 @@ class HeadlessAdapter(DefaultHeadlessAdapter):
                 ),
                 dc_field(
                     "name",
-                    Optional[str],
+                    str | None,
                     "The user's full name.",
                     "Ada Lovelace",
                 ),
