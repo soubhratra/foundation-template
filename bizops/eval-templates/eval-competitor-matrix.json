@@ -1,0 +1,46 @@
+{
+  "deliverable": "competitor-matrix.md",
+  "phase": 1,
+  "assertions": [
+    { "id": "CM-01", "check": "Contains at least 5 direct competitors", "type": "structural" },
+    {
+      "id": "CM-02",
+      "check": "Each competitor has pricing data with specific numbers, not ranges",
+      "type": "completeness"
+    },
+    {
+      "id": "CM-03",
+      "check": "Each competitor has at least 3 cited weaknesses from real user reviews",
+      "type": "evidence"
+    },
+    {
+      "id": "CM-04",
+      "check": "Matrix includes a clear 'our advantage' column with differentiation",
+      "type": "strategic"
+    },
+    {
+      "id": "CM-05",
+      "check": "All data points have source URLs or citations from the last 12 months",
+      "type": "recency"
+    },
+    {
+      "id": "CM-06",
+      "check": "Contains at least 1 indirect competitor or substitute category",
+      "type": "completeness"
+    },
+    {
+      "id": "CM-07",
+      "check": "Feature comparison uses binary (has/doesn't have) not subjective ratings",
+      "type": "objectivity"
+    },
+    {
+      "id": "CM-08",
+      "check": "Includes market share or funding data where publicly available",
+      "type": "completeness"
+    }
+  ],
+  "pass_threshold": 0.75,
+  "meta_assertion": "Would a first-time reader understand the competitive landscape well enough to make a go/no-go decision?",
+  "test_prompt": "Build a competitor matrix for a SaaS product that helps solo developers automate their deployment pipelines.",
+  "history": []
+}

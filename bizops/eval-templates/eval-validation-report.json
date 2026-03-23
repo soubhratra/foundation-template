@@ -1,0 +1,50 @@
+{
+  "deliverable": "validation-report.md",
+  "phase": 1,
+  "assertions": [
+    {
+      "id": "VR-01",
+      "check": "Contains a clear go/no-go recommendation with stated confidence level",
+      "type": "decisiveness"
+    },
+    {
+      "id": "VR-02",
+      "check": "Lists the 3 riskiest assumptions and how each was tested",
+      "type": "rigor"
+    },
+    {
+      "id": "VR-03",
+      "check": "Customer discovery plan specifies who to talk to (job title, company type) and sample questions",
+      "type": "actionability"
+    },
+    {
+      "id": "VR-04",
+      "check": "Kill criteria are defined with specific thresholds (not vague conditions)",
+      "type": "objectivity"
+    },
+    {
+      "id": "VR-05",
+      "check": "Each kill criterion is evaluated against actual findings from research",
+      "type": "traceability"
+    },
+    {
+      "id": "VR-06",
+      "check": "Positioning statement differentiates from competitors found in the competitor matrix",
+      "type": "consistency"
+    },
+    {
+      "id": "VR-07",
+      "check": "References specific data from the competitor matrix and market sizing (not standalone)",
+      "type": "integration"
+    },
+    {
+      "id": "VR-08",
+      "check": "Identifies at least one risk that could kill the startup post-launch",
+      "type": "foresight"
+    }
+  ],
+  "pass_threshold": 0.75,
+  "meta_assertion": "Would a co-founder trust this report enough to commit 6 months of their life to this idea?",
+  "test_prompt": "Write a validation report for a developer deployment automation tool, synthesizing competitor and market research.",
+  "history": []
+}

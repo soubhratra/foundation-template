@@ -1,0 +1,49 @@
+{
+  "deliverable": "architecture.md",
+  "phase": 3,
+  "assertions": [
+    {
+      "id": "ARCH-01",
+      "check": "Every user story in the PRD has a corresponding system component",
+      "type": "coverage"
+    },
+    {
+      "id": "ARCH-02",
+      "check": "API endpoints are listed with HTTP method, path, and purpose",
+      "type": "specificity"
+    },
+    {
+      "id": "ARCH-03",
+      "check": "Database entities are defined with relationships (1:1, 1:N, M:N)",
+      "type": "completeness"
+    },
+    {
+      "id": "ARCH-04",
+      "check": "Authentication and authorization approach is explicitly stated",
+      "type": "security"
+    },
+    {
+      "id": "ARCH-05",
+      "check": "Component diagram shows frontend, backend, database, and external services",
+      "type": "structural"
+    },
+    {
+      "id": "ARCH-06",
+      "check": "Tech choices align with stated stack (Next.js, Django Ninja Extra, Postgres)",
+      "type": "consistency"
+    },
+    {
+      "id": "ARCH-07",
+      "check": "Scalability considerations are addressed (even if 'not needed for MVP')",
+      "type": "foresight"
+    },
+    {
+      "id": "ARCH-08",
+      "check": "Third-party integrations list matches tech-feasibility.md dependencies",
+      "type": "traceability"
+    }
+  ],
+  "pass_threshold": 0.8,
+  "meta_assertion": "Could an engineer start building from this architecture doc without needing to make major structural decisions?",
+  "history": []
+}

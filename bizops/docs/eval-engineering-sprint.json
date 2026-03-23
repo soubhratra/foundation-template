@@ -1,0 +1,41 @@
+{
+  "deliverable": "sprint output",
+  "phase": 4,
+  "assertions": [
+    {
+      "id": "ENG-01",
+      "check": "All new endpoints have corresponding test coverage",
+      "type": "quality"
+    },
+    {
+      "id": "ENG-02",
+      "check": "No hardcoded secrets, API keys, or credentials in codebase",
+      "type": "security"
+    },
+    {
+      "id": "ENG-03",
+      "check": "All user-facing strings are parameterized (i18n-ready)",
+      "type": "maintainability"
+    },
+    { "id": "ENG-04", "check": "Database migrations are reversible", "type": "safety" },
+    {
+      "id": "ENG-05",
+      "check": "API responses match the schema defined in docs/api-spec.md",
+      "type": "contract"
+    },
+    { "id": "ENG-06", "check": "No N+1 query patterns in new ORM code", "type": "performance" },
+    {
+      "id": "ENG-07",
+      "check": "Error handling returns user-friendly messages, not stack traces",
+      "type": "ux"
+    },
+    {
+      "id": "ENG-08",
+      "check": "Sprint tasks map 1:1 to PRD user stories (no scope creep)",
+      "type": "discipline"
+    }
+  ],
+  "pass_threshold": 0.875,
+  "meta_assertion": "Is this sprint output production-quality code that doesn't introduce technical debt?",
+  "history": []
+}

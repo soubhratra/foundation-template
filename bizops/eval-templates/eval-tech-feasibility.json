@@ -1,0 +1,40 @@
+{
+  "deliverable": "tech-feasibility.md",
+  "phase": 1,
+  "assertions": [
+    {
+      "id": "TF-01",
+      "check": "Explicitly confirms or denies buildability with the stated stack (Next.js, Django Ninja Extra, Postgres, Expo)",
+      "type": "directness"
+    },
+    {
+      "id": "TF-02",
+      "check": "Lists the top 3 hardest technical challenges with severity assessment",
+      "type": "honesty"
+    },
+    {
+      "id": "TF-03",
+      "check": "MVP effort estimate is in sprints with stated sprint length and team assumptions",
+      "type": "specificity"
+    },
+    {
+      "id": "TF-04",
+      "check": "Third-party dependencies are listed with risk level (API stability, pricing, alternatives)",
+      "type": "completeness"
+    },
+    {
+      "id": "TF-05",
+      "check": "Identifies any features that would require technology outside the standard stack",
+      "type": "transparency"
+    },
+    {
+      "id": "TF-06",
+      "check": "Scope estimate is consistent with the validation report's feature description",
+      "type": "consistency"
+    }
+  ],
+  "pass_threshold": 0.75,
+  "meta_assertion": "Could an engineering lead read this and start sprint planning without further research?",
+  "test_prompt": "Assess technical feasibility for a deployment automation SaaS using Next.js + Django Ninja Extra + Postgres.",
+  "history": []
+}

@@ -1,0 +1,37 @@
+{
+  "deliverable": "production deployment",
+  "phase": 5,
+  "assertions": [
+    { "id": "DEP-01", "check": "SSL certificates are configured and verified", "type": "security" },
+    {
+      "id": "DEP-02",
+      "check": "Environment variables are set from secrets manager, not hardcoded",
+      "type": "security"
+    },
+    {
+      "id": "DEP-03",
+      "check": "Database backups are configured and tested with a restore",
+      "type": "safety"
+    },
+    {
+      "id": "DEP-04",
+      "check": "Monitoring and alerting is active (uptime, error rate, latency)",
+      "type": "ops"
+    },
+    {
+      "id": "DEP-05",
+      "check": "Staging environment matches production configuration",
+      "type": "parity"
+    },
+    {
+      "id": "DEP-06",
+      "check": "Smoke tests pass on staging with real-world data patterns",
+      "type": "readiness"
+    },
+    { "id": "DEP-07", "check": "Rollback procedure documented and tested", "type": "safety" },
+    { "id": "DEP-08", "check": "Rate limiting and DDoS protection configured", "type": "security" }
+  ],
+  "pass_threshold": 1.0,
+  "meta_assertion": "Is this deployment safe to put in front of paying customers?",
+  "history": []
+}

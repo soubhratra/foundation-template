@@ -1,0 +1,40 @@
+{
+  "deliverable": "context/",
+  "phase": 2,
+  "assertions": [
+    {
+      "id": "CTX-01",
+      "check": "about-founder.md contains specific technical skills, not just 'experienced developer'",
+      "type": "specificity"
+    },
+    {
+      "id": "CTX-02",
+      "check": "ideal-customer.md names a specific job title, company size, and pain point",
+      "type": "specificity"
+    },
+    {
+      "id": "CTX-03",
+      "check": "brand-voice.md includes at least 3 'do' examples and 3 'don't' examples",
+      "type": "actionability"
+    },
+    {
+      "id": "CTX-04",
+      "check": "product-info.md references validated needs from Phase 1, not assumptions",
+      "type": "traceability"
+    },
+    {
+      "id": "CTX-05",
+      "check": "No context file contradicts another context file",
+      "type": "consistency"
+    },
+    {
+      "id": "CTX-06",
+      "check": "Every context file is usable by an agent that has NEVER seen the startup before",
+      "type": "standalone"
+    }
+  ],
+  "pass_threshold": 0.83,
+  "meta_assertion": "Could a new agent read only the context/ folder and produce on-brand, on-target work for this startup?",
+  "test_prompt": "Review the context folder for completeness, consistency, and actionability.",
+  "history": []
+}

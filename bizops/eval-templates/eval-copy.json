@@ -1,0 +1,41 @@
+{
+  "deliverable": "landing-page-copy.md",
+  "phase": 3,
+  "assertions": [
+    {
+      "id": "CP-01",
+      "check": "Headline communicates the core value proposition in under 10 words",
+      "type": "clarity"
+    },
+    {
+      "id": "CP-02",
+      "check": "Subheadline explains what the product does for whom",
+      "type": "completeness"
+    },
+    {
+      "id": "CP-03",
+      "check": "At least one clear CTA (call-to-action) is present with specific action text",
+      "type": "structural"
+    },
+    {
+      "id": "CP-04",
+      "check": "Copy addresses the ICP's primary pain point from context/ideal-customer.md",
+      "type": "targeting"
+    },
+    { "id": "CP-05", "check": "Tone matches brand-voice.md guidelines", "type": "consistency" },
+    {
+      "id": "CP-06",
+      "check": "Features section uses benefits language (what the user gets) not feature language (what the product has)",
+      "type": "persuasion"
+    },
+    {
+      "id": "CP-07",
+      "check": "Social proof section is planned (even if placeholder for testimonials/logos)",
+      "type": "completeness"
+    }
+  ],
+  "pass_threshold": 0.75,
+  "meta_assertion": "Would the target ICP understand what this product does and want to try it within 10 seconds of landing on this page?",
+  "test_prompt": "Write landing page copy for a developer deployment automation tool.",
+  "history": []
+}

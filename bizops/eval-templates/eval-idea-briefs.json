@@ -1,0 +1,50 @@
+{
+  "deliverable": "idea-briefs.md",
+  "phase": 0,
+  "assertions": [
+    {
+      "id": "ID-01",
+      "check": "Each idea has a clearly stated problem affecting a specific, named customer segment",
+      "type": "clarity"
+    },
+    {
+      "id": "ID-02",
+      "check": "Each idea has a revenue model with pricing range and payment trigger",
+      "type": "business"
+    },
+    {
+      "id": "ID-03",
+      "check": "Market size estimates cite specific data sources (reports, databases, public filings)",
+      "type": "evidence"
+    },
+    {
+      "id": "ID-04",
+      "check": "Founder-fit scoring references specific founder skills/experience, not generic traits",
+      "type": "specificity"
+    },
+    {
+      "id": "ID-05",
+      "check": "At least one idea leverages AI as a core differentiator, not just a feature",
+      "type": "strategic"
+    },
+    {
+      "id": "ID-06",
+      "check": "Each idea identifies at least 2 existing alternatives and explains why they're insufficient",
+      "type": "competitive"
+    },
+    {
+      "id": "ID-07",
+      "check": "Time-to-revenue estimate includes specific assumptions (team size, stack, integrations needed)",
+      "type": "feasibility"
+    },
+    {
+      "id": "ID-08",
+      "check": "Recommendation includes explicit reasoning for why rejected ideas were ranked lower",
+      "type": "rigor"
+    }
+  ],
+  "pass_threshold": 0.75,
+  "meta_assertion": "Could a seed-stage investor read this and understand why this opportunity is worth pursuing?",
+  "test_prompt": "Generate idea briefs for a SaaS startup in the developer tools space, targeting solo developers who struggle with deployment.",
+  "history": []
+}

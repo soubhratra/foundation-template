@@ -1,0 +1,56 @@
+{
+  "deliverable": "prd.md",
+  "phase": 3,
+  "assertions": [
+    {
+      "id": "PRD-01",
+      "check": "Contains user stories in 'As a [user], I want [action], so that [benefit]' format",
+      "type": "structural"
+    },
+    {
+      "id": "PRD-02",
+      "check": "Each user story has measurable acceptance criteria",
+      "type": "completeness"
+    },
+    {
+      "id": "PRD-03",
+      "check": "MVP scope is explicitly defined with 'in scope' and 'out of scope' sections",
+      "type": "scope"
+    },
+    { "id": "PRD-04", "check": "Total MVP user stories number 15 or fewer", "type": "scope" },
+    {
+      "id": "PRD-05",
+      "check": "Contains a data model or entity list with relationships",
+      "type": "technical"
+    },
+    {
+      "id": "PRD-06",
+      "check": "Non-functional requirements (performance, security, scalability) are stated",
+      "type": "completeness"
+    },
+    {
+      "id": "PRD-07",
+      "check": "Success metrics are defined with specific numbers (not 'improve retention')",
+      "type": "measurability"
+    },
+    {
+      "id": "PRD-08",
+      "check": "Each feature maps to a validated customer need from Phase 1",
+      "type": "traceability"
+    },
+    {
+      "id": "PRD-09",
+      "check": "No feature exists that wasn't validated in customer discovery",
+      "type": "discipline"
+    },
+    {
+      "id": "PRD-10",
+      "check": "Contains a prioritized backlog beyond MVP (what comes next)",
+      "type": "strategic"
+    }
+  ],
+  "pass_threshold": 0.8,
+  "meta_assertion": "Could an engineering team build an MVP from this PRD without asking clarifying questions?",
+  "test_prompt": "Write a PRD for the MVP of a developer deployment automation tool.",
+  "history": []
+}

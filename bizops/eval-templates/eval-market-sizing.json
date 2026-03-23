@@ -1,0 +1,45 @@
+{
+  "deliverable": "market-sizing.md",
+  "phase": 1,
+  "assertions": [
+    {
+      "id": "MS-01",
+      "check": "TAM, SAM, and SOM are each explicitly defined with dollar amounts",
+      "type": "structural"
+    },
+    {
+      "id": "MS-02",
+      "check": "TAM calculation cites at least 2 independent data sources",
+      "type": "evidence"
+    },
+    {
+      "id": "MS-03",
+      "check": "SAM narrows from TAM with explicit filtering criteria (geography, segment, etc.)",
+      "type": "rigor"
+    },
+    {
+      "id": "MS-04",
+      "check": "SOM includes a realistic capture rate assumption with justification",
+      "type": "realism"
+    },
+    {
+      "id": "MS-05",
+      "check": "Bottom-up calculation is included alongside top-down (# customers x ARPU)",
+      "type": "methodology"
+    },
+    {
+      "id": "MS-06",
+      "check": "Growth rate projections cite industry reports or observable trends",
+      "type": "evidence"
+    },
+    {
+      "id": "MS-07",
+      "check": "Assumptions are explicitly listed and labeled as assumptions",
+      "type": "transparency"
+    }
+  ],
+  "pass_threshold": 0.75,
+  "meta_assertion": "Would an analyst trust these numbers enough to include them in an investment memo?",
+  "test_prompt": "Size the market for a developer deployment automation tool targeting solo developers and small teams.",
+  "history": []
+}

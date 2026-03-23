@@ -1,0 +1,50 @@
+{
+  "deliverable": "gtm-plan.md",
+  "phase": 3,
+  "assertions": [
+    {
+      "id": "GTM-01",
+      "check": "Positioning statement follows the format: For [ICP] who [need], [product] is a [category] that [key benefit]",
+      "type": "structural"
+    },
+    {
+      "id": "GTM-02",
+      "check": "ICP in GTM plan matches the ICP defined in context/ideal-customer.md",
+      "type": "consistency"
+    },
+    {
+      "id": "GTM-03",
+      "check": "At least 3 acquisition channels are identified with expected cost per lead",
+      "type": "specificity"
+    },
+    {
+      "id": "GTM-04",
+      "check": "Launch timeline includes specific dates or sprint references, not 'soon'",
+      "type": "concreteness"
+    },
+    {
+      "id": "GTM-05",
+      "check": "Success metrics for first 90 days are defined with specific numbers",
+      "type": "measurability"
+    },
+    {
+      "id": "GTM-06",
+      "check": "Content calendar covers at least 4 weeks of pre-launch content",
+      "type": "completeness"
+    },
+    {
+      "id": "GTM-07",
+      "check": "Messaging framework includes headline, subhead, and 3 benefit statements",
+      "type": "structural"
+    },
+    {
+      "id": "GTM-08",
+      "check": "Competitive differentiation in messaging aligns with competitor matrix findings",
+      "type": "traceability"
+    }
+  ],
+  "pass_threshold": 0.75,
+  "meta_assertion": "Could a marketing contractor execute this plan without additional strategic guidance?",
+  "test_prompt": "Create a GTM plan for launching a developer deployment automation tool.",
+  "history": []
+}
