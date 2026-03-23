@@ -21,7 +21,7 @@ Invalid: END (early exit)
 import logging
 from typing import Literal
 
-from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
+from langchain_core.messages import AIMessage, HumanMessage
 from langchain_openai import ChatOpenAI
 from langgraph.graph import END, StateGraph
 from langgraph.prebuilt import create_react_agent
@@ -151,9 +151,7 @@ def generate_answer_node(state: QAState) -> dict:
     else:
         context_parts = []
         for i, chunk in enumerate(chunks, 1):
-            context_parts.append(
-                f"[{i}] {chunk['text']} (from: {chunk['document_title']})"
-            )
+            context_parts.append(f"[{i}] {chunk['text']} (from: {chunk['document_title']})")
         context = "\n\n".join(context_parts)
 
     # Build prompt

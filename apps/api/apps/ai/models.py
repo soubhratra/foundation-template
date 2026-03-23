@@ -9,7 +9,7 @@ Models:
 
 from django.conf import settings
 from django.db import models
-from pgvector.django import VectorField, HnswIndex
+from pgvector.django import HnswIndex, VectorField
 
 
 class VectorEmbeddingMixin(models.Model):

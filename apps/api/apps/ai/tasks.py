@@ -128,11 +128,11 @@ def generate_embeddings(self, document_id: int) -> dict[str, Any]:
         embedding_version = "v1"
         created_chunks = []
 
-        for idx, chunk_text in enumerate(chunks):
+        for idx, chunk_content in enumerate(chunks):
             # Call OpenAI embeddings API
             response = client.embeddings.create(
                 model=embedding_model,
-                input=chunk_text,
+                input=chunk_content,
                 encoding_format="float",
             )
 
@@ -141,7 +141,7 @@ def generate_embeddings(self, document_id: int) -> dict[str, Any]:
             # Create DocumentChunk
             chunk = DocumentChunk.objects.create(
                 document=document,
-                text=chunk_text,
+                text=chunk_content,
                 chunk_index=idx,
                 embedding=embedding,
                 embedding_model=embedding_model,
@@ -158,9 +158,7 @@ def generate_embeddings(self, document_id: int) -> dict[str, Any]:
         document.embedding_status = "completed"
         document.save(update_fields=["embedding_status"])
 
-        logger.info(
-            f"Generated {len(created_chunks)} embeddings for document {document_id}"
-        )
+        logger.info(f"Generated {len(created_chunks)} embeddings for document {document_id}")
 
         return {
             "status": "completed",
@@ -187,4 +185,4 @@ def generate_embeddings(self, document_id: int) -> dict[str, Any]:
             pass
 
         # Retry with exponential backoff
-        raise self.retry(exc=exc, countdown=60)
+        raise self.retry(exc=exc, countdown=60) from exc

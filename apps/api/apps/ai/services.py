@@ -79,7 +79,7 @@ def search_documents(
             encoding_format="float",
         )
         query_embedding = response.data[0].embedding
-    except Exception as exc:
+    except Exception:
         logger.exception("Failed to generate query embedding")
         raise
 

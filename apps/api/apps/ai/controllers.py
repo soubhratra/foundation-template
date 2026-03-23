@@ -109,9 +109,7 @@ class AIController:
         # Trigger async embedding task
         task = generate_embeddings.delay(document.id)
 
-        logger.info(
-            f"Document {document.id} created, embedding task {task.id} dispatched"
-        )
+        logger.info(f"Document {document.id} created, embedding task {task.id} dispatched")
 
         return DocumentResponse(
             id=document.id,
@@ -177,14 +175,16 @@ class AIController:
         graph = build_qa_graph()
 
         try:
-            result = graph.invoke({
-                "messages": [HumanMessage(content=question)],
-                "query": "",
-                "intent": "pending",
-                "retrieved_chunks": [],
-                "answer": "",
-                "loop_count": 0,
-            })
+            result = graph.invoke(
+                {
+                    "messages": [HumanMessage(content=question)],
+                    "query": "",
+                    "intent": "pending",
+                    "retrieved_chunks": [],
+                    "answer": "",
+                    "loop_count": 0,
+                }
+            )
 
             answer = result.get("answer", "No answer generated.")
             retrieved_chunks = result.get("retrieved_chunks", [])
@@ -200,7 +200,7 @@ class AIController:
                 context=context,
             )
 
-        except Exception as e:
+        except Exception:
             logger.exception(f"Q&A failed for question: {question}")
             return QuestionResponse(
                 question=question,

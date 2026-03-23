@@ -6,7 +6,8 @@ Using Annotated with operator.add allows message accumulation per LangGraph patt
 """
 
 import operator
-from typing import Annotated, Sequence, TypedDict
+from collections.abc import Sequence
+from typing import Annotated, TypedDict
 
 from langchain_core.messages import BaseMessage
 

@@ -1,7 +1,6 @@
-from django.http import HttpResponse
-
 from allauth.account.adapter import get_adapter as get_account_adapter
 from allauth.headless.account.views import SessionView
+from django.http import HttpResponse
 
 
 class HeadlessSessionView(SessionView):
